@@ -1,0 +1,43 @@
+@{ ViewData["Title"] = "同步管理"; }
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">ETL 控制</h6></div>
+            <div class="card-body">
+                <p>当前 Sync 状态: <strong>@(ViewBag.SyncStatus ?? "未知")</strong></p>
+                <div class="d-grid gap-2">
+                    <form method="post" asp-action="Trigger" asp-route-phase="run">
+                        <button type="submit" class="btn btn-primary w-100">触发全量 ETL</button>
+                    </form>
+                    <form method="post" asp-action="Trigger" asp-route-phase="extract">
+                        <button type="submit" class="btn btn-outline-primary w-100">触发 Extract</button>
+                    </form>
+                    <form method="post" asp-action="Trigger" asp-route-phase="transform">
+                        <button type="submit" class="btn btn-outline-primary w-100">触发 Transform</button>
+                    </form>
+                    <form method="post" asp-action="Trigger" asp-route-phase="load">
+                        <button type="submit" class="btn btn-outline-primary w-100">触发 Load</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">ETL 调度说明</h6></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead><tr><th>阶段</th><th>调度时间</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td>Extract</td><td>每日 04:00</td><td>从 db_raw 提取数据到 staging 表</td></tr>
+                        <tr><td>Transform</td><td>每日 04:30</td><td>数据清洗、映射、评分</td></tr>
+                        <tr><td>Load</td><td>每日 05:30</td><td>加载到 API 业务库</td></tr>
+                        <tr><td>Retry</td><td>每日 06:30</td><td>重试失败记录</td></tr>
+                        <tr><td>Stuck</td><td>每日 07:00</td><td>处理卡住记录</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

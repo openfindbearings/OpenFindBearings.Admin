@@ -1,0 +1,30 @@
+@{ ViewData["Title"] = "映射维护"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">映射维护</h6>
+        <div class="btn-group btn-group-sm">
+            <a href="?type=brand" class="btn btn-outline-primary @(ViewBag.MappingType=="brand"?"active":"")">品牌映射</a>
+            <a href="?type=type" class="btn btn-outline-primary @(ViewBag.MappingType=="type"?"active":"")">类型映射</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>原始名称</th><th>标准 Code</th><th>来源</th></tr></thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<object> ?? Enumerable.Empty<object>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr><td>@item</td><td>-</td><td>-</td></tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-4">暂无映射数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

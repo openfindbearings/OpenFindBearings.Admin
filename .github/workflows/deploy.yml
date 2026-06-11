@@ -1,0 +1,92 @@
+name: Build & Deploy Admin
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      skip_deploy:
+        description: '跳过部署（仅构建镜像）'
+        type: boolean
+        default: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  PROJECT: OpenFindBearings.Admin/src/OpenFindBearings.Admin
+  IMAGE_NAME: openfindbearings/admin
+  DOCKER_REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore OpenFindBearings.Admin.slnx
+
+      - name: Build
+        run: dotnet build OpenFindBearings.Admin.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test OpenFindBearings.Admin.slnx --no-build -c Release || true
+
+      - name: Publish
+        run: dotnet publish ${{ env.PROJECT }} -c Release -o publish
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,prefix=
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/OpenFindBearings.Admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build
+    if: ${{ !inputs.skip_deploy }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to K3s
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        run: |
+          kubectl set image deployment/admin-web admin-web=ghcr.io/openfindbearings/admin:${{ steps.tag.outputs.tag }} -n openfindbearings
+          kubectl rollout status deployment/admin-web -n openfindbearings

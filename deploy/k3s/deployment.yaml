@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-web
+  namespace: openfindbearings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-web
+  template:
+    metadata:
+      labels:
+        app: admin-web
+    spec:
+      containers:
+        - name: admin-web
+          image: ghcr.io/openfindbearings/admin:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: admin-secret
+                  key: connection-string
+            - name: ServiceUrls__Crawler
+              value: "http://crawler-api:80"
+            - name: ServiceUrls__Sync
+              value: "http://sync-api:80"
+            - name: ServiceUrls__BusinessApi
+              value: "http://business-api:80"
+            - name: ServiceUrls__Identity
+              value: "http://identity:80"
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-web
+  namespace: openfindbearings
+spec:
+  selector:
+    app: admin-web
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP

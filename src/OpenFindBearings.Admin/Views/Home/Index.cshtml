@@ -1,0 +1,68 @@
+﻿@{ ViewData["Title"] = "仪表盘"; }
+
+<div class="row">
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-info">
+            <div class="inner"><h3 id="bearingCount">-</h3><p>轴承总数</p></div>
+            <div class="icon"><i class="fas fa-cogs"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-success">
+            <div class="inner"><h3 id="brandCount">-</h3><p>品牌数量</p></div>
+            <div class="icon"><i class="fas fa-tag"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-warning">
+            <div class="inner"><h3 id="merchantCount">-</h3><p>商家数量</p></div>
+            <div class="icon"><i class="fas fa-store"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-danger">
+            <div class="inner"><h3 id="pendingReviewCount">-</h3><p>待审核</p></div>
+            <div class="icon"><i class="fas fa-clipboard-check"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">服务状态</h6></div>
+    <div class="card-body p-0">
+        <table class="table" id="serviceTable">
+            <thead><tr><th>服务</th><th>状态</th><th>详情</th></tr></thead>
+            <tbody>
+                <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
+                <tr><td>Crawler</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
+                <tr><td>Sync</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
+                <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var api = '@(Context.Request.Scheme)://localhost:7183';
+    fetch(api + '/api/bearings/search?page=1&pageSize=1')
+        .then(function(r){return r.json()}).then(function(d){document.getElementById('bearingCount').textContent=d?.data?.totalCount??0})
+        .catch(function(){document.getElementById('bearingCount').textContent='N/A'});
+    fetch(api + '/api/brands?page=1&pageSize=1')
+        .then(function(r){return r.json()}).then(function(d){document.getElementById('brandCount').textContent=d?.data?.totalCount??0})
+        .catch(function(){document.getElementById('brandCount').textContent='N/A'});
+    fetch(api + '/api/merchants?page=1&pageSize=1')
+        .then(function(r){return r.json()}).then(function(d){document.getElementById('merchantCount').textContent=d?.data?.totalCount??0})
+        .catch(function(){document.getElementById('merchantCount').textContent='N/A'});
+    fetch('/Home/Status')
+        .then(function(r){return r.json()})
+        .then(function(data){
+            var tbody=document.querySelector('#serviceTable tbody');if(!tbody)return;
+            var h='';for(var k in data){var s=data[k];
+            h+='<tr><td>'+k+'</td><td>'+(s.available?'<span class="badge bg-success">在线</span>':'<span class="badge bg-danger">离线</span>')+'</td><td>'+(s.message||'-')+'</td></tr>';}
+            tbody.innerHTML=h;
+        });
+})();
+</script>
+}

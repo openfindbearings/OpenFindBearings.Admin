@@ -140,6 +140,30 @@ body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 .sidebar-toggle:hover { color: var(--text-primary); }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+
+/* ===== User dropdown ===== */
+.user-dropdown .user-avatar {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  color: var(--text-secondary); text-decoration: none;
+  transition: background .15s, color .15s; cursor: pointer;
+}
+.user-dropdown .user-avatar i { font-size: 28px; }
+.user-dropdown .user-avatar:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+.user-dropdown .dropdown-menu {
+  min-width: 160px; border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15); background: var(--bg-card);
+  border-radius: .375rem; padding: .25rem 0; margin-top: 4px;
+}
+.user-dropdown .dropdown-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: .5rem 1rem; font-size: 13px; color: var(--text-primary);
+  transition: background .1s;
+}
+.user-dropdown .dropdown-item:hover { background: var(--sidebar-hover); }
+.user-dropdown .dropdown-item i { width: 16px; text-align: center; font-size: 13px; }
+.user-dropdown .dropdown-divider { margin: .25rem 0; border-color: var(--border-light); }
+
 .service-status { display: flex; align-items: center; gap: 12px; }
 .service-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
 .service-dot { width: 8px; height: 8px; border-radius: 50%; background: #adb5bd; }
@@ -221,7 +245,12 @@ body.dark-theme a { color: var(--pagination-link-color); }
   .main-content { margin-left: 0; }
 }
 
-/* ===== Misc ===== */
+/ ===== Misc ===== */
+
+/* ===== Card header toolbar ===== */
+.card-header .btn { height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; min-width: 64px; justify-content: center; }
+.card-header .form-control { height: 38px; }
+.card-header form { display: flex; align-items: center; gap: 8px; }
 .empty-state { text-align: center; padding: 48px 20px; color: var(--text-secondary); }
 .empty-state i { font-size: 40px; margin-bottom: 12px; color: var(--text-muted); display: block; }
 .badge { font-weight: 500; }

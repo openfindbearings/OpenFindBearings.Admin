@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace OpenFindBearings.Admin.Controllers;
 
+[Authorize]
 public class SyncController : Controller
 {
     private readonly IHttpClientFactory _factory;

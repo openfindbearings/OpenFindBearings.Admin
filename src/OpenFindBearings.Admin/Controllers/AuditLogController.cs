@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Controllers;
 
+[Authorize]
 public class AuditLogController : Controller
 {
     private readonly IHttpClientFactory _factory;
@@ -20,7 +22,7 @@ public class AuditLogController : Controller
         var client = _factory.CreateClient("IdentityClient");
         try
         {
-            var url = $"{identityBase}/api/account/admin/audit-logs?page={page}&pageSize={pageSize}";
+            var url = $"{identityBase}/api/auditlog?page={page}&pageSize={pageSize}";
             var resp = await client.GetAsync(url);
             if (resp.IsSuccessStatusCode)
             {

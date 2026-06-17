@@ -1,0 +1,95 @@
+@model OpenFindBearings.Admin.Models.ViewModels.ProfileViewModel
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+
+@{ 
+    var identityAuth = Config["Identity:Authority"] ?? "https://localhost:7201";
+}
+
+<div class="content-header">
+    <h1>个人信息</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6>基本信息</h6></div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr><td style="width:120px">用户ID</td><td>@Model.Id</td></tr>
+                        <tr><td>用户名</td><td>@Model.UserName</td></tr>
+                        <tr><td>姓名</td><td>@Model.Name</td></tr>
+                        <tr><td>昵称</td><td>@Model.Nickname</td></tr>
+                        <tr><td>邮箱</td><td>
+                            @Model.Email
+                            @if (Model.EmailVerified)
+                            { <span class="badge bg-success" style="font-size:11px">已验证</span> }
+                            else
+                            { <span class="badge bg-secondary" style="font-size:11px">未验证</span> }
+                        </td></tr>
+                        <tr><td>手机号</td><td>
+                            @Model.PhoneNumber
+                            @if (Model.PhoneNumberVerified)
+                            { <span class="badge bg-success" style="font-size:11px">已验证</span> }
+                            else
+                            { <span class="badge bg-secondary" style="font-size:11px">未验证</span> }
+                        </td></tr>
+                        <tr><td>性别</td><td>@(Model.Gender ?? "-")</td></tr>
+                        <tr><td>出生日期</td><td>@(Model.Birthdate ?? "-")</td></tr>
+                        <tr><td>语言</td><td>@(Model.Locale ?? "-")</td></tr>
+                        <tr><td>时区</td><td>@(Model.ZoneInfo ?? "-")</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><h6>账户状态</h6></div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr><td style="width:120px">状态</td><td>
+                            @if (Model.IsEnabled)
+                            { <span class="badge bg-success">正常</span> }
+                            else
+                            { <span class="badge bg-danger">已禁用</span> }
+                        </td></tr>
+                        <tr><td>创建时间</td><td>@Model.CreatedAt</td></tr>
+                        <tr><td>更新时间</td><td>@(Model.UpdatedAt ?? "-")</td></tr>
+                        <tr><td>最后登录</td><td>@(Model.LastLoginAt ?? "-")</td></tr>
+                        <tr><td>角色</td><td>
+                            @if (Model.Roles.Count > 0)
+                            {
+                                @string.Join(", ", Model.Roles)
+                            }
+                            else
+                            { <span class="text-muted">-</span> }
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><h6>Token 信息</h6></div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr><td style="width:120px">Access Token</td><td><code>@Model.AccessToken</code></td></tr>
+                        <tr><td>过期时间</td><td>@Model.ExpiresAt</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body text-center">
+                <a href="@($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString("https://localhost:7167/")}&realm=openfindbearings")" class="btn btn-outline-primary">
+                    <i class="fas fa-key"></i> 修改密码
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

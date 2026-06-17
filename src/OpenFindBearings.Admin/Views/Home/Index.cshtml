@@ -45,16 +45,22 @@
 @section Scripts {
 <script>
 (function () {
-    var api = '@(Context.Request.Scheme)://localhost:7183';
-    fetch(api + '/api/bearings/search?page=1&pageSize=1')
-        .then(function(r){return r.json()}).then(function(d){document.getElementById('bearingCount').textContent=d?.data?.totalCount??0})
-        .catch(function(){document.getElementById('bearingCount').textContent='N/A'});
-    fetch(api + '/api/brands?page=1&pageSize=1')
-        .then(function(r){return r.json()}).then(function(d){document.getElementById('brandCount').textContent=d?.data?.totalCount??0})
-        .catch(function(){document.getElementById('brandCount').textContent='N/A'});
-    fetch(api + '/api/merchants?page=1&pageSize=1')
-        .then(function(r){return r.json()}).then(function(d){document.getElementById('merchantCount').textContent=d?.data?.totalCount??0})
-        .catch(function(){document.getElementById('merchantCount').textContent='N/A'});
+    fetch('/Home/DashboardStats')
+        .then(function(r){return r.json()})
+        .then(function(resp){
+            var d=resp.data||resp;
+            var b=d.bearings||{};var m=d.merchants||{};var c=d.corrections||{};
+            var el=document.getElementById('bearingCount');if(el)el.textContent=b.totalCount??'-';
+            el=document.getElementById('brandCount');if(el)el.textContent=(b.topBrands||[]).length;
+            el=document.getElementById('merchantCount');if(el)el.textContent=m.totalCount??'-';
+            el=document.getElementById('pendingReviewCount');if(el)el.textContent=c.pendingCount??'-';
+        })
+        .catch(function(){
+            var el=document.getElementById('bearingCount');if(el)el.textContent='N/A';
+            el=document.getElementById('brandCount');if(el)el.textContent='N/A';
+            el=document.getElementById('merchantCount');if(el)el.textContent='N/A';
+            el=document.getElementById('pendingReviewCount');if(el)el.textContent='N/A';
+        });
     fetch('/Home/Status')
         .then(function(r){return r.json()})
         .then(function(data){

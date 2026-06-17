@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Controllers;
 
+[Authorize]
 public class CrawlerController : Controller
 {
     private readonly IHttpClientFactory _factory;

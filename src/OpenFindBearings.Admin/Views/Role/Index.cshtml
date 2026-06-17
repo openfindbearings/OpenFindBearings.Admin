@@ -1,0 +1,70 @@
+@using OpenFindBearings.Admin.Models.ViewModels
+@{ ViewData["Title"] = "角色管理"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">角色管理</h6>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoleModal">新建角色</button>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>角色名称</th>
+                    <th>已授权权限</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<RoleViewModel> ?? Enumerable.Empty<RoleViewModel>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td><strong>@item.RoleName</strong></td>
+                            <td><span class="badge bg-info">@item.PermissionCount 项</span></td>
+                            <td>
+                                <a asp-action="Permissions" asp-route-roleName="@item.RoleName" class="btn btn-sm btn-outline-primary">权限配置</a>
+                                @if (item.RoleName != "admin")
+                                {
+                                    <form method="post" asp-action="Delete" asp-route-roleName="@item.RoleName" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('确认删除角色 @item.RoleName？')">删除</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-4">暂无角色</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新建角色弹窗 -->
+<div class="modal fade" id="createRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Create">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">角色名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="roleName" class="form-control" required placeholder="例如：业务员" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

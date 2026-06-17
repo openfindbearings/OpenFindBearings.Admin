@@ -1,28 +1,61 @@
-@model BrandListViewModel
-@{ ViewData["Title"] = "品牌管理"; }
+﻿@model BrandListViewModel
+@{ ViewData["Title"] = "品牌列表"; }
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">品牌管理 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
-        <form class="d-flex gap-2" method="get">
-            <input type="text" name="search" value="@Model.Search" class="form-control form-control-sm" placeholder="搜索品牌..." />
-            <button class="btn btn-sm btn-primary">搜索</button>
-        </form>
+        <h6 class="mb-0">品牌列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#brandModal" onclick="openCreateBrand()">
+                <i class="fas fa-plus"></i> 新建
+            </button>
+            <form class="d-flex gap-2 align-items-center" method="get">
+                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索品牌..." />
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
+                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
+                </div>
+                <button class="btn btn-primary">搜索</button>
+            </form>
+        </div>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover">
-            <thead><tr><th>名称</th><th>Code</th><th>描述</th></tr></thead>
+            <thead><tr><th>编码</th><th>名称</th><th>产地</th><th>等级</th><th>轴承数</th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
-                    @foreach (var item in Model.Items)
+                    foreach (var item in Model.Items)
                     {
-                        <tr><td>@item.Name</td><td>@(item.Code ?? "-")</td><td>@(item.Description ?? "-")</td></tr>
+                        <tr>
+                            <td>@item.Code</td>
+                            <td>@item.Name</td>
+                            <td>@(item.Country ?? "-")</td>
+                            <td>@(item.Level == "Premium" ? "高级" : item.Level == "Economy" ? "经济" : "标准")</td>
+                            <td>@item.BearingCount</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick='openEditBrand(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                @if (Model.IncludeDeleted)
+                                {
+                                    <form method="post" asp-action="RestoreBrand" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该品牌吗？')">
+                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                    </form>
+                                    <form method="post" asp-action="HardDeleteBrand" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该品牌吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="DeleteBrand" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该品牌吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
                     }
                 }
                 else
                 {
-                    <tr><td colspan="3" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table>
@@ -34,10 +67,77 @@
                 @for (var i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search">@i</a>
+                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()">@i</a>
                     </li>
                 }
             </ul></nav>
         </div>
     }
 </div>
+
+<!-- 新建/编辑品牌弹窗 -->
+<div class="modal fade" id="brandModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="brandForm">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="brandModalTitle">新建品牌</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="brandId" />
+                    <div class="mb-3">
+                        <label class="form-label">编码 <span class="text-danger">*</span></label>
+                        <input type="text" name="code" id="brandCode" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="brandName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">产地</label>
+                        <input type="text" name="country" id="brandCountry" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">等级</label>
+                        <select name="level" id="brandLevel" class="form-select">
+                            <option value="Standard">标准</option>
+                            <option value="Premium">高级</option>
+                            <option value="Economy">经济</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openCreateBrand() {
+    document.getElementById('brandModalTitle').textContent = '新建品牌';
+    document.getElementById('brandForm').action = '@Url.Action("CreateBrand")';
+    document.getElementById('brandId').value = '';
+    document.getElementById('brandCode').value = '';
+    document.getElementById('brandCode').removeAttribute('readonly');
+    document.getElementById('brandName').value = '';
+    document.getElementById('brandCountry').value = '';
+    document.getElementById('brandLevel').value = 'Standard';
+}
+function openEditBrand(item) {
+    document.getElementById('brandModalTitle').textContent = '编辑品牌';
+    document.getElementById('brandForm').action = '@Url.Action("EditBrand")';
+    document.getElementById('brandId').value = item.id;
+    document.getElementById('brandCode').value = item.code;
+    document.getElementById('brandCode').setAttribute('readonly', true);
+    document.getElementById('brandName').value = item.name;
+    document.getElementById('brandCountry').value = item.country || '';
+    document.getElementById('brandLevel').value = item.level || 'Standard';
+    new bootstrap.Modal(document.getElementById('brandModal')).show();
+}
+</script>
+}

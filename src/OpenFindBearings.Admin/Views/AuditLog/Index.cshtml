@@ -1,10 +1,23 @@
 @{ ViewData["Title"] = "审计日志"; }
 
 <div class="card">
-    <div class="card-header"><h6 class="mb-0">审计日志</h6></div>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0">审计日志</h6>
+        <form method="get" class="d-flex gap-2">
+            <select name="action" class="form-select form-select-sm" style="width:auto">
+                <option value="">全部操作</option>
+                <option value="Login" selected="@(ViewBag.CurrentAction == "Login")">登录</option>
+                <option value="Logout" selected="@(ViewBag.CurrentAction == "Logout")">退出</option>
+                <option value="CreateUser" selected="@(ViewBag.CurrentAction == "CreateUser")">创建用户</option>
+                <option value="UpdateUser" selected="@(ViewBag.CurrentAction == "UpdateUser")">更新用户</option>
+                <option value="DeleteUser" selected="@(ViewBag.CurrentAction == "DeleteUser")">删除用户</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary">筛选</button>
+        </form>
+    </div>
     <div class="card-body p-0">
         <table class="table table-hover">
-            <thead><tr><th>用户</th><th>操作</th><th>详情</th><th>时间</th></tr></thead>
+            <thead><tr><th>用户</th><th>操作</th><th>资源</th><th>IP</th><th>时间</th></tr></thead>
             <tbody>
                 @{ var items = ViewBag.Items as IEnumerable<AuditLogItemDto> ?? Enumerable.Empty<AuditLogItemDto>(); }
                 @if (items.Any())
@@ -12,18 +25,34 @@
                     @foreach (var item in items)
                     {
                         <tr>
-                            <td>@item.UserName</td>
-                            <td>@item.Action</td>
-                            <td>@(item.Detail ?? "-")</td>
-                            <td>@item.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@(item.Username ?? "-")</td>
+                            <td><span class="badge bg-secondary">@item.Action</span></td>
+                            <td>@(item.ResourceType ?? "-") @(item.ResourceId != null ? $"({item.ResourceId})" : "")</td>
+                            <td>@(item.IpAddress ?? "-")</td>
+                            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                         </tr>
                     }
                 }
                 else
                 {
-                    <tr><td colspan="4" class="text-center text-muted py-4">暂无日志</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">暂无日志</td></tr>
                 }
             </tbody>
         </table>
     </div>
+    @if ((int)(ViewBag.TotalPages ?? 0) > 1)
+    {
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination pagination-sm mb-0 justify-content-center">
+                    @for (var i = 1; i <= (int)ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == (int)ViewBag.Page ? "active" : "")">
+                            <a class="page-link" href="?page=@i&pageSize=@ViewBag.PageSize&action=@(ViewBag.CurrentAction ?? "")">@i</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
 </div>

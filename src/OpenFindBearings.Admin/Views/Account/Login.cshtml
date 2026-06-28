@@ -1,0 +1,162 @@
+@{
+    Layout = null;
+    ViewData["Title"] = "登录";
+}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - OpenFindBearings</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2a3f54 0%, #1a2a3a 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .login-container {
+            display: flex;
+            gap: 24px;
+            max-width: 820px;
+            width: 95%;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+            padding: 48px 40px;
+            text-align: center;
+            flex: 1;
+            min-width: 320px;
+        }
+        .login-logo {
+            font-size: 48px;
+            color: #1abb9c;
+            margin-bottom: 16px;
+        }
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2a3f54;
+            margin-bottom: 8px;
+        }
+        .login-subtitle {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 32px;
+        }
+        .btn-login {
+            background: #1abb9c;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: background .2s;
+        }
+        .btn-login:hover {
+            background: #18a08a;
+        }
+        .login-footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #adb5bd;
+        }
+        .status-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+            padding: 24px;
+            flex: 0 0 340px;
+        }
+        .status-card h6 {
+            color: #2a3f54;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .status-table {
+            width: 100%;
+            font-size: 13px;
+        }
+        .status-table td {
+            padding: 8px 4px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .status-table td:first-child {
+            font-weight: 500;
+            color: #2a3f54;
+            width: 80px;
+        }
+        .status-table tr:last-child td {
+            border-bottom: none;
+        }
+        .badge { font-size: 11px; padding: 3px 8px; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-cog"></i>
+            </div>
+            <h1 class="login-title">OpenFindBearings</h1>
+            <p class="login-subtitle">轴承信息管理后台</p>
+
+            <form asp-action="LoginAction" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+                <button type="submit" class="btn btn-login text-white">
+                    <i class="fas fa-sign-in-alt"></i> 登录管理后台
+                </button>
+            </form>
+
+            <p class="login-footer">© @DateTime.Now.Year OpenFindBearings</p>
+        </div>
+
+        <div class="status-card">
+            <h6><i class="fas fa-heartbeat"></i> 服务状态</h6>
+            <table class="status-table" id="serviceTable">
+                <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td></tr>
+                <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td></tr>
+                <tr><td>Sync</td><td><span class="badge bg-secondary">检测中</span></td></tr>
+                <tr><td>Crawler</td><td><span class="badge bg-secondary">检测中</span></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/Home/Status', true);
+        xhr.onload = function () {
+            if (xhr.status !== 200) return;
+            var data = JSON.parse(xhr.responseText);
+            var nameMap = { 'Api': 'API', 'Identity': 'Identity', 'Sync': 'Sync', 'Crawler': 'Crawler' };
+            var rows = document.querySelectorAll('#serviceTable tr');
+            for (var prop in data) {
+                var label = nameMap[prop];
+                if (!label) continue;
+                for (var i = 0; i < rows.length; i++) {
+                    var cell = rows[i].querySelector('td:first-child');
+                    if (cell && cell.textContent.trim() === label) {
+                        var s = data[prop];
+                        rows[i].querySelector('td:last-child').innerHTML = s.available
+                            ? '<span class="badge bg-success">在线</span>'
+                            : '<span class="badge bg-danger">离线</span>';
+                        break;
+                    }
+                }
+            }
+        };
+        xhr.send();
+    })();
+    </script>
+</body>
+</html>

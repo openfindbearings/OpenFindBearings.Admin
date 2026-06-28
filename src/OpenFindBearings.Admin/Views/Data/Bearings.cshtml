@@ -1,0 +1,192 @@
+@model BearingListViewModel
+@{ ViewData["Title"] = "轴承列表"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">轴承列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBearingModal">
+                <i class="fas fa-plus"></i> 新建
+            </button>
+            <form class="d-flex gap-2 align-items-center" method="get">
+                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索型号..." />
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
+                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
+                </div>
+                <button class="btn btn-primary">搜索</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>型号</th><th>旧型号</th><th>品牌</th><th>类型</th><th>英文名</th><th>操作</th></tr></thead>
+            <tbody>
+                @if (Model.Items.Any())
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.PartNumber</td>
+                            <td>@(item.OldNumber ?? "-")</td>
+                            <td>@(item.BrandName ?? "-")</td>
+                            <td>@(item.BearingType ?? "-")</td>
+                            <td>@(item.EnglishName ?? "-")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick='openEditBearing(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                <button class="btn btn-sm btn-outline-info btn-interchange" data-id="@item.Id" data-name="@item.PartNumber">替代品</button>
+                                @if (Model.IncludeDeleted)
+                                {
+                                    <form method="post" asp-action="RestoreBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该轴承吗？')">
+                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                    </form>
+                                    <form method="post" asp-action="HardDeleteBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该轴承吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="DeleteBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该轴承吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer">
+            <nav><ul class="pagination pagination-sm mb-0">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()">@i</a>
+                    </li>
+                }
+            </ul></nav>
+        </div>
+    }
+</div>
+
+<!-- 新建轴承弹窗 -->
+<div class="modal fade" id="createBearingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="CreateBearing">
+                <div class="modal-header">
+                    <h6 class="modal-title">新建轴承</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">型号 <span class="text-danger">*</span></label>
+                        <input type="text" name="partNumber" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">旧型号</label>
+                        <input type="text" name="oldNumber" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">品牌</label>
+                        <input type="text" name="brandName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">类型</label>
+                        <input type="text" name="bearingType" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea name="description" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑轴承弹窗 -->
+<div class="modal fade" id="editBearingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="EditBearing">
+                <div class="modal-header">
+                    <h6 class="modal-title">编辑轴承</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="bearingId" />
+                    <div class="mb-3">
+                        <label class="form-label">型号</label>
+                        <input type="text" name="partNumber" id="bearingPartNumber" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">旧型号</label>
+                        <input type="text" name="oldNumber" id="bearingOldNumber" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">品牌</label>
+                        <input type="text" name="brandName" id="bearingBrandName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">类型</label>
+                        <input type="text" name="bearingType" id="bearingBearingType" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea name="description" id="bearingDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 替代品弹窗 -->
+<div class="modal fade" id="interchangeModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h6 class="modal-title">替代品 - <span id="interchangeBearing"></span></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><table class="modal-table"><thead><tr><th>类型</th><th>品牌</th><th>型号</th></tr></thead><tbody id="interchangeBody"></tbody></table></div>
+    </div></div>
+</div>
+
+@section Scripts {
+<script>
+function openEditBearing(item) {
+    document.getElementById('bearingId').value = item.id;
+    document.getElementById('bearingPartNumber').value = item.partNumber || '';
+    document.getElementById('bearingOldNumber').value = item.oldNumber || '';
+    document.getElementById('bearingBrandName').value = item.brandName || '';
+    document.getElementById('bearingBearingType').value = item.bearingType || '';
+    document.getElementById('bearingDescription').value = item.description || '';
+    new bootstrap.Modal(document.getElementById('editBearingModal')).show();
+}
+document.querySelectorAll('.btn-interchange').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        var id=this.dataset.id, name=this.dataset.name;
+        document.getElementById('interchangeBearing').textContent=name;
+        document.getElementById('interchangeBody').innerHTML='<tr><td colspan="3">加载中...</td></tr>';
+        new bootstrap.Modal(document.getElementById('interchangeModal')).show();
+        fetch('/api/proxy/interchanges/'+id).then(function(r){return r.json()}).then(function(d){
+            var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.type||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.partNumber||'-')+'</td></tr>';});
+            document.getElementById('interchangeBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无替代品</td></tr>';
+        }).catch(function(){document.getElementById('interchangeBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
+    });
+});
+</script>
+}

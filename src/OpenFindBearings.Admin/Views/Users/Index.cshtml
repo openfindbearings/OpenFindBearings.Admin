@@ -1,0 +1,155 @@
+@using OpenFindBearings.Admin.Models.DTOs
+@{ ViewData["Title"] = "用户管理"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">用户管理</h6>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">新建用户</button>
+            <form class="d-flex gap-2" method="get">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="搜索用户..." />
+                <button class="btn btn-primary">搜索</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>用户名</th>
+                    <th>姓名</th>
+                    <th>邮箱</th>
+                    <th>手机号</th>
+                    <th>状态</th>
+                    <th>角色</th>
+                    <th>最后登录</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<UserItemDto> ?? Enumerable.Empty<UserItemDto>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td>@item.UserName</td>
+                            <td>@(item.Name ?? "-")</td>
+                            <td>@(item.Email ?? "-")</td>
+                            <td>@(item.PhoneNumber ?? "-")</td>
+                            <td>
+                                @if (!item.IsActive)
+                                {
+                                    <span class="badge bg-danger">已删除</span>
+                                }
+                                else if (!item.IsEnabled)
+                                {
+                                    <span class="badge bg-warning text-dark">已禁用</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">正常</span>
+                                }
+                            </td>
+                            <td>@(item.Roles.Any() ? string.Join(", ", item.Roles) : "-")</td>
+                            <td>@(item.LastLoginAt?.ToString("MM-dd HH:mm") ?? "从未")</td>
+                            <td>
+                                @if (!item.IsActive)
+                                {
+                                    <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-success" onclick="return confirm('确认恢复该用户？')">恢复</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="ToggleStatus" asp-route-id="@item.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-@(item.IsEnabled?"danger":"success")">@(item.IsEnabled?"禁用":"启用")</button>
+                                    </form>
+                                    <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName">重置密码</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 新建用户弹窗 -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Create">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建用户</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                        <input type="text" name="userName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">密码 <span class="text-danger">*</span></label>
+                        <input type="password" name="password" class="form-control" required minlength="6" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">姓名</label>
+                        <input type="text" name="name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" name="email" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">手机号</label>
+                        <input type="text" name="phoneNumber" class="form-control" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 重置密码弹窗 -->
+<div class="modal fade" id="resetPwdModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="ResetPassword">
+                <input type="hidden" name="id" id="resetPwdId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">重置密码 - <span id="resetPwdName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">新密码 <span class="text-danger">*</span></label>
+                        <input type="password" name="newPassword" class="form-control" required minlength="6" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">重置</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('resetPwdModal').addEventListener('show.bs.modal', function(e) {
+        document.getElementById('resetPwdId').value = e.relatedTarget.dataset.id;
+        document.getElementById('resetPwdName').textContent = e.relatedTarget.dataset.name;
+    });
+</script>
+}

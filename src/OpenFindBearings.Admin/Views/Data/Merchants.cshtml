@@ -1,0 +1,269 @@
+@model MerchantListViewModel
+@{ ViewData["Title"] = "商家列表"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">商家列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createMerchantModal">
+                <i class="fas fa-plus"></i> 新建
+            </button>
+            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                <i class="fas fa-file-excel"></i> Excel 导入
+            </button>
+            <form class="d-flex gap-2 align-items-center" method="get">
+                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." />
+                <button class="btn btn-primary">搜索</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>名称</th><th>公司</th><th>类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
+            <tbody>
+                @if (Model.Items.Any())
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td>@(item.CompanyName ?? "-")</td>
+                            <td>@item.Type</td>
+                            <td>@(item.ContactPerson ?? "-")</td>
+                            <td>@(item.Phone ?? "-")</td>
+                            <td>@(item.IsVerified ? "已认证" : "未认证")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick='openEditMerchant(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name">在售商品</button>
+                                @if (Model.IncludeDeleted)
+                                {
+                                    <form method="post" asp-action="RestoreMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该商家吗？')">
+                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                    </form>
+                                    <form method="post" asp-action="HardDeleteMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该商家吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该商家吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer">
+            <nav><ul class="pagination pagination-sm mb-0">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()">@i</a>
+                    </li>
+                }
+            </ul></nav>
+        </div>
+    }
+</div>
+
+<!-- 新建商家弹窗 -->
+<div class="modal fade" id="createMerchantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="CreateMerchant">
+                <div class="modal-header">
+                    <h6 class="modal-title">新建商家</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">公司全称</label>
+                        <input type="text" name="companyName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人</label>
+                        <input type="text" name="contactPerson" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">电话</label>
+                        <input type="text" name="phone" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" name="email" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea name="address" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑商家弹窗 -->
+<div class="modal fade" id="editMerchantModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="EditMerchant">
+                <div class="modal-header">
+                    <h6 class="modal-title">编辑商家</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="merchantId" />
+                    <div class="mb-3">
+                        <label class="form-label">名称</label>
+                        <input type="text" name="name" id="merchantName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">公司全称</label>
+                        <input type="text" name="companyName" id="merchantCompanyName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">联系人</label>
+                        <input type="text" name="contactPerson" id="merchantContact" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">电话</label>
+                        <input type="text" name="phone" id="merchantPhone" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" name="email" id="merchantEmail" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地址</label>
+                        <textarea name="address" id="merchantAddress" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 在售商品弹窗 -->
+<div class="modal fade" id="onSaleModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h6 class="modal-title">在售商品 - <span id="onSaleMerchant"></span></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><table class="modal-table"><thead><tr><th>型号</th><th>品牌</th><th>状态</th></tr></thead><tbody id="onSaleBody"></tbody></table></div>
+    </div></div>
+</div>
+
+<!-- Excel 批量导入弹窗 -->
+<div class="modal fade" id="importExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="importExcelForm" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h6 class="modal-title">Excel 批量导入在售轴承</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">上传 Excel 文件，系统将自动解析并导入在售轴承数据。</p>
+                    <div class="mb-3">
+                        <label class="form-label">选择文件 <span class="text-danger">*</span></label>
+                        <input type="file" name="file" id="importExcelFile" class="form-control" accept=".xlsx,.xls" required />
+                    </div>
+                    <div class="mb-3">
+                        <a href="/api/proxy/excel/template" class="btn btn-outline-secondary btn-sm" target="_blank">
+                            <i class="fas fa-download"></i> 下载导入模板
+                        </a>
+                    </div>
+                    <div id="importResult" class="d-none">
+                        <div class="alert" id="importResultAlert"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary" id="importExcelBtn">
+                        <i class="fas fa-upload"></i> 开始导入
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openEditMerchant(item) {
+    document.getElementById('merchantId').value = item.id;
+    document.getElementById('merchantName').value = item.name || '';
+    document.getElementById('merchantCompanyName').value = item.companyName || '';
+    document.getElementById('merchantContact').value = item.contactPerson || '';
+    document.getElementById('merchantPhone').value = item.phone || '';
+    document.getElementById('merchantEmail').value = item.email || '';
+    document.getElementById('merchantAddress').value = item.address || '';
+    new bootstrap.Modal(document.getElementById('editMerchantModal')).show();
+}
+document.querySelectorAll('.btn-on-sale').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        var id=this.dataset.id, name=this.dataset.name;
+        document.getElementById('onSaleMerchant').textContent=name;
+        document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3">加载中...</td></tr>';
+        new bootstrap.Modal(document.getElementById('onSaleModal')).show();
+        fetch('/api/proxy/merchant-bearings/'+id).then(function(r){return r.json()}).then(function(d){
+            var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.partNumber||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.status||'-')+'</td></tr>';});
+            document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无在售商品</td></tr>';
+        }).catch(function(){document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
+    });
+});
+document.getElementById('importExcelForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('importExcelFile');
+    var btn = document.getElementById('importExcelBtn');
+    var resultDiv = document.getElementById('importResult');
+    var resultAlert = document.getElementById('importResultAlert');
+    if (!fileInput.files.length) { alert('请选择文件'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导入中...';
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    fetch('/api/proxy/excel/import-bearing', { method: 'POST', body: formData })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            resultDiv.classList.remove('d-none');
+            if (d.success) {
+                resultAlert.className = 'alert alert-success';
+                resultAlert.textContent = d.message || '导入完成';
+            } else {
+                resultAlert.className = 'alert alert-danger';
+                resultAlert.textContent = d.message || '导入失败';
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> 开始导入';
+        })
+        .catch(function(err) {
+            resultDiv.classList.remove('d-none');
+            resultAlert.className = 'alert alert-danger';
+            resultAlert.textContent = '请求失败: ' + err.message;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> 开始导入';
+        });
+});
+</script>
+}

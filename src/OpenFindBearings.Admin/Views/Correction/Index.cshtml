@@ -1,0 +1,38 @@
+@{ ViewData["Title"] = "信息纠错审核"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">纠错审核</h6>
+        <div class="btn-group btn-group-sm">
+            <a href="?status=pending" class="btn btn-outline-primary @(ViewBag.CurrentStatus=="pending"?"active":"")">待审核</a>
+            <a href="?status=approved" class="btn btn-outline-success @(ViewBag.CurrentStatus=="approved"?"active":"")">已通过</a>
+            <a href="?status=rejected" class="btn btn-outline-danger @(ViewBag.CurrentStatus=="rejected"?"active":"")">已拒绝</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>目标表</th><th>字段</th><th>原始值</th><th>建议值</th><th>提交人</th><th>时间</th></tr></thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<CorrectionItemDto> ?? Enumerable.Empty<CorrectionItemDto>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td>@item.TargetTable</td>
+                            <td>@item.FieldName</td>
+                            <td>@item.OriginalValue</td>
+                            <td>@item.SuggestedValue</td>
+                            <td>@(item.SubmittedBy ?? "-")</td>
+                            <td>@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,132 @@
+@model TypeListViewModel
+@{ ViewData["Title"] = "类型列表"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">类型列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#typeModal" onclick="openCreateType()">
+                <i class="fas fa-plus"></i> 新建
+            </button>
+            <form class="d-flex gap-2 align-items-center" method="get">
+                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索类型..." />
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
+                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
+                </div>
+                <button class="btn btn-primary">搜索</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>编码</th><th>名称</th><th>描述</th><th>轴承数</th><th>操作</th></tr></thead>
+            <tbody>
+                @if (Model.Items.Any())
+                {
+                    foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>@item.Code</td>
+                            <td>@item.Name</td>
+                            <td>@(item.Description ?? "-")</td>
+                            <td>@item.BearingCount</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick='openEditType(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                @if (Model.IncludeDeleted)
+                                {
+                                    <form method="post" asp-action="RestoreBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该类型吗？')">
+                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                    </form>
+                                    <form method="post" asp-action="HardDeleteBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该类型吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-action="DeleteBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该类型吗？')">
+                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer">
+            <nav><ul class="pagination pagination-sm mb-0">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()">@i</a>
+                    </li>
+                }
+            </ul></nav>
+        </div>
+    }
+</div>
+
+<!-- 新建/编辑类型弹窗 -->
+<div class="modal fade" id="typeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="typeForm">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="typeModalTitle">新建类型</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="typeId" />
+                    <div class="mb-3">
+                        <label class="form-label">编码 <span class="text-danger">*</span></label>
+                        <input type="text" name="code" id="typeCode" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="typeName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">描述</label>
+                        <textarea name="description" id="typeDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function openCreateType() {
+    document.getElementById('typeModalTitle').textContent = '新建类型';
+    document.getElementById('typeForm').action = '@Url.Action("CreateBearingType")';
+    document.getElementById('typeId').value = '';
+    document.getElementById('typeCode').value = '';
+    document.getElementById('typeCode').removeAttribute('readonly');
+    document.getElementById('typeName').value = '';
+    document.getElementById('typeDescription').value = '';
+}
+function openEditType(item) {
+    document.getElementById('typeModalTitle').textContent = '编辑类型';
+    document.getElementById('typeForm').action = '@Url.Action("EditBearingType")';
+    document.getElementById('typeId').value = item.id;
+    document.getElementById('typeCode').value = item.code;
+    document.getElementById('typeCode').setAttribute('readonly', true);
+    document.getElementById('typeName').value = item.name;
+    document.getElementById('typeDescription').value = item.description || '';
+    new bootstrap.Modal(document.getElementById('typeModal')).show();
+}
+</script>
+}

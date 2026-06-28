@@ -1,0 +1,57 @@
+@{ ViewData["Title"] = "选项设置"; }
+
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">系统配置</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>配置键</th><th>配置值</th><th>描述</th><th>操作</th></tr></thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<SystemConfigDto> ?? Enumerable.Empty<SystemConfigDto>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td><code>@item.Key</code></td>
+                            <td>@item.Value</td>
+                            <td>@(item.Description ?? "-")</td>
+                            <td><button class="btn btn-sm btn-outline-primary btn-edit-config" data-key="@item.Key" data-value="@item.Value">编辑</button></td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="4" class="text-center text-muted py-4">暂无配置</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 编辑配置弹窗 -->
+<div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h6 class="modal-title">编辑配置</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <form method="post" asp-action="Update">
+            <div class="modal-body">
+                <input type="hidden" name="key" id="configKey" />
+                <div class="mb-3"><label class="form-label">配置键</label><input type="text" class="form-control" id="configKeyDisplay" disabled /></div>
+                <div class="mb-3"><label class="form-label">配置值</label><input type="text" name="value" class="form-control" id="configValue" required /></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">保存</button></div>
+        </form>
+    </div></div>
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('.btn-edit-config').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        document.getElementById('configKey').value=this.dataset.key;
+        document.getElementById('configKeyDisplay').value=this.dataset.key;
+        document.getElementById('configValue').value=this.dataset.value;
+        new bootstrap.Modal(document.getElementById('configModal')).show();
+    });
+});
+</script>
+}

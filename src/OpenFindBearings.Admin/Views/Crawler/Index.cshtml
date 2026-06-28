@@ -1,0 +1,40 @@
+@model List<CrawlerItemDto>
+@{ ViewData["Title"] = "爬虫管理"; }
+
+<div class="card">
+    <div class="card-header"><h6 class="mb-0">爬虫列表</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>名称</th><th>状态</th><th>进度</th><th>操作</th></tr></thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td>
+                                @if (item.Status == "Running")
+                                { <span class="badge bg-warning">运行中</span> }
+                                else if (item.Status == "Idle")
+                                { <span class="badge bg-success">空闲</span> }
+                                else
+                                { <span class="badge bg-secondary">@item.Status</span> }
+                            </td>
+                            <td>@(item.Progress ?? "-")</td>
+                            <td>
+                                <form method="post" asp-action="Run" asp-route-name="@item.Name" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" @(item.Status=="Running"?"disabled":"")>触发运行</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="4" class="text-center text-muted py-4">暂无爬虫数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

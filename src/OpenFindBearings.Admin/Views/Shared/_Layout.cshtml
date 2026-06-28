@@ -1,0 +1,143 @@
+﻿@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@{ 
+    var identityAuth = Config["Identity:Authority"] ?? "https://localhost:7201";
+    var clientId = Config["Identity:ClientId"] ?? "admin_client";
+    var scope = Config["Identity:Scope"] ?? "openid profile email roles api:admin";
+    var callbackUrl = Config["Identity:CallbackUrl"] ?? "https://localhost:7167/callback";
+    var changePwdUrl = $"{identityAuth}/profile/change-password" +
+        $"?returnUrl={Uri.EscapeDataString("https://localhost:7167/")}" +
+        $"&realm=openfindbearings";
+}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - OpenFindBearings</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <a asp-controller="Home" asp-action="Index">OpenFindBearings</a>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a asp-controller="Home" asp-action="Index" class="nav-link" data-page="home">
+                        <i class="fas fa-tachometer-alt"></i><span>仪表盘</span>
+                    </a>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-info">
+                        <i class="fas fa-database"></i><span>信息管理</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-info">
+                        <li class="sub-header">基础信息</li>
+                        <li><a asp-controller="Data" asp-action="Brands" class="nav-link" data-page="data-brands"><i class="fas fa-circle"></i><span>品牌列表</span></a></li>
+                        <li><a asp-controller="Data" asp-action="BearingTypes" class="nav-link" data-page="data-types"><i class="fas fa-circle"></i><span>类型列表</span></a></li>
+                        <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
+                        <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
+                        <li class="sub-header">审核管理</li>
+                        <li><a asp-controller="Correction" asp-action="Index" class="nav-link" data-page="correction"><i class="fas fa-circle"></i><span>信息纠错审核</span></a></li>
+                        <li><a asp-controller="License" asp-action="Index" class="nav-link" data-page="license"><i class="fas fa-circle"></i><span>营业执照审核</span></a></li>
+                        <li><a asp-controller="MerchantVerify" asp-action="Index" class="nav-link" data-page="merchant-verify"><i class="fas fa-circle"></i><span>商家认证审核</span></a></li>
+                    </ul>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-sync">
+                        <i class="fas fa-sync-alt"></i><span>同步管理</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-sync">
+                        <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>任务管理</span></a></li>
+                    </ul>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-crawler">
+                        <i class="fas fa-spider"></i><span>爬虫管理</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-crawler">
+                        <li><a asp-controller="Crawler" asp-action="Index" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>爬虫列表</span></a></li>
+                    </ul>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-auth">
+                        <i class="fas fa-shield-alt"></i><span>认证管理</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-auth">
+                        <li class="sub-header">权限管理</li>
+                        <li><a asp-controller="Users" asp-action="Index" class="nav-link" data-page="users"><i class="fas fa-circle"></i><span>用户管理</span></a></li>
+                        <li><a asp-controller="Role" asp-action="Index" class="nav-link" data-page="role"><i class="fas fa-circle"></i><span>角色管理</span></a></li>
+                        <li><a asp-controller="Permission" asp-action="Index" class="nav-link" data-page="permission"><i class="fas fa-circle"></i><span>权限管理</span></a></li>
+                        <li><a asp-controller="AuditLog" asp-action="Index" class="nav-link" data-page="auditlog"><i class="fas fa-circle"></i><span>审计日志</span></a></li>
+                    </ul>
+                </li>
+                <li>
+                    <a asp-controller="Config" asp-action="Index" class="nav-link" data-page="config">
+                        <i class="fas fa-cog"></i><span>系统配置</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="main-content">
+        <header class="topbar">
+            <button class="btn btn-link sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="topbar-right">
+                <div class="service-status" id="serviceStatus">
+                    <span class="service-item"><span class="service-dot"></span>检测中...</span>
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="切换主题">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <div class="dropdown user-dropdown">
+                    <a href="#" class="user-avatar" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile"><i class="fas fa-id-card"></i><span>个人信息</span></a></li>
+                        <li><a class="dropdown-item" href="@changePwdUrl" target="_top"><i class="fas fa-key"></i><span>修改密码</span></a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item text-danger" asp-controller="Account" asp-action="Logout"><i class="fas fa-sign-out-alt"></i><span>退出登录</span></a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-wrap">
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    @TempData["Success"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            @RenderBody()
+        </div>
+
+        <footer class="main-footer">
+            <strong>OpenFindBearings</strong> &copy; @DateTime.Now.Year
+        </footer>
+    </div>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,43 @@
+@{ ViewData["Title"] = "营业执照审核"; }
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">营业执照审核</h6>
+        <div class="btn-group btn-group-sm">
+            <a href="?status=pending" class="btn btn-outline-primary @(ViewBag.CurrentStatus=="pending"?"active":"")">待审核</a>
+            <a href="?status=approved" class="btn btn-outline-success @(ViewBag.CurrentStatus=="approved"?"active":"")">已通过</a>
+            <a href="?status=rejected" class="btn btn-outline-danger @(ViewBag.CurrentStatus=="rejected"?"active":"")">已拒绝</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead><tr><th>商家</th><th>执照号</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead>
+            <tbody>
+                @{ var items = ViewBag.Items as IEnumerable<LicenseItemDto> ?? Enumerable.Empty<LicenseItemDto>(); }
+                @if (items.Any())
+                {
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td>@item.MerchantName</td>
+                            <td>@item.LicenseNumber</td>
+                            <td><span class="badge bg-@(item.Status=="approved"?"success":item.Status=="rejected"?"danger":"warning")">@item.Status</span></td>
+                            <td>@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>
+                                @if (item.Status == "pending")
+                                {
+                                    <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-success">通过</button></form>
+                                    <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">拒绝</button></form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

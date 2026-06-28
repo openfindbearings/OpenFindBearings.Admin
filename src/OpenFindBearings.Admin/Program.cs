@@ -73,6 +73,9 @@ builder.Services.AddHttpClient("CrawlerClient", c =>
 builder.Services.AddHttpClient("SyncClient", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
 });
 
 builder.Services.AddHttpClient("IdentityClient", c =>

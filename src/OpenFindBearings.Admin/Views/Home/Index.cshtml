@@ -97,9 +97,10 @@
     fetch('/Home/DashboardStats')
         .then(function(r){return r.json()})
         .then(function(d){
-            var b=d.bearings||{};var m=d.merchants||{};var c=d.corrections||{};
-            var br=d.brands||{};var tp=d.types||{};
-            var sp=d.syncPendingReviews||{};
+            var data = d.data || d;
+            var b=data.bearings||{};var m=data.merchants||{};var c=data.corrections||{};
+            var br=data.brands||{};var tp=data.types||{};
+            var sp=data.syncPendingReviews||{};
 
             var el=document.getElementById('bearingCount');if(el)el.textContent=b.totalCount??'-';
             el=document.getElementById('brandCount');if(el)el.textContent=br.totalCount??'-';
@@ -108,8 +109,8 @@
 
             el=document.getElementById('syncPendingCount');if(el)el.textContent=(sp.brandCount||0)+(sp.typeCount||0)+(sp.bearingCount||0)+(sp.merchantCount||0);
             el=document.getElementById('correctionPendingCount');if(el)el.textContent=c.pendingCount??'-';
-            el=document.getElementById('licensePendingCount');if(el)el.textContent=(d.pending||{}).pendingLicenses??'-';
-            el=document.getElementById('merchantVerifyPendingCount');if(el)el.textContent=(d.pending||{}).pendingMerchantVerifications??'-';
+            el=document.getElementById('licensePendingCount');if(el)el.textContent=(data.pending||{}).pendingLicenses??'-';
+            el=document.getElementById('merchantVerifyPendingCount');if(el)el.textContent=(data.pending||{}).pendingMerchantVerifications??'-';
 
             var trendCanvas=document.getElementById('trendChart');
             if(trendCanvas&&typeof Chart!=='undefined'){

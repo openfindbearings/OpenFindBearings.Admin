@@ -40,56 +40,76 @@ public class HomeController : Controller
         var apiClient = _factory.CreateClient("ApiClient");
         var syncClient = _factory.CreateClient("SyncClient");
         apiClient.Timeout = TimeSpan.FromSeconds(10);
-        syncClient.Timeout = TimeSpan.FromSeconds(10);
+        syncClient.Timeout = TimeSpan.FromSeconds(5);
 
+        string apiJson;
         try
         {
-            var apiTask = apiClient.GetAsync($"{apiBase}/api/admin/dashboard/stats");
-            var syncTask = syncClient.GetAsync($"{syncBase}/api/audit/stats");
-            await Task.WhenAll(apiTask, syncTask);
-
-            var apiResp = await apiTask;
-            if (apiResp.IsSuccessStatusCode)
+            var apiResp = await apiClient.GetAsync($"{apiBase}/api/admin/dashboard/stats");
+            if (!apiResp.IsSuccessStatusCode)
             {
-                var apiJson = await apiResp.Content.ReadAsStringAsync();
-                var apiObj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(apiJson);
+                return Content(FallbackJson, "application/json");
+            }
+            apiJson = await apiResp.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            return Content(FallbackJson, "application/json");
+        }
 
-                int syncBrandCount = 0, syncTypeCount = 0, syncBearingCount = 0, syncMerchantCount = 0;
-                try
+        int syncBrandCount = 0, syncTypeCount = 0, syncBearingCount = 0, syncMerchantCount = 0;
+        try
+        {
+            var syncResp = await syncClient.GetAsync($"{syncBase}/api/audit/stats");
+            if (syncResp.IsSuccessStatusCode)
+            {
+                var syncJson = await syncResp.Content.ReadAsStringAsync();
+                var syncObj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(syncJson);
+                if (syncObj.TryGetProperty("data", out var data))
                 {
-                    var syncResp = await syncTask;
-                    if (syncResp.IsSuccessStatusCode)
-                    {
-                        var syncJson = await syncResp.Content.ReadAsStringAsync();
-                        var syncObj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(syncJson);
-                        var data = syncObj.GetProperty("data");
-                        syncBrandCount = data.GetProperty("brandCount").GetInt32();
-                        syncTypeCount = data.GetProperty("typeCount").GetInt32();
-                        syncBearingCount = data.GetProperty("bearingCount").GetInt32();
-                        syncMerchantCount = data.GetProperty("merchantCount").GetInt32();
-                    }
+                    syncBrandCount = data.TryGetProperty("brandCount", out var bc) ? bc.GetInt32() : 0;
+                    syncTypeCount = data.TryGetProperty("typeCount", out var tc) ? tc.GetInt32() : 0;
+                    syncBearingCount = data.TryGetProperty("bearingCount", out var be) ? be.GetInt32() : 0;
+                    syncMerchantCount = data.TryGetProperty("merchantCount", out var mc) ? mc.GetInt32() : 0;
                 }
-                catch { }
-
-                var merged = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(apiJson);
-                var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(apiJson)
-                    ?? new Dictionary<string, object>();
-
-                dict["syncPendingReviews"] = new
-                {
-                    brandCount = syncBrandCount,
-                    typeCount = syncTypeCount,
-                    bearingCount = syncBearingCount,
-                    merchantCount = syncMerchantCount
-                };
-
-                return Json(dict);
             }
         }
         catch { }
 
-        return Json(new { });
+        // 在 API JSON 的 data 对象中追加 syncPendingReviews，保持结构精确不变
+        using var doc = System.Text.Json.JsonDocument.Parse(apiJson);
+        var root = doc.RootElement;
+        var syncJsonStr = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            brandCount = syncBrandCount,
+            typeCount = syncTypeCount,
+            bearingCount = syncBearingCount,
+            merchantCount = syncMerchantCount
+        });
+
+        if (root.TryGetProperty("data", out var dataElem) && dataElem.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            var inner = dataElem.GetRawText();
+            var merged = inner.TrimEnd('}') + ",\"syncPendingReviews\":" + syncJsonStr + "}";
+            return Content("{\"data\":" + merged + "}", "application/json");
+        }
+
+        return Content(apiJson, "application/json");
     }
+
+    private static readonly string FallbackJson = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        data = new
+        {
+            bearings = new { totalCount = "N/A", todayAdded = 0, thisWeekAdded = 0, thisMonthAdded = 0, topBrands = Array.Empty<object>(), topTypes = Array.Empty<object>() },
+            brands = new { totalCount = "N/A" },
+            types = new { totalCount = "N/A" },
+            merchants = new { totalCount = "N/A", verifiedCount = 0, pendingVerification = 0, todayRegistered = 0, typeDistribution = Array.Empty<object>() },
+            users = new { totalCount = 0, adminCount = 0, merchantStaffCount = 0, individualCount = 0, todayRegistered = 0, activeToday = 0 },
+            corrections = new { totalCount = 0, pendingCount = "N/A", approvedCount = 0, rejectedCount = 0, todaySubmitted = 0 },
+            pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingLicenses = "N/A", pendingMerchantVerifications = "N/A" }
+        }
+    });
 
     public IActionResult Privacy()
     {

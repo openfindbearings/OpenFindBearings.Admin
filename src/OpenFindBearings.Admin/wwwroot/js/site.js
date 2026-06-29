@@ -71,13 +71,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Highlight active nav
     var path = location.pathname.toLowerCase();
+    var search = location.search.toLowerCase();
     document.querySelectorAll('.sidebar-nav .nav-link[data-page]').forEach(function (a) {
         var href = a.getAttribute('href');
         if (href) {
-            var h = href.toLowerCase();
-            if (path === h || (h !== '/' && path.startsWith(h))) {
+            var parts = href.toLowerCase().split('?');
+            var hPath = parts[0];
+            var hQuery = parts.length > 1 ? '?' + parts[1] : '';
+            var match = false;
+            if (hQuery) {
+                // 带查询参数的子项（映射/审计日志等），精确匹配 path+query
+                match = (path + search === hPath + hQuery);
+            } else {
+                // 无查询参数的菜单项，沿用 startsWith 逻辑
+                match = (path === hPath || (hPath !== '/' && path.startsWith(hPath)));
+            }
+            if (match) {
                 a.classList.add('active');
-                // expand parent
                 var subMenu = a.closest('.sub-menu');
                 if (subMenu) {
                     subMenu.classList.add('show');

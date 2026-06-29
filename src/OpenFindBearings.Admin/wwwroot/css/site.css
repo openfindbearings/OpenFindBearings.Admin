@@ -233,6 +233,7 @@ body.dark-theme .alert-success { background-color: rgba(25,135,84,.15); border-c
 body.dark-theme .alert-danger { background-color: rgba(220,53,69,.15); border-color: rgba(220,53,69,.3); color: #ea868f; }
 body.dark-theme .badge { color: #fff; }
 body.dark-theme a { color: var(--pagination-link-color); }
+body.dark-theme .form-check-label { color: var(--text-primary); }
 
 /* ===== Sidebar collapsed (desktop) ===== */
 .sidebar.collapsed { transform: translateX(-100%); }

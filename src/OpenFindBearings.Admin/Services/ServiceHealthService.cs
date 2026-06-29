@@ -15,27 +15,28 @@ public class ServiceHealthService
     {
         var result = new Dictionary<string, ServiceStatus>();
 
-        var services = new Dictionary<string, string>
+        var services = new Dictionary<string, (string url, string client)>
         {
-            ["Api"] = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183",
-            ["Crawler"] = _config["ApiUrls:FindBearingsCrawler"] ?? "https://localhost:7207",
-            ["Sync"] = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206",
-            ["Identity"] = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201"
+            ["Api"] = (_config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183", "ApiClient"),
+            ["Crawler"] = (_config["ApiUrls:FindBearingsCrawler"] ?? "https://localhost:7207", "CrawlerClient"),
+            ["Sync"] = (_config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206", "SyncClient"),
+            ["Identity"] = (_config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201", "IdentityClient")
         };
 
-        foreach (var (name, baseUrl) in services)
+        var paths = new Dictionary<string, string>
+        {
+            ["Api"] = "/health/live",
+            ["Crawler"] = "/health/live",
+            ["Sync"] = "/health/live",
+            ["Identity"] = "/health/live"
+        };
+
+        foreach (var (name, (baseUrl, clientName)) in services)
         {
             try
             {
-                var client = name switch
-                {
-                    "Api" => _factory.CreateClient("ApiClient"),
-                    "Crawler" => _factory.CreateClient("CrawlerClient"),
-                    "Sync" => _factory.CreateClient("SyncClient"),
-                    "Identity" => _factory.CreateClient("IdentityClient"),
-                    _ => _factory.CreateClient("ApiClient")
-                };
-                var resp = await client.GetAsync($"{baseUrl}/live");
+                var client = _factory.CreateClient(clientName);
+                var resp = await client.GetAsync($"{baseUrl}{paths[name]}");
                 result[name] = new ServiceStatus { Available = resp.IsSuccessStatusCode, Message = resp.StatusCode.ToString() };
             }
             catch (Exception ex)

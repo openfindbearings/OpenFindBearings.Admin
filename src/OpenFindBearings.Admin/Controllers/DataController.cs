@@ -14,12 +14,14 @@ public class DataController : Controller
 {
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
+    private readonly ILogger<DataController> _logger;
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public DataController(IHttpClientFactory factory, IConfiguration config)
+    public DataController(IHttpClientFactory factory, IConfiguration config, ILogger<DataController> logger)
     {
         _factory = factory;
         _config = config;
+        _logger = logger;
     }
 
     private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
@@ -37,7 +39,11 @@ public class DataController : Controller
             url += $"&keyword={Uri.EscapeDataString(search)}";
         var resp = await client.GetAsync(url);
         if (!resp.IsSuccessStatusCode)
+        {
+            var errBody = await resp.Content.ReadAsStringAsync();
+            _logger.LogWarning("API 请求失败: {Status} {Url} {Body}", resp.StatusCode, url, errBody);
             return View(new BearingListViewModel());
+        }
 
         var json = await resp.Content.ReadAsStringAsync();
         var apiResp = JsonSerializer.Deserialize<ApiResponse<PagedData<BearingItemDto>>>(json, JsonOpts);

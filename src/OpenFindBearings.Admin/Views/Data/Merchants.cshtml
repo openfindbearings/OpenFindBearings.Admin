@@ -1,5 +1,8 @@
 @model MerchantListViewModel
-@{ ViewData["Title"] = "商家列表"; }
+@{
+    ViewData["Title"] = "商家列表";
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}";
+}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -11,9 +14,9 @@
             <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal">
                 <i class="fas fa-file-excel"></i> Excel 导入
             </button>
-            <form class="d-flex gap-2 align-items-center" method="get">
-                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." />
-                <button class="btn btn-primary">搜索</button>
+            <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
+                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." style="min-width:140px" />
+                <button class="btn btn-primary"><i class="fas fa-search"></i></button>
             </form>
         </div>
     </div>
@@ -64,14 +67,43 @@
     @if (Model.TotalPages > 1)
     {
         <div class="card-footer">
-            <nav><ul class="pagination pagination-sm mb-0">
-                @for (var i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" href="?page=@i&pageSize=@Model.PageSize&search=@Model.Search&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()">@i</a>
-                    </li>
-                }
-            </ul></nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @Model.TotalPages 页 / @Model.TotalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(1)">首页</a>
+                        </li>
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.Page - 1)">&laquo;</a>
+                        </li>
+                        @{
+                            var rangeStart = Math.Max(1, Model.Page - 2);
+                            var rangeEnd = Math.Min(Model.TotalPages, Model.Page + 2);
+                            if (rangeStart > 1)
+                            {
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            }
+                            for (var i = rangeStart; i <= rangeEnd; i++)
+                            {
+                                <li class="page-item @(i == Model.Page ? "active" : "")">
+                                    <a class="page-link" href="@PageUrl(i)">@i</a>
+                                </li>
+                            }
+                            if (rangeEnd < Model.TotalPages)
+                            {
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            }
+                        }
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.Page + 1)">&raquo;</a>
+                        </li>
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.TotalPages)">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
         </div>
     }
 </div>

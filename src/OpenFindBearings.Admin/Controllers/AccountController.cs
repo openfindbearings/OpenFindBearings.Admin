@@ -165,15 +165,18 @@ namespace OpenFindBearings.Admin.Controllers
         }
 
         /// <summary>
-        /// 登出 - 仅清除本地 Cookie，不影响 Identity 自管理会话
+        /// 登出 - 清除本地 Cookie 并重定向到 Identity 结束会话
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            _logger.LogInformation("用户已登出，仅清除本地 Cookie");
-            return Redirect("/");
+            // 重定向到 Identity 结束会话，清除 Identity.Application cookie
+            var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
+            var callbackUrl = Uri.EscapeDataString("https://localhost:7167/");
+            _logger.LogInformation("用户已登出，重定向至 Identity 结束会话");
+            return Redirect($"{authority}/connect/logout?admin_redirect={callbackUrl}");
         }
 
         /// <summary>

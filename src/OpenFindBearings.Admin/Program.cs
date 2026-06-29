@@ -1,7 +1,9 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenFindBearings.Admin.Data;
 using OpenFindBearings.Admin.Services;
 
@@ -57,6 +59,9 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddTransient<BearerTokenHandler>();
 
+// 健康检查服务
+builder.Services.AddHealthChecks();
+
 builder.Services.AddHttpClient("ApiClient", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
@@ -87,6 +92,8 @@ builder.Services.AddHttpClient("IdentityClient", c =>
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddScoped<ServiceHealthService>();
+
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -120,8 +127,46 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
 // 健康检查端点（不需要认证）
-app.MapGet("/live", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
-app.MapGet("/ready", () => Results.Ok(new { status = "ready" })).AllowAnonymous();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description
+            }),
+            duration = report.TotalDuration
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
+}).AllowAnonymous();
+
+app.MapHealthChecks("/healthz", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = async (context, report) =>
+    {
+        var statusCode = report.Status == HealthStatus.Unhealthy ? 503 : 200;
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsync(report.Status.ToString());
+    }
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = _ => true
+}).AllowAnonymous();
 
 // API 代理端点：前端通过 Admin 中转调用 API，避免跨域问题
 // 代理轴承替代品查询

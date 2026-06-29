@@ -1,30 +1,268 @@
-@{ ViewData["Title"] = "映射维护"; }
+@using System.Text.Json
+@{
+    ViewData["Title"] = "映射管理";
+    var type = ViewBag.MappingType as string ?? "brand";
+    var items = ViewBag.Items as List<object> ?? [];
+    var totalCount = ViewBag.TotalCount as int? ?? 0;
+    var page = ViewBag.PageIndex as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 20;
+    var totalPages = ViewBag.TotalPages as int? ?? 1;
+    var error = ViewBag.Error as string;
+}
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">映射维护</h6>
-        <div class="btn-group btn-group-sm">
-            <a href="?type=brand" class="btn btn-outline-primary @(ViewBag.MappingType=="brand"?"active":"")">品牌映射</a>
-            <a href="?type=type" class="btn btn-outline-primary @(ViewBag.MappingType=="type"?"active":"")">类型映射</a>
+        <h6 class="mb-0">映射管理</h6>
+        <div class="d-flex gap-2">
+            <div class="btn-group btn-group-sm">
+                <a href="?type=brand&page=1" class="btn btn-outline-primary @(type=="brand"?"active":"")">品牌映射</a>
+                <a href="?type=type&page=1" class="btn btn-outline-primary @(type=="type"?"active":"")">类型映射</a>
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="showCreateModal()"><i class="fas fa-plus"></i> 新建</button>
         </div>
     </div>
     <div class="card-body p-0">
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <div class="alert alert-warning m-3">@error</div>
+        }
         <table class="table table-hover">
-            <thead><tr><th>原始名称</th><th>标准 Code</th><th>来源</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>标准 Code</th>
+                    <th>标准名称</th>
+                    <th>原始别名</th>
+                    <th>可信度</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
             <tbody>
-                @{ var items = ViewBag.Items as IEnumerable<object> ?? Enumerable.Empty<object>(); }
-                @if (items.Any())
+                @if (items.Count > 0)
                 {
-                    @foreach (var item in items)
+                    foreach (var raw in items)
                     {
-                        <tr><td>@item</td><td>-</td><td>-</td></tr>
+                        var el = (JsonElement)raw;
+                        var id = el.TryGetProperty("id", out var idProp) ? idProp.GetGuid() : Guid.Empty;
+                        var standardCode = el.TryGetProperty("standardCode", out var sc) ? sc.GetString() ?? "" : "";
+                        var standardName = el.TryGetProperty("standardName", out var sn) ? sn.GetString() ?? "" : "";
+                        var alias = el.TryGetProperty("alias", out var al) ? al.GetString() ?? "" : "";
+                        var confidence = el.TryGetProperty("confidence", out var conf) ? conf.GetInt32() : 0;
+                        var isActive = el.TryGetProperty("isActive", out var act) ? act.GetBoolean() : true;
+                        var createdAt = el.TryGetProperty("createdAt", out var ca) && ca.TryGetDateTime(out var dt) ? dt : DateTime.MinValue;
+                        <tr>
+                            <td><span class="badge bg-secondary">@standardCode</span></td>
+                            <td>@standardName</td>
+                            <td>@alias</td>
+                            <td>@confidence</td>
+                            <td>
+                                @if (isActive)
+                                {
+                                    <span class="badge bg-success">启用</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">禁用</span>
+                                }
+                            </td>
+                            <td class="text-muted small">@createdAt.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showEditModal('@id','@standardCode','@standardName','@alias',@confidence,@(isActive?"true":"false"))"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteMapping('@id')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
                     }
                 }
                 else
                 {
-                    <tr><td colspan="3" class="text-center text-muted py-4">暂无映射数据</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">暂无映射数据</td></tr>
                 }
             </tbody>
         </table>
     </div>
+    @if (totalPages > 1)
+    {
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(page<=1?"disabled":"")">
+                        <a class="page-link" href="?type=@type&page=1"><i class="fas fa-angle-double-left"></i></a>
+                    </li>
+                    <li class="page-item @(page<=1?"disabled":"")">
+                        <a class="page-link" href="?type=@type&page=@(page-1)"><i class="fas fa-angle-left"></i></a>
+                    </li>
+                    @{
+                        var startPage = Math.Max(1, page - 2);
+                        var endPage = Math.Min(totalPages, page + 2);
+                        if (startPage > 1)
+                        {
+                            <li class="page-item disabled"><a class="page-link" href="#">...</a></li>
+                        }
+                        for (var p = startPage; p <= endPage; p++)
+                        {
+                            <li class="page-item @(p==page?"active":"")">
+                                <a class="page-link" href="?type=@type&page=@p">@p</a>
+                            </li>
+                        }
+                        if (endPage < totalPages)
+                        {
+                            <li class="page-item disabled"><a class="page-link" href="#">...</a></li>
+                        }
+                    }
+                    <li class="page-item @(page>=totalPages?"disabled":"")">
+                        <a class="page-link" href="?type=@type&page=@(page+1)"><i class="fas fa-angle-right"></i></a>
+                    </li>
+                    <li class="page-item @(page>=totalPages?"disabled":"")">
+                        <a class="page-link" href="?type=@type&page=@totalPages"><i class="fas fa-angle-double-right"></i></a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
 </div>
+
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h6 class="modal-title">新建 @(type=="brand"?"品牌":"类型") 映射</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="createForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">标准 Code</label>
+                        <input name="standardCode" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">标准名称</label>
+                        <input name="standardName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">原始别名</label>
+                        <input name="alias" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">可信度 (0-100)</label>
+                        <input name="confidence" type="number" class="form-control" value="100" min="0" max="100" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-sm btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h6 class="modal-title">编辑映射</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="editForm">
+                <input type="hidden" name="id" id="editId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">标准 Code</label>
+                        <input name="standardCode" id="editStandardCode" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">标准名称</label>
+                        <input name="standardName" id="editStandardName" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">原始别名</label>
+                        <input name="alias" id="editAlias" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">可信度 (0-100)</label>
+                        <input name="confidence" id="editConfidence" type="number" class="form-control" min="0" max="100" />
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="isActive" id="editIsActive" class="form-check-input" value="true" checked />
+                        <label class="form-check-label" for="editIsActive">启用</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-sm btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const mappingType = '@type';
+
+    function showCreateModal() {
+        document.getElementById('createForm').reset();
+        new bootstrap.Modal(document.getElementById('createModal')).show();
+    }
+
+    document.getElementById('createForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        const params = new URLSearchParams(fd);
+        params.set('type', mappingType);
+        const resp = await fetch('@Url.Action("Create")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        });
+        const result = await resp.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
+            location.reload();
+        } else {
+            alert(result.message || '创建失败');
+        }
+    });
+
+    function showEditModal(id, standardCode, standardName, alias, confidence, isActive) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editStandardCode').value = standardCode;
+        document.getElementById('editStandardName').value = standardName;
+        document.getElementById('editAlias').value = alias;
+        document.getElementById('editConfidence').value = confidence;
+        document.getElementById('editIsActive').checked = isActive;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const fd = new FormData(this);
+        const params = new URLSearchParams(fd);
+        params.set('type', mappingType);
+        params.set('isActive', document.getElementById('editIsActive').checked ? 'true' : 'false');
+        const resp = await fetch('@Url.Action("Edit")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        });
+        const result = await resp.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            location.reload();
+        } else {
+            alert(result.message || '更新失败');
+        }
+    });
+
+    function deleteMapping(id) {
+        if (!confirm('确认删除此映射？')) return;
+        const params = new URLSearchParams();
+        params.set('type', mappingType);
+        params.set('id', id);
+        fetch('@Url.Action("Delete")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params
+        }).then(r => r.json()).then(result => {
+            if (result.success) location.reload();
+            else alert(result.message || '删除失败');
+        });
+    }
+</script>
+}

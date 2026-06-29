@@ -1,4 +1,8 @@
-﻿@{ ViewData["Title"] = "仪表盘"; }
+﻿@using OpenFindBearings.Admin.Controllers
+@using OpenFindBearings.Admin.Models.ViewModels
+@{
+    ViewData["Title"] = "仪表盘";
+}
 
 <div class="row">
     <div class="col-lg-3 col-6">
@@ -27,6 +31,23 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">今日 / 本周 / 本月新增</h6></div>
+            <div class="card-body">
+                <canvas id="trendChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">品牌 Top10</h6></div>
+            <div class="card-body" id="topBrandsChart"></div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header"><h6 class="mb-0">服务状态</h6></div>
     <div class="card-body p-0">
@@ -43,6 +64,7 @@
 </div>
 
 @section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
     fetch('/Home/DashboardStats')
@@ -54,6 +76,40 @@
             el=document.getElementById('brandCount');if(el)el.textContent=(b.topBrands||[]).length;
             el=document.getElementById('merchantCount');if(el)el.textContent=m.totalCount??'-';
             el=document.getElementById('pendingReviewCount');if(el)el.textContent=c.pendingCount??'-';
+
+            var trendCanvas=document.getElementById('trendChart');
+            if(trendCanvas&&typeof Chart!=='undefined'){
+                new Chart(trendCanvas,{
+                    type:'bar',
+                    data:{
+                        labels:['今日','本周','本月'],
+                        datasets:[{
+                            label:'轴承',
+                            data:[b.todayAdded||0,b.thisWeekAdded||0,b.thisMonthAdded||0],
+                            backgroundColor:'rgba(23,162,184,.7)'
+                        },{
+                            label:'商家',
+                            data:[m.todayRegistered||0,m.totalCount?Math.round(m.totalCount/30):0,0],
+                            backgroundColor:'rgba(255,193,7,.7)'
+                        }]
+                    },
+                    options:{
+                        responsive:true,
+                        plugins:{legend:{position:'bottom'}},
+                        scales:{y:{beginAtZero:true}}
+                    }
+                });
+            }
+
+            var brandsDiv=document.getElementById('topBrandsChart');
+            if(brandsDiv&&b.topBrands&&b.topBrands.length){
+                var list='<ul class="list-group list-group-flush">';
+                b.topBrands.slice(0,10).forEach(function(x){
+                    list+='<li class="list-group-item d-flex justify-content-between align-items-center">'+(x.brandName||'未知')+'<span class="badge bg-info rounded-pill">'+x.count+'</span></li>';
+                });
+                list+='</ul>';
+                brandsDiv.innerHTML=list;
+            }
         })
         .catch(function(){
             var el=document.getElementById('bearingCount');if(el)el.textContent='N/A';

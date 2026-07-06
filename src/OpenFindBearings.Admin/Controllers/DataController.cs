@@ -346,10 +346,10 @@ public class DataController : Controller
     /// 创建商家，POST /api/admin/merchants
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CreateMerchant(string name, string? companyName, string? contactPerson, string? phone, string? email, string? address)
+    public async Task<IActionResult> CreateMerchant(string name, string? companyName, string? englishName, string? contactPerson, string? phone, string? email, string? address)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { name, companyName, contactPerson, phone, email, address, type = 4 };
+        var body = new { name, companyName, englishName, contactPerson, phone, email, address, type = 4 };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/merchants", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "商家已创建" : $"创建失败: {resp.StatusCode}";
@@ -360,10 +360,10 @@ public class DataController : Controller
     /// 编辑商家，PUT /api/admin/merchants/{id}
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> EditMerchant(Guid id, string? name, string? companyName, string? contactPerson, string? phone, string? email, string? address)
+    public async Task<IActionResult> EditMerchant(Guid id, string? name, string? companyName, string? englishName, string? contactPerson, string? phone, string? email, string? address)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { name, companyName, contactPerson, phone, email, address };
+        var body = new { name, companyName, englishName, contactPerson, phone, email, address };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PutAsync($"{ApiBase()}/api/admin/merchants/{id}", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "商家已更新" : $"更新失败: {resp.StatusCode}";

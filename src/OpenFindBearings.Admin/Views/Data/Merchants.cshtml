@@ -22,7 +22,7 @@
     </div>
     <div class="card-body p-0">
         <table class="table table-hover">
-            <thead><tr><th>名称</th><th>公司</th><th>类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
+            <thead><tr><th>名称</th><th>英文名</th><th>公司</th><th>类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -30,6 +30,7 @@
                     {
                         <tr>
                             <td>@item.Name</td>
+                            <td>@(item.EnglishName ?? "-")</td>
                             <td>@(item.CompanyName ?? "-")</td>
                             <td>@item.Type</td>
                             <td>@(item.ContactPerson ?? "-")</td>
@@ -59,7 +60,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="7" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table>
@@ -127,6 +128,10 @@
                         <input type="text" name="companyName" class="form-control" />
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">英文名</label>
+                        <input type="text" name="englishName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">联系人</label>
                         <input type="text" name="contactPerson" class="form-control" />
                     </div>
@@ -170,6 +175,10 @@
                     <div class="mb-3">
                         <label class="form-label">公司全称</label>
                         <input type="text" name="companyName" id="merchantCompanyName" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">英文名</label>
+                        <input type="text" name="englishName" id="merchantEnglishName" class="form-control" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">联系人</label>
@@ -246,6 +255,7 @@ function openEditMerchant(item) {
     document.getElementById('merchantId').value = item.id;
     document.getElementById('merchantName').value = item.name || '';
     document.getElementById('merchantCompanyName').value = item.companyName || '';
+    document.getElementById('merchantEnglishName').value = item.englishName || '';
     document.getElementById('merchantContact').value = item.contactPerson || '';
     document.getElementById('merchantPhone').value = item.phone || '';
     document.getElementById('merchantEmail').value = item.email || '';

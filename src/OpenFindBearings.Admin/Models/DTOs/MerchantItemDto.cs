@@ -9,6 +9,7 @@ public record MerchantItemDto(
     [property: JsonPropertyName("id")] Guid Id,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("companyName")] string? CompanyName,
+    [property: JsonPropertyName("englishName")] string? EnglishName,
     [property: JsonPropertyName("type")] string Type,
     [property: JsonPropertyName("contactPerson")] string? ContactPerson,
     [property: JsonPropertyName("phone")] string? Phone,

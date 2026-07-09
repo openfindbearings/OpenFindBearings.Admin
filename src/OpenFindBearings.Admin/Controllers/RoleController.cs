@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Data;
+using OpenFindBearings.Admin.Models.Constants;
 using OpenFindBearings.Admin.Models.Entities;
 using OpenFindBearings.Admin.Models.ViewModels;
 
@@ -50,11 +51,11 @@ public class RoleController : Controller
 
         ViewBag.RoleName = roleName;
 
-        var allPermissions = Enum.GetValues<Models.Enums.PermissionKey>()
-            .Select(p => new PermissionItemViewModel
+        var allPermissions = PermissionKeys.All
+            .Select(k => new PermissionItemViewModel
             {
-                Key = p.ToString(),
-                Granted = permissions.Any(x => x.PermissionKey == p.ToString() && x.Granted)
+                Key = k,
+                Granted = permissions.Any(x => x.PermissionKey == k && x.Granted)
             })
             .ToList();
 
@@ -81,12 +82,12 @@ public class RoleController : Controller
         }
 
         var now = DateTime.UtcNow;
-        var permissions = Enum.GetValues<Models.Enums.PermissionKey>()
-            .Select(p => new AdminRolePermission
+        var permissions = PermissionKeys.All
+            .Select(k => new AdminRolePermission
             {
                 Id = Guid.NewGuid(),
                 RoleName = roleName,
-                PermissionKey = p.ToString(),
+                PermissionKey = k,
                 Granted = false,
                 CreatedAt = now
             })
@@ -129,13 +130,13 @@ public class RoleController : Controller
         _db.AdminRolePermissions.RemoveRange(existing);
 
         var now = DateTime.UtcNow;
-        var allPerms = Enum.GetValues<Models.Enums.PermissionKey>()
-            .Select(p => new AdminRolePermission
+        var allPerms = PermissionKeys.All
+            .Select(k => new AdminRolePermission
             {
                 Id = Guid.NewGuid(),
                 RoleName = roleName,
-                PermissionKey = p.ToString(),
-                Granted = grantedPermissions.Contains(p.ToString()),
+                PermissionKey = k,
+                Granted = grantedPermissions.Contains(k),
                 CreatedAt = now
             })
             .ToList();

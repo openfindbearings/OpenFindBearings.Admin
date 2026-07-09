@@ -88,7 +88,7 @@ public class AuditLogController : Controller
     private async Task<(List<AuditLogItemDto>, int)> LoadCrawlerLogsAsync(int page, int pageSize)
     {
         var baseUrl = _config["ApiUrls:FindBearingsCrawler"] ?? "https://localhost:7207";
-        var client = _factory.CreateClient("SyncClient");
+        var client = _factory.CreateClient("CrawlerClient");
         var resp = await client.GetAsync($"{baseUrl}/api/audit-log?page={page}&pageSize={pageSize}");
 
         if (!resp.IsSuccessStatusCode) return ([], 0);

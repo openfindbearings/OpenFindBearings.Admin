@@ -407,4 +407,119 @@ public class DataController : Controller
     }
 
     #endregion
+
+    #region 库存导入
+
+    /// <summary>
+    /// 库存导入页面
+    /// </summary>
+    public async Task<IActionResult> ImportInventory(Guid? selectedMerchantId = null)
+    {
+        var apiClient = _factory.CreateClient("ApiClient");
+        var apiBase = ApiBase();
+        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+
+        // 获取商家列表（下拉选择用）
+        ViewBag.Merchants = Array.Empty<MerchantItemDto>();
+        try
+        {
+            var resp = await apiClient.GetAsync($"{apiBase}/api/admin/merchants?page=1&pageSize=1000&includeDeleted=false");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var apiResp = JsonSerializer.Deserialize<ApiResponse<PagedData<MerchantItemDto>>>(json, JsonOpts);
+                ViewBag.Merchants = apiResp?.Data?.Items ?? [];
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取商家列表失败");
+        }
+
+        ViewBag.SelectedMerchantId = selectedMerchantId;
+        ViewBag.SyncBase = syncBase;
+        return View();
+    }
+
+    /// <summary>
+    /// 下载库存导入模板（代理 Sync API）
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> DownloadInventoryTemplate()
+    {
+        var syncClient = _factory.CreateClient("SyncClient");
+        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+
+        try
+        {
+            var resp = await syncClient.GetAsync($"{syncBase}/api/inventory/template");
+            if (!resp.IsSuccessStatusCode)
+                return NotFound("模板文件不可用");
+
+            var stream = await resp.Content.ReadAsStreamAsync();
+            return File(stream, resp.Content.Headers.ContentType?.MediaType ?? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "库存导入模板.xlsx");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载库存导入模板失败");
+            return NotFound("模板文件不可用");
+        }
+    }
+
+    /// <summary>
+    /// 提交库存导入
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> ImportInventory(Guid merchantId, IFormFile? file)
+    {
+        var syncClient = _factory.CreateClient("SyncClient");
+        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+
+        if (file == null || file.Length == 0)
+        {
+            TempData["Error"] = "请选择要上传的 Excel 文件";
+            return RedirectToAction("ImportInventory", new { selectedMerchantId = merchantId });
+        }
+
+        try
+        {
+            using var formData = new MultipartFormDataContent();
+            formData.Add(new StreamContent(file.OpenReadStream()), "file", file.FileName);
+
+            var resp = await syncClient.PostAsync($"{syncBase}/api/inventory/import?merchantId={merchantId}", formData);
+
+            var json = await resp.Content.ReadAsStringAsync();
+            var apiResp = JsonSerializer.Deserialize<ApiResponse<JsonElement>>(json, JsonOpts);
+
+            if (resp.IsSuccessStatusCode && apiResp?.Success == true)
+            {
+                var data = apiResp.Data;
+                if (data.ValueKind == JsonValueKind.Object)
+                {
+                    var total = data.GetProperty("totalRows").GetInt32();
+                    var succeeded = data.GetProperty("succeeded").GetInt32();
+                    var failed = data.GetProperty("failed").GetInt32();
+                    TempData["Success"] = $"导入完成: 共 {total} 条, 成功 {succeeded} 条, 失败 {failed} 条";
+                }
+                else
+                {
+                    TempData["Success"] = apiResp.Message ?? "导入完成";
+                }
+            }
+            else
+            {
+                TempData["Error"] = $"导入失败: {apiResp?.Message ?? json}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "库存导入异常");
+            TempData["Error"] = $"导入异常: {ex.Message}";
+        }
+
+        return RedirectToAction("ImportInventory", new { selectedMerchantId = merchantId });
+    }
+
+    #endregion
 }

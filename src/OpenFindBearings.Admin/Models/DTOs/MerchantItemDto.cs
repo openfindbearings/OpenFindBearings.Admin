@@ -17,6 +17,7 @@ public record MerchantItemDto(
     [property: JsonPropertyName("email")] string? Email,
     [property: JsonPropertyName("address")] string? Address,
     [property: JsonPropertyName("isVerified")] bool IsVerified,
+    [property: JsonPropertyName("status")] string Status,
     [property: JsonPropertyName("grade")] string Grade,
     [property: JsonPropertyName("followerCount")] int FollowerCount,
     [property: JsonPropertyName("productCount")] int ProductCount,

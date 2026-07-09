@@ -22,7 +22,7 @@ public class ConfigController : Controller
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var resp = await client.GetAsync($"{apiBase}/api/config");
+            var resp = await client.GetAsync($"{apiBase}/api/admin/config");
             if (resp.IsSuccessStatusCode)
             {
                 var json = await resp.Content.ReadFromJsonAsync<List<SystemConfigDto>>();
@@ -40,7 +40,7 @@ public class ConfigController : Controller
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var resp = await client.PutAsJsonAsync($"{apiBase}/api/config/{key}", new { value });
+            var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/config/{key}", new { value });
             TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "配置已更新" : $"更新失败: {resp.StatusCode}";
         }
         catch (Exception ex)

@@ -57,9 +57,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 // 各 Controller 按需添加 [Authorize] 或 [AllowAnonymous]
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddTransient<BearerTokenHandler>();
+builder.Services.AddScoped<BearerTokenHandler>();
 
-// 健康检查服务
 builder.Services.AddHealthChecks();
 
 builder.Services.AddHttpClient("ApiClient", c =>
@@ -67,12 +66,19 @@ builder.Services.AddHttpClient("ApiClient", c =>
     c.Timeout = TimeSpan.FromSeconds(30);
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
+#if DEBUG
     ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+#endif
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddHttpClient("CrawlerClient", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+#if DEBUG
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+#endif
 });
 
 builder.Services.AddHttpClient("SyncClient", c =>
@@ -80,32 +86,30 @@ builder.Services.AddHttpClient("SyncClient", c =>
     c.Timeout = TimeSpan.FromSeconds(30);
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
+#if DEBUG
     ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-});
+#endif
+}).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddHttpClient("IdentityClient", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(10);
 }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
+#if DEBUG
     ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+#endif
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddScoped<ServiceHealthService>();
 
-builder.Services.AddHealthChecks();
-
 var app = builder.Build();
 
-// 启动时确保数据库存在并初始化种子数据（独立 scope 避免 Npgsql 连接状态冲突）
+// 启动时确保数据库存在并初始化种子数据
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
-}
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     SeedData.Initialize(db);
 }
 
@@ -177,7 +181,7 @@ app.MapGet("/api/proxy/interchanges/{bearingId:guid}", async (Guid bearingId, IH
     var response = await client.GetAsync($"{apiBase}/api/interchanges/by-bearing/{bearingId}");
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json");
-});
+}).RequireAuthorization();
 
 // 代理商家在售商品查询
 app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchantId, IHttpClientFactory factory, IConfiguration config) =>
@@ -187,7 +191,7 @@ app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchan
     var response = await client.GetAsync($"{apiBase}/api/merchants/{merchantId}/bearings?onlyOnSale=true");
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json");
-});
+}).RequireAuthorization();
 
 // 代理 Excel 批量导入在售轴承（转发到 Sync API）
 app.MapPost("/api/proxy/excel/import-bearing", async (IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
@@ -202,7 +206,7 @@ app.MapPost("/api/proxy/excel/import-bearing", async (IFormFile file, IHttpClien
     var response = await client.PostAsync($"{syncBase}/api/sync/excel/bearing", form);
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-});
+}).RequireAuthorization();
 
 // 代理下载 Excel 导入模板
 app.MapGet("/api/proxy/excel/template", async (IHttpClientFactory factory, IConfiguration config) =>
@@ -212,6 +216,6 @@ app.MapGet("/api/proxy/excel/template", async (IHttpClientFactory factory, IConf
     var response = await client.GetAsync($"{syncBase}/api/sync/excel/template");
     var bytes = await response.Content.ReadAsByteArrayAsync();
     return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "bearings_import_template.xlsx");
-});
+}).RequireAuthorization();
 
 app.Run();

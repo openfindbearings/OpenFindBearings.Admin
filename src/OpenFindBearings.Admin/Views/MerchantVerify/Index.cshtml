@@ -1,40 +1,221 @@
-@{ ViewData["Title"] = "商家认证审核"; }
+@{
+    ViewData["Title"] = "商家认证审核";
+    var items = ViewBag.Items as IEnumerable<MerchantItemDto> ?? [];
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var currentStatus = (string?)ViewBag.Status;
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    var search = (string?)ViewBag.Search ?? "";
+    var error = (string?)ViewBag.Error;
+}
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h6 class="mb-0">商家认证审核</h6>
         <form class="d-flex gap-2" method="get">
-            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="搜索商家..." />
-            <button class="btn btn-sm btn-primary">搜索</button>
+            <input type="hidden" name="status" value="@currentStatus" />
+            <input type="text" name="search" value="@search" class="form-control form-control-sm" placeholder="搜索商家名称..." />
+            <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
         </form>
     </div>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger m-3 mb-0">@error</div>
+    }
+
+    @* --- Tab 筛选 --- *@
+    <div class="card-header py-1 border-top">
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link @(currentStatus == null ? "active" : "")" href="@Url.Action("Index", new { status = "", search, page = 1 })">待认证</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(currentStatus == "active" ? "active" : "")" href="@Url.Action("Index", new { status = "active", search, page = 1 })">已认证</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(currentStatus == "suspended" ? "active" : "")" href="@Url.Action("Index", new { status = "suspended", search, page = 1 })">已拒绝</a>
+            </li>
+        </ul>
+    </div>
+
     <div class="card-body p-0">
-        <table class="table table-hover">
-            <thead><tr><th>名称</th><th>公司</th><th>类型</th><th>联系人</th><th>操作</th></tr></thead>
-            <tbody>
-                @{ var items = ViewBag.Items as IEnumerable<MerchantItemDto> ?? Enumerable.Empty<MerchantItemDto>(); }
-                @if (items.Any())
-                {
-                    @foreach (var item in items)
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>公司全称</th>
+                        <th>类型</th>
+                        <th>联系人</th>
+                        <th>手机</th>
+                        <th>状态</th>
+                        <th style="width:160px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Any())
                     {
-                        <tr>
-                            <td>@item.Name</td>
-                            <td>@(item.CompanyName ?? "-")</td>
-                            <td>@item.Type</td>
-                            <td>@(item.ContactPerson ?? "-")</td>
-                            <td>
-                                <form method="post" asp-action="Verify" asp-route-id="@item.Id" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-success">认证</button>
-                                </form>
-                            </td>
-                        </tr>
+                        @foreach (var item in items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@(item.CompanyName ?? "-")</td>
+                                <td>@item.Type</td>
+                                <td>@(item.ContactPerson ?? "-")</td>
+                                <td>@(item.Mobile ?? item.Phone ?? "-")</td>
+                                <td>
+                                    @if (item.Status == "Active")
+                                    {
+                                        <span class="badge bg-success">已认证</span>
+                                    }
+                                    else if (item.Status == "Suspended")
+                                    {
+                                        <span class="badge bg-secondary">已拒绝</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">待认证</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.Status != "Active")
+                                    {
+                                        <button class="btn btn-sm btn-outline-success btn-verify" data-id="@item.Id">认证</button>
+                                        <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id">拒绝</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">已认证</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
                     }
-                }
-                else
-                {
-                    <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
-                }
-            </tbody>
-        </table>
+                    else
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">暂无数据</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="card-footer d-flex justify-content-between align-items-center small">
+            <span class="text-muted">共 @totalCount 条，第 @(page)/@totalPages 页</span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { status = currentStatus, search, page = 1 })">首页</a>
+                    </li>
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { status = currentStatus, search, page = page - 1 })">上一页</a>
+                    </li>
+
+                    @{
+                        var startPage = Math.Max(1, page - 2);
+                        var endPage = Math.Min(totalPages, page + 2);
+                        if (startPage > 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        for (var p = startPage; p <= endPage; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { status = currentStatus, search, page = p })">@p</a>
+                            </li>
+                        }
+                        if (endPage < totalPages)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                    }
+
+                    <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { status = currentStatus, search, page = page + 1 })">下一页</a>
+                    </li>
+                    <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("Index", new { status = currentStatus, search, page = totalPages })">尾页</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>
+
+@* --- 拒绝弹出框 --- *@
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">拒绝认证</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">拒绝原因</label>
+                    <textarea class="form-control" id="rejectReason" rows="3" placeholder="请填写拒绝原因"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-sm btn-danger" id="rejectConfirmBtn">确认拒绝</button>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        let rejectMerchantId = null;
+
+        $('.btn-verify').on('click', function () {
+            const id = $(this).data('id');
+            if (!confirm('确认认证该商家？认证后爬虫关联数据将被清除。')) return;
+            $.post('@Url.Action("Verify")', { id })
+                .done(function (res) {
+                    if (res.success) {
+                        showToast('success', res.message || '已认证');
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        showToast('danger', res.message || '操作失败');
+                    }
+                })
+                .fail(function () {
+                    showToast('danger', '服务异常');
+                });
+        });
+
+        $('.btn-reject').on('click', function () {
+            rejectMerchantId = $(this).data('id');
+            $('#rejectReason').val('');
+            $('#rejectModal').modal('show');
+        });
+
+        $('#rejectConfirmBtn').on('click', function () {
+            if (!rejectMerchantId) return;
+            const reason = $('#rejectReason').val().trim();
+            if (!reason) {
+                showToast('warning', '请填写拒绝原因');
+                return;
+            }
+            $.post('@Url.Action("Reject")', { id: rejectMerchantId, reason })
+                .done(function (res) {
+                    $('#rejectModal').modal('hide');
+                    if (res.success) {
+                        showToast('success', res.message || '已拒绝');
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        showToast('danger', res.message || '操作失败');
+                    }
+                })
+                .fail(function () {
+                    $('#rejectModal').modal('hide');
+                    showToast('danger', '服务异常');
+                });
+        });
+    </script>
+}

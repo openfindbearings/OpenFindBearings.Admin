@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenFindBearings.Admin.Data;
@@ -183,12 +184,16 @@ app.MapGet("/api/proxy/interchanges/{bearingId:guid}", async (Guid bearingId, IH
     return Results.Content(content, "application/json");
 }).RequireAuthorization();
 
-// 代理商家在售商品查询
-app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchantId, IHttpClientFactory factory, IConfiguration config) =>
+// 代理商家商品查询（支持 onlyOnSale 和 dataSource 过滤）
+app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchantId, IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] bool? onlyOnSale = null, [FromQuery] string? dataSource = null) =>
 {
     var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
     var client = factory.CreateClient("ApiClient");
-    var response = await client.GetAsync($"{apiBase}/api/merchants/{merchantId}/bearings?onlyOnSale=true");
+    var url = $"{apiBase}/api/merchants/{merchantId}/bearings?pageSize=100";
+    if (onlyOnSale.HasValue) url += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
+    if (!string.IsNullOrEmpty(dataSource)) url += $"&dataSource={dataSource}";
+    var response = await client.GetAsync(url);
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json");
 }).RequireAuthorization();

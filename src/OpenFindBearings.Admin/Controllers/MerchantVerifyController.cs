@@ -84,7 +84,7 @@ public class MerchantVerifyController : Controller
             if (resp.IsSuccessStatusCode)
             {
                 _logger.LogInformation("商家认证成功: {Id}", id);
-                return Json(new { success = true, message = "已认证，已清除爬虫数据" });
+                return Json(new { success = true, message = "已认证" });
             }
 
             _logger.LogWarning("商家认证失败: {Id}, {StatusCode}, {Response}", id, resp.StatusCode, json);

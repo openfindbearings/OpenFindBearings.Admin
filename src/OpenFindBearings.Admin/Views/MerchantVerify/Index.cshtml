@@ -51,7 +51,7 @@
                         <th>联系人</th>
                         <th>手机</th>
                         <th>状态</th>
-                        <th style="width:160px">操作</th>
+                        <th style="width:240px">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,6 +89,7 @@
                                     {
                                         <span class="text-muted small">已认证</span>
                                     }
+                                    <button class="btn btn-sm btn-outline-info btn-sync-data" data-id="@item.Id" data-name="@item.Name">同步数据</button>
                                 </td>
                             </tr>
                         }
@@ -146,6 +147,46 @@
     }
 </div>
 
+@* --- 同步数据弹出框 --- *@
+<div class="modal fade" id="syncDataModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">历史同步数据 - <span id="syncDataMerchantName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom small text-muted">
+                    <span>共 <span id="syncDataTotalCount">0</span> 条</span>
+                    <label class="d-flex align-items-center gap-1">
+                        <input type="checkbox" id="syncDataShowAll" />
+                        显示全部（含非在售）
+                    </label>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>型号</th>
+                                <th>品牌</th>
+                                <th>类型</th>
+                                <th>来源</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="syncDataBody">
+                            <tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @* --- 拒绝弹出框 --- *@
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
@@ -174,7 +215,7 @@
 
         $('.btn-verify').on('click', function () {
             const id = $(this).data('id');
-            if (!confirm('确认认证该商家？认证后爬虫关联数据将被清除。')) return;
+            if (!confirm('确认认证该商家？')) return;
             $.post('@Url.Action("Verify")', { id })
                 .done(function (res) {
                     if (res.success) {
@@ -216,6 +257,50 @@
                     $('#rejectModal').modal('hide');
                     showToast('danger', '服务异常');
                 });
+        });
+
+        function loadSyncData(id) {
+            const showAll = document.getElementById('syncDataShowAll').checked;
+            var url = '/api/proxy/merchant-bearings/' + id + '?dataSource=Crawler&pageSize=9999';
+            if (!showAll) url += '&onlyOnSale=true';
+            fetch(url)
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var totalCount = d && d.data ? d.data.totalCount : 0;
+                    var items = d && d.data ? d.data.items || [] : d.items || d || [];
+                    if (!Array.isArray(items)) items = [];
+                    $('#syncDataTotalCount').text(totalCount);
+                    if (items.length === 0) {
+                        $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-muted py-4">无同步数据</td></tr>');
+                        return;
+                    }
+                    var h = '';
+                    items.forEach(function (r) {
+                        var statusText = r.isOnSale ? '在售' : '下架';
+                        h += '<tr><td>' + (r.partNumber || '-') + '</td><td>' + (r.brand || r.brandName || '-') + '</td><td>' + (r.bearingType || '-') + '</td><td>爬虫</td><td>' + statusText + '</td></tr>';
+                    });
+                    $('#syncDataBody').html(h);
+                })
+                .catch(function () {
+                    $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-danger py-4">加载失败</td></tr>');
+                });
+        }
+
+        var syncDataMerchantId = null;
+
+        $('.btn-sync-data').on('click', function () {
+            syncDataMerchantId = $(this).data('id');
+            const name = $(this).data('name');
+            $('#syncDataMerchantName').text(name);
+            $('#syncDataTotalCount').text('0');
+            document.getElementById('syncDataShowAll').checked = false;
+            $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>');
+            $('#syncDataModal').modal('show');
+            loadSyncData(syncDataMerchantId);
+        });
+
+        document.getElementById('syncDataShowAll').addEventListener('change', function () {
+            if (syncDataMerchantId) loadSyncData(syncDataMerchantId);
         });
     </script>
 }

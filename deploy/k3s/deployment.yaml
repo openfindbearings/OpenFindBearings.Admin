@@ -36,13 +36,13 @@ spec:
               value: "http://identity:80"
           livenessProbe:
             httpGet:
-              path: /live
+              path: /health/live
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health/ready
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10

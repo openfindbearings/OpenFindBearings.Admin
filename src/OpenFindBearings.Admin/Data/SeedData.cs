@@ -25,41 +25,42 @@ public static class SeedData
         }
 
         // admin 角色：全部权限
-        Add("admin", "DashboardView");
-        Add("admin", "BearingView");
-        Add("admin", "BearingCreate");
-        Add("admin", "BearingEdit");
-        Add("admin", "BearingDelete");
-        Add("admin", "MerchantView");
-        Add("admin", "MerchantManage");
-        Add("admin", "MerchantVerify");
-        Add("admin", "CorrectionReview");
-        Add("admin", "EtlManage");
-        Add("admin", "CrawlerManage");
-        Add("admin", "RoleManage");
-        Add("admin", "UserManage");
-        Add("admin", "SystemView");
-        Add("admin", "SystemManage");
-        Add("admin", "AuditView");
-        Add("admin", "DataRestore");
+        Add("admin", "dashboard.view");
+        Add("admin", "bearing.view");
+        Add("admin", "bearing.create");
+        Add("admin", "bearing.edit");
+        Add("admin", "bearing.delete");
+        Add("admin", "merchant.view");
+        Add("admin", "merchant.manage");
+        Add("admin", "merchant.verify");
+        Add("admin", "correction.review");
+        Add("admin", "etl.manage");
+        Add("admin", "crawler.manage");
+        Add("admin", "role.manage");
+        Add("admin", "user.manage");
+        Add("admin", "system.view");
+        Add("admin", "system.manage");
+        Add("admin", "audit.view");
+        Add("admin", "data.restore");
+        Add("admin", "data.harddelete");
 
         // editor（业务员）角色：日常 CRUD + 审核
-        Add("editor", "DashboardView");
-        Add("editor", "BearingView");
-        Add("editor", "BearingCreate");
-        Add("editor", "BearingEdit");
-        Add("editor", "BearingDelete");
-        Add("editor", "MerchantView");
-        Add("editor", "MerchantManage");
-        Add("editor", "CorrectionReview");
-        Add("editor", "SystemView");
+        Add("editor", "dashboard.view");
+        Add("editor", "bearing.view");
+        Add("editor", "bearing.create");
+        Add("editor", "bearing.edit");
+        Add("editor", "bearing.delete");
+        Add("editor", "merchant.view");
+        Add("editor", "merchant.manage");
+        Add("editor", "correction.review");
+        Add("editor", "system.view");
 
-        // viewer（审计员）角色：只读
-        Add("viewer", "DashboardView");
-        Add("viewer", "BearingView");
-        Add("viewer", "MerchantView");
-        Add("viewer", "SystemView");
-        Add("viewer", "AuditView");
+        // viewer（观察员）角色：基本查询
+        Add("viewer", "dashboard.view");
+        Add("viewer", "bearing.view");
+        Add("viewer", "merchant.view");
+        Add("viewer", "system.view");
+        Add("viewer", "audit.view");
 
         db.AdminRolePermissions.AddRange(permissions);
         db.SaveChanges();

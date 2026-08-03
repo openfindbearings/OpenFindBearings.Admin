@@ -41,26 +41,31 @@
                         <li><a asp-controller="Data" asp-action="BearingTypes" class="nav-link" data-page="data-types"><i class="fas fa-circle"></i><span>类型列表</span></a></li>
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
-                        <li class="sub-header">审核管理</li>
+                        <li class="sub-header">库存管理</li>
+                        <li><a asp-controller="Data" asp-action="ImportInventory" class="nav-link" data-page="data-import-inventory"><i class="fas fa-circle"></i><span>库存导入</span></a></li>
+                        <li class="sub-header">映射信息</li>
+                        <li><a asp-controller="Mapping" asp-action="Index" asp-route-type="brand" class="nav-link" data-page="mapping-brand"><i class="fas fa-circle"></i><span>品牌映射</span></a></li>
+                        <li><a asp-controller="Mapping" asp-action="Index" asp-route-type="type" class="nav-link" data-page="mapping-type"><i class="fas fa-circle"></i><span>类型映射</span></a></li>
+                    </ul>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-review">
+                        <i class="fas fa-check-double"></i><span>审核管理</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-review">
+                        <li><a asp-controller="Review" asp-action="Index" class="nav-link" data-page="review"><i class="fas fa-circle"></i><span>同步数据审核</span></a></li>
                         <li><a asp-controller="Correction" asp-action="Index" class="nav-link" data-page="correction"><i class="fas fa-circle"></i><span>信息纠错审核</span></a></li>
                         <li><a asp-controller="License" asp-action="Index" class="nav-link" data-page="license"><i class="fas fa-circle"></i><span>营业执照审核</span></a></li>
                         <li><a asp-controller="MerchantVerify" asp-action="Index" class="nav-link" data-page="merchant-verify"><i class="fas fa-circle"></i><span>商家认证审核</span></a></li>
                     </ul>
                 </li>
                 <li class="has-sub">
-                    <a href="#" class="nav-link toggle-sub" data-target="sub-sync">
-                        <i class="fas fa-sync-alt"></i><span>同步管理</span><i class="fas fa-chevron-right arrow"></i>
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-task">
+                        <i class="fas fa-tasks"></i><span>任务管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
-                    <ul class="sub-menu" id="sub-sync">
-                        <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>任务管理</span></a></li>
-                    </ul>
-                </li>
-                <li class="has-sub">
-                    <a href="#" class="nav-link toggle-sub" data-target="sub-crawler">
-                        <i class="fas fa-spider"></i><span>爬虫管理</span><i class="fas fa-chevron-right arrow"></i>
-                    </a>
-                    <ul class="sub-menu" id="sub-crawler">
-                        <li><a asp-controller="Crawler" asp-action="Index" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>爬虫列表</span></a></li>
+                    <ul class="sub-menu" id="sub-task">
+                        <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>ETL 同步</span></a></li>
+                        <li><a asp-controller="Crawler" asp-action="Index" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>数据爬虫</span></a></li>
                     </ul>
                 </li>
                 <li class="has-sub">
@@ -72,7 +77,17 @@
                         <li><a asp-controller="Users" asp-action="Index" class="nav-link" data-page="users"><i class="fas fa-circle"></i><span>用户管理</span></a></li>
                         <li><a asp-controller="Role" asp-action="Index" class="nav-link" data-page="role"><i class="fas fa-circle"></i><span>角色管理</span></a></li>
                         <li><a asp-controller="Permission" asp-action="Index" class="nav-link" data-page="permission"><i class="fas fa-circle"></i><span>权限管理</span></a></li>
-                        <li><a asp-controller="AuditLog" asp-action="Index" class="nav-link" data-page="auditlog"><i class="fas fa-circle"></i><span>审计日志</span></a></li>
+                    </ul>
+                </li>
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="sub-audit">
+                        <i class="fas fa-history"></i><span>审计日志</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="sub-audit">
+                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="identity" class="nav-link" data-page="auditlog-identity"><i class="fas fa-circle"></i><span>管理员日志</span></a></li>
+                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="api" class="nav-link" data-page="auditlog-api"><i class="fas fa-circle"></i><span>API 日志</span></a></li>
+                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="sync" class="nav-link" data-page="auditlog-sync"><i class="fas fa-circle"></i><span>Sync 日志</span></a></li>
+                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="crawler" class="nav-link" data-page="auditlog-crawler"><i class="fas fa-circle"></i><span>Crawler 日志</span></a></li>
                     </ul>
                 </li>
                 <li>

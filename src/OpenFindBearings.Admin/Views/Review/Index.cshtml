@@ -1,0 +1,188 @@
+@model PendingReviewListViewModel
+@{
+    ViewData["Title"] = "同步数据审核";
+    string PageUrl(int p) => $"?type={Model.CurrentFilter}&page={p}";
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-check-double"></i> 同步数据审核</h4>
+    <p class="text-muted">Sync ETL 数据同步前的待审核项，审核通过后将在下次 T 阶段自动同步至业务库</p>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<ul class="nav nav-tabs mb-3" id="reviewTabs">
+    <li class="nav-item">
+        <a class="nav-link @(string.IsNullOrEmpty(Model.CurrentFilter) ? "active" : "")"
+           asp-action="Index" asp-route-type="">全部</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.CurrentFilter == "brand" ? "active" : "")"
+           asp-action="Index" asp-route-type="brand">品牌</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.CurrentFilter == "bearing_type" ? "active" : "")"
+           asp-action="Index" asp-route-type="bearing_type">类型</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.CurrentFilter == "bearing" ? "active" : "")"
+           asp-action="Index" asp-route-type="bearing">轴承</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(Model.CurrentFilter == "merchant" ? "active" : "")"
+           asp-action="Index" asp-route-type="merchant">商家</a>
+    </li>
+</ul>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Items.Count == 0)
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                <p>暂无待审核数据</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:80px">类型</th>
+                            <th>原始值</th>
+                            <th>建议值</th>
+                            <th style="width:80px">置信度</th>
+                            <th style="width:140px">创建时间</th>
+                            <th style="width:160px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr data-review-id="@item.Id">
+                                <td><span class="badge bg-info">@item.EntityTypeDisplay</span></td>
+                                <td>@item.OriginalValue</td>
+                                <td>@(item.SuggestedValue ?? "-")</td>
+                                <td>
+                                    @if (item.ConfidenceDisplay.HasValue)
+                                    {
+                                        var cls = item.ConfidenceDisplay.Value >= 70 ? "success" :
+                                                 item.ConfidenceDisplay.Value >= 40 ? "warning" : "danger";
+                                        <span class="badge bg-@cls">@item.ConfidenceDisplay%</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="text-muted small">@item.CreatedAtDisplay</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id">
+                                        <i class="fas fa-check"></i> 通过
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id"
+                                            data-reason="数据质量不合格，拒绝同步">
+                                        <i class="fas fa-times"></i> 拒绝
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">共 @totalPages 页 / @Model.TotalCount 条</small>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(Model.PageIndex <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(1)">首页</a>
+                                </li>
+                                <li class="page-item @(Model.PageIndex <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(Model.PageIndex - 1)">&laquo;</a>
+                                </li>
+                                @{
+                                    var rs = Math.Max(1, Model.PageIndex - 2);
+                                    var re = Math.Min(totalPages, Model.PageIndex + 2);
+                                }
+                                @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                @for (var i = rs; i <= re; i++)
+                                {
+                                    <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                        <a class="page-link" href="@PageUrl(i)">@i</a>
+                                    </li>
+                                }
+                                @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                <li class="page-item @(Model.PageIndex >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(Model.PageIndex + 1)">&raquo;</a>
+                                </li>
+                                <li class="page-item @(Model.PageIndex >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(totalPages)">尾页</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $('.btn-approve').on('click', function () {
+            var btn = $(this);
+            var id = btn.data('id');
+            var row = btn.closest('tr');
+
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+            $.post('@Url.Action("Approve", "Review")', { id: id })
+                .done(function (res) {
+                    if (res.success) {
+                        row.addClass('table-success').fadeOut(800, function () { row.remove(); });
+                    } else {
+                        alert(res.message || '操作失败');
+                        btn.prop('disabled', false).html('<i class="fas fa-check"></i> 通过');
+                    }
+                })
+                .fail(function () {
+                    alert('请求失败');
+                    btn.prop('disabled', false).html('<i class="fas fa-check"></i> 通过');
+                });
+        });
+
+        $('.btn-reject').on('click', function () {
+            var btn = $(this);
+            var id = btn.data('id');
+            var reason = btn.data('reason') || '管理员拒绝';
+            var row = btn.closest('tr');
+
+            if (!confirm('确定拒绝此条审核记录吗？')) return;
+
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+            $.post('@Url.Action("Reject", "Review")', { id: id, reason: reason })
+                .done(function (res) {
+                    if (res.success) {
+                        row.addClass('table-danger').fadeOut(800, function () { row.remove(); });
+                    } else {
+                        alert(res.message || '操作失败');
+                        btn.prop('disabled', false).html('<i class="fas fa-times"></i> 拒绝');
+                    }
+                })
+                .fail(function () {
+                    alert('请求失败');
+                    btn.prop('disabled', false).html('<i class="fas fa-times"></i> 拒绝');
+                });
+        });
+    </script>
+}

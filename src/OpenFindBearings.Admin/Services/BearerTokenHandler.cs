@@ -20,8 +20,8 @@ namespace OpenFindBearings.Admin.Services
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var accessToken = _httpContextAccessor.HttpContext?.User?
-                .FindFirst("access_token")?.Value;
+            var user = _httpContextAccessor.HttpContext?.User;
+            var accessToken = user?.FindFirst("access_token")?.Value;
 
             if (!string.IsNullOrEmpty(accessToken))
             {

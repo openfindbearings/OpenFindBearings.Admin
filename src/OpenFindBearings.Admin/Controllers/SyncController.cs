@@ -21,7 +21,7 @@ public class SyncController : Controller
         var client = _factory.CreateClient("SyncClient");
         try
         {
-            var health = await client.GetAsync($"{baseUrl}/live");
+            var health = await client.GetAsync($"{baseUrl}/health/live");
             ViewBag.SyncStatus = health.IsSuccessStatusCode ? "在线" : "离线";
         }
         catch

@@ -1,0 +1,60 @@
+@{
+    ViewData["Title"] = "库存导入";
+    var merchants = ViewBag.Merchants as IEnumerable<MerchantItemDto> ?? [];
+    var selectedId = ViewBag.SelectedMerchantId as Guid?;
+    var syncBase = ViewBag.SyncBase as string ?? "https://localhost:7206";
+    var successMsg = TempData["Success"] as string;
+    var errorMsg = TempData["Error"] as string;
+}
+
+@if (!string.IsNullOrEmpty(successMsg))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Html.Raw(successMsg.Replace("\n", "<br/>"))
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(errorMsg))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @errorMsg
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Excel 导入商家库存</h6>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" asp-action="ImportInventory">
+            <div class="mb-3">
+                <label class="form-label">选择商户 <span class="text-danger">*</span></label>
+                <select name="merchantId" class="form-select" required>
+                    <option value="">-- 请选择商户 --</option>
+                    @foreach (var m in merchants)
+                    {
+                        <option value="@m.Id" selected="@(m.Id == selectedId)">@m.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Excel 文件 <span class="text-danger">*</span></label>
+                <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required />
+                <div class="form-text">支持的格式: .xlsx, .xls</div>
+            </div>
+
+            <div class="mb-3">
+                <a href="@Url.Action("DownloadInventoryTemplate")" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-download"></i> 下载导入模板
+                </a>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="fas fa-upload"></i> 开始导入
+            </button>
+            <a href="@Url.Action("Merchants")" class="btn btn-secondary">返回商家列表</a>
+        </form>
+    </div>
+</div>

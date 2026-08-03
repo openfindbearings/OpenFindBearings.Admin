@@ -126,7 +126,6 @@
                 <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td></tr>
                 <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td></tr>
                 <tr><td>Sync</td><td><span class="badge bg-secondary">检测中</span></td></tr>
-                <tr><td>Crawler</td><td><span class="badge bg-secondary">检测中</span></td></tr>
             </table>
         </div>
     </div>
@@ -138,7 +137,7 @@
         xhr.onload = function () {
             if (xhr.status !== 200) return;
             var data = JSON.parse(xhr.responseText);
-            var nameMap = { 'Api': 'API', 'Identity': 'Identity', 'Sync': 'Sync', 'Crawler': 'Crawler' };
+            var nameMap = { 'Api': 'API', 'Identity': 'Identity', 'Sync': 'Sync' };
             var rows = document.querySelectorAll('#serviceTable tr');
             for (var prop in data) {
                 var label = nameMap[prop];

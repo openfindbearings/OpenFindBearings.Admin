@@ -1,40 +1,67 @@
-@model List<CrawlerItemDto>
-@{ ViewData["Title"] = "数据爬虫"; }
+@{
+    ViewData["Title"] = "数据爬虫";
+}
 
 <div class="card">
-    <div class="card-header"><h6 class="mb-0">爬虫列表</h6></div>
+    <div class="card-header"><h6 class="mb-0">爬虫接入情况</h6></div>
     <div class="card-body p-0">
         <table class="table table-hover">
-            <thead><tr><th>名称</th><th>状态</th><th>进度</th><th>操作</th></tr></thead>
-            <tbody>
-                @if (Model.Any())
-                {
-                    @foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>@item.Name</td>
-                            <td>
-                                @if (item.Status == "Running")
-                                { <span class="badge bg-warning">运行中</span> }
-                                else if (item.Status == "Idle")
-                                { <span class="badge bg-success">空闲</span> }
-                                else
-                                { <span class="badge bg-secondary">@item.Status</span> }
-                            </td>
-                            <td>@(item.Progress ?? "-")</td>
-                            <td>
-                                <form method="post" asp-action="Run" asp-route-name="@item.Name" class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-outline-primary" @(item.Status=="Running"?"disabled":"")>触发运行</button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                }
-                else
-                {
-                    <tr><td colspan="4" class="text-center text-muted py-4">暂无爬虫数据</td></tr>
-                }
+            <thead><tr><th>数据源</th><th>爬虫名称</th></tr></thead>
+            <tbody id="crawlerTableBody">
+                <tr><td colspan="2" class="text-center text-muted py-4">加载中...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
+
+<div class="card mt-3">
+    <div class="card-header"><h6 class="mb-0">调度策略</h6></div>
+    <div class="card-body">
+        <table class="table table-sm mb-0">
+            <tbody>
+                <tr>
+                    <th style="width:180px">调度方式</th>
+                    <td>K8s CronJob 定时任务</td>
+                </tr>
+                <tr>
+                    <th>执行时间</th>
+                    <td>每晚 22:00（UTC）自动触发</td>
+                </tr>
+                <tr>
+                    <th>超时限制</th>
+                    <td>单次运行最长 4 小时，超时自动中止，次日续跑</td>
+                </tr>
+                <tr>
+                    <th>说明</th>
+                    <td>爬虫统一按上述策略调度，数据写入原始库（db_raw），经 Sync ETL 流程处理后进入业务库</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    fetch('/Home/DataSources')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var rows = data && data.length ? data : [];
+            var tbody = document.getElementById('crawlerTableBody');
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-4">暂未接入爬虫数据源</td></tr>';
+                return;
+            }
+            var html = '';
+            rows.forEach(function (item) {
+                html += '<tr><td>' + (item.name || '-') + '</td><td>' + (item.displayName || '-') + '</td></tr>';
+            });
+            tbody.innerHTML = html;
+        })
+        .catch(function () {
+            document.getElementById('crawlerTableBody').innerHTML =
+                '<tr><td colspan="2" class="text-center text-muted py-4">加载失败，Sync 服务可能离线</td></tr>';
+        });
+})();
+</script>
+}

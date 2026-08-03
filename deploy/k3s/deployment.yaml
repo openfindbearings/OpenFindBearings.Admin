@@ -26,14 +26,12 @@ spec:
                 secretKeyRef:
                   name: admin-secret
                   key: connection-string
-            - name: ServiceUrls__Crawler
-              value: "http://crawler-api:80"
-            - name: ServiceUrls__Sync
-              value: "http://sync-api:80"
-            - name: ServiceUrls__BusinessApi
-              value: "http://business-api:80"
-            - name: ServiceUrls__Identity
-              value: "http://identity:80"
+            - name: ApiUrls__OpenFindBearingsApi
+              value: "http://openfindbearings-api-service:80"
+            - name: ApiUrls__FindBearingsSync
+              value: "http://openfindbearings-sync-api:80"
+            - name: ApiUrls__OpenFindBearingsIdentity
+              value: "http://openfindbearings-identity-service:80"
           livenessProbe:
             httpGet:
               path: /health/live

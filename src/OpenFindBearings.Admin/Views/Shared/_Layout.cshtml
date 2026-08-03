@@ -65,7 +65,7 @@
                     </a>
                     <ul class="sub-menu" id="sub-task">
                         <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>ETL 同步</span></a></li>
-                        <li><a asp-controller="Crawler" asp-action="Index" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>数据爬虫</span></a></li>
+                        <li><a asp-controller="Home" asp-action="Crawler" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>数据爬虫</span></a></li>
                     </ul>
                 </li>
                 <li class="has-sub">
@@ -87,7 +87,6 @@
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="identity" class="nav-link" data-page="auditlog-identity"><i class="fas fa-circle"></i><span>管理员日志</span></a></li>
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="api" class="nav-link" data-page="auditlog-api"><i class="fas fa-circle"></i><span>API 日志</span></a></li>
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="sync" class="nav-link" data-page="auditlog-sync"><i class="fas fa-circle"></i><span>Sync 日志</span></a></li>
-                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="crawler" class="nav-link" data-page="auditlog-crawler"><i class="fas fa-circle"></i><span>Crawler 日志</span></a></li>
                     </ul>
                 </li>
                 <li>

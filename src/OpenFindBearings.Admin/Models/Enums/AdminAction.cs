@@ -4,7 +4,6 @@ public enum AdminAction
 {
     Login,
     Logout,
-    TriggerCrawler,
     TriggerETL,
     CreateBrand,
     UpdateBrand,

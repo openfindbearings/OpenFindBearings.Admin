@@ -72,16 +72,6 @@ builder.Services.AddHttpClient("ApiClient", c =>
 #endif
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
-builder.Services.AddHttpClient("CrawlerClient", c =>
-{
-    c.Timeout = TimeSpan.FromSeconds(30);
-}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-#if DEBUG
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-#endif
-});
-
 builder.Services.AddHttpClient("SyncClient", c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);

@@ -35,7 +35,6 @@ public static class SeedData
         Add("admin", "merchant.verify");
         Add("admin", "correction.review");
         Add("admin", "etl.manage");
-        Add("admin", "crawler.manage");
         Add("admin", "role.manage");
         Add("admin", "user.manage");
         Add("admin", "system.view");

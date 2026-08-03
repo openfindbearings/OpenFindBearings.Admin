@@ -18,7 +18,6 @@ public class ServiceHealthService
         var services = new Dictionary<string, (string url, string client)>
         {
             ["Api"] = (_config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183", "ApiClient"),
-            ["Crawler"] = (_config["ApiUrls:FindBearingsCrawler"] ?? "https://localhost:7207", "CrawlerClient"),
             ["Sync"] = (_config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206", "SyncClient"),
             ["Identity"] = (_config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201", "IdentityClient")
         };
@@ -26,7 +25,6 @@ public class ServiceHealthService
         var paths = new Dictionary<string, string>
         {
             ["Api"] = "/health/live",
-            ["Crawler"] = "/health/live",
             ["Sync"] = "/health/live",
             ["Identity"] = "/health/live"
         };

@@ -32,7 +32,6 @@ public class AuditLogController : Controller
                 "identity" => await LoadIdentityLogsAsync(page, pageSize),
                 "api" => await LoadApiLogsAsync(page, pageSize),
                 "sync" => await LoadSyncLogsAsync(page, pageSize),
-                "crawler" => await LoadCrawlerLogsAsync(page, pageSize),
                 _ => ([], 0)
             };
 
@@ -77,18 +76,6 @@ public class AuditLogController : Controller
     {
         var baseUrl = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
         var client = _factory.CreateClient("SyncClient");
-        var resp = await client.GetAsync($"{baseUrl}/api/audit-log?page={page}&pageSize={pageSize}");
-
-        if (!resp.IsSuccessStatusCode) return ([], 0);
-
-        var json = await resp.Content.ReadAsStringAsync();
-        return ParsePagedResponse(json);
-    }
-
-    private async Task<(List<AuditLogItemDto>, int)> LoadCrawlerLogsAsync(int page, int pageSize)
-    {
-        var baseUrl = _config["ApiUrls:FindBearingsCrawler"] ?? "https://localhost:7207";
-        var client = _factory.CreateClient("CrawlerClient");
         var resp = await client.GetAsync($"{baseUrl}/api/audit-log?page={page}&pageSize={pageSize}");
 
         if (!resp.IsSuccessStatusCode) return ([], 0);

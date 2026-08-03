@@ -32,6 +32,31 @@ public class HomeController : Controller
         return Json(result);
     }
 
+    [Authorize]
+    public async Task<IActionResult> DataSources()
+    {
+        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+        var client = _factory.CreateClient("SyncClient");
+        try
+        {
+            var resp = await client.GetAsync($"{syncBase}/api/datasources");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var obj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
+                return Json(obj.TryGetProperty("data", out var data) ? data : obj);
+            }
+        }
+        catch { }
+        return Json(Array.Empty<object>());
+    }
+
+    [Authorize]
+    public IActionResult Crawler()
+    {
+        return View("~/Views/Crawler/Index.cshtml");
+    }
+
     [AllowAnonymous]
     public async Task<IActionResult> DashboardStats()
     {

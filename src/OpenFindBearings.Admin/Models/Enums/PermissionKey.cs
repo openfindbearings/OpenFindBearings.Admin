@@ -12,7 +12,6 @@ public static class PermissionKeys
     public const string MerchantVerify = "merchant.verify";
     public const string CorrectionReview = "correction.review";
     public const string EtlManage = "etl.manage";
-    public const string CrawlerManage = "crawler.manage";
     public const string RoleManage = "role.manage";
     public const string UserManage = "user.manage";
     public const string SystemView = "system.view";
@@ -25,7 +24,7 @@ public static class PermissionKeys
     {
         DashboardView, BearingView, BearingCreate, BearingEdit, BearingDelete,
         MerchantView, MerchantManage, MerchantVerify, CorrectionReview,
-        EtlManage, CrawlerManage, RoleManage, UserManage,
+        EtlManage, RoleManage, UserManage,
         SystemView, SystemManage, AuditView, DataRestore, DataHardDelete
     };
 }

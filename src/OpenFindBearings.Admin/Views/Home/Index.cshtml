@@ -25,7 +25,7 @@
     </div>
     <div class="col-lg-3 col-6">
         <div class="small-box bg-danger">
-            <div class="inner"><h3 id="merchantCount">-</h3><p>商家数量</p></div>
+            <div class="inner"><h3 id="merchantCount">-</h3><p>商家数量（已入驻/总数）</p></div>
             <div class="icon"><i class="fas fa-store"></i></div>
         </div>
     </div>
@@ -52,7 +52,7 @@
     </div>
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
-            <div class="inner"><h3 id="merchantVerifyPendingCount">-</h3><p>商家认证待审核</p></div>
+            <div class="inner"><h3 id="merchantApplicationPendingCount">-</h3><p>入驻申请待审批</p></div>
             <div class="icon"><i class="fas fa-user-check"></i></div>
         </div>
     </div>
@@ -104,12 +104,12 @@
             var el=document.getElementById('bearingCount');if(el)el.textContent=b.totalCount??'-';
             el=document.getElementById('brandCount');if(el)el.textContent=br.totalCount??'-';
             el=document.getElementById('typeCount');if(el)el.textContent=tp.totalCount??'-';
-            el=document.getElementById('merchantCount');if(el)el.textContent=m.totalCount??'-';
+            el=document.getElementById('merchantCount');if(el)el.textContent=(m.verifiedCount??'-')+'/'+(m.totalCount??'-');
 
             el=document.getElementById('syncPendingCount');if(el)el.textContent=(sp.brandCount||0)+(sp.typeCount||0)+(sp.bearingCount||0)+(sp.merchantCount||0);
             el=document.getElementById('correctionPendingCount');if(el)el.textContent=c.pendingCount??'-';
             el=document.getElementById('licensePendingCount');if(el)el.textContent=(data.pending||{}).pendingLicenses??'-';
-            el=document.getElementById('merchantVerifyPendingCount');if(el)el.textContent=(data.pending||{}).pendingMerchantVerifications??'-';
+            el=document.getElementById('merchantApplicationPendingCount');if(el)el.textContent=m.pendingApplicationCount??'-';
 
             try {
                 var trendCanvas=document.getElementById('trendChart');
@@ -152,7 +152,7 @@
         .catch(function(e){
             console.error('DashboardStats 渲染异常', e);
             ['bearingCount','brandCount','typeCount','merchantCount',
-             'syncPendingCount','correctionPendingCount','licensePendingCount','merchantVerifyPendingCount'].forEach(function(id){
+             'syncPendingCount','correctionPendingCount','licensePendingCount','merchantApplicationPendingCount'].forEach(function(id){
                 var el=document.getElementById(id);if(el)el.textContent='N/A';
             });
         });

@@ -115,7 +115,7 @@ public class HomeController : Controller
         if (root.TryGetProperty("data", out var dataElem) && dataElem.ValueKind == System.Text.Json.JsonValueKind.Object)
         {
             var inner = dataElem.GetRawText();
-            var merged = inner.TrimEnd('}') + ",\"syncPendingReviews\":" + syncJsonStr + "}";
+            var merged = inner[..^1] + ",\"syncPendingReviews\":" + syncJsonStr + "}";
             return Content("{\"data\":" + merged + "}", "application/json");
         }
 

@@ -111,41 +111,46 @@
             el=document.getElementById('licensePendingCount');if(el)el.textContent=(data.pending||{}).pendingLicenses??'-';
             el=document.getElementById('merchantVerifyPendingCount');if(el)el.textContent=(data.pending||{}).pendingMerchantVerifications??'-';
 
-            var trendCanvas=document.getElementById('trendChart');
-            if(trendCanvas&&typeof Chart!=='undefined'){
-                new Chart(trendCanvas,{
-                    type:'bar',
-                    data:{
-                        labels:['今日','本周','本月'],
-                        datasets:[{
-                            label:'轴承',
-                            data:[b.todayAdded||0,b.thisWeekAdded||0,b.thisMonthAdded||0],
-                            backgroundColor:'rgba(23,162,184,.7)'
-                        },{
-                            label:'商家',
-                            data:[m.todayRegistered||0,m.totalCount?Math.round(m.totalCount/30):0,0],
-                            backgroundColor:'rgba(255,193,7,.7)'
-                        }]
-                    },
-                    options:{
-                        responsive:true,
-                        plugins:{legend:{position:'bottom'}},
-                        scales:{y:{beginAtZero:true}}
-                    }
-                });
-            }
+            try {
+                var trendCanvas=document.getElementById('trendChart');
+                if(trendCanvas&&typeof Chart!=='undefined'){
+                    new Chart(trendCanvas,{
+                        type:'bar',
+                        data:{
+                            labels:['今日','本周','本月'],
+                            datasets:[{
+                                label:'轴承',
+                                data:[b.todayAdded||0,b.thisWeekAdded||0,b.thisMonthAdded||0],
+                                backgroundColor:'rgba(23,162,184,.7)'
+                            },{
+                                label:'商家',
+                                data:[m.todayRegistered||0,m.totalCount?Math.round(m.totalCount/30):0,0],
+                                backgroundColor:'rgba(255,193,7,.7)'
+                            }]
+                        },
+                        options:{
+                            responsive:true,
+                            plugins:{legend:{position:'bottom'}},
+                            scales:{y:{beginAtZero:true}}
+                        }
+                    });
+                }
+            } catch(e) {}
 
-            var brandsDiv=document.getElementById('topBrandsChart');
-            if(brandsDiv&&b.topBrands&&b.topBrands.length){
-                var list='<ul class="list-group list-group-flush">';
-                b.topBrands.slice(0,10).forEach(function(x){
-                    list+='<li class="list-group-item d-flex justify-content-between align-items-center">'+(x.brandName||'未知')+'<span class="badge bg-info rounded-pill">'+x.count+'</span></li>';
-                });
-                list+='</ul>';
-                brandsDiv.innerHTML=list;
-            }
+            try {
+                var brandsDiv=document.getElementById('topBrandsChart');
+                if(brandsDiv&&b.topBrands&&b.topBrands.length){
+                    var list='<ul class="list-group list-group-flush">';
+                    b.topBrands.slice(0,10).forEach(function(x){
+                        list+='<li class="list-group-item d-flex justify-content-between align-items-center">'+(x.brandName||'未知')+'<span class="badge bg-info rounded-pill">'+x.count+'</span></li>';
+                    });
+                    list+='</ul>';
+                    brandsDiv.innerHTML=list;
+                }
+            } catch(e) {}
         })
-        .catch(function(){
+        .catch(function(e){
+            console.error('DashboardStats 渲染异常', e);
             ['bearingCount','brandCount','typeCount','merchantCount',
              'syncPendingCount','correctionPendingCount','licensePendingCount','merchantVerifyPendingCount'].forEach(function(id){
                 var el=document.getElementById(id);if(el)el.textContent='N/A';

@@ -22,26 +22,26 @@ public class MerchantVerifyController : Controller
 
     private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
 
-    public async Task<IActionResult> Index(string? status = null, string search = "", int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Index(string? status = "pending", string search = "", int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
-        var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted=false";
+        var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted=false&excludeCrawler=true";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&keyword={Uri.EscapeDataString(search)}";
         if (!string.IsNullOrWhiteSpace(status))
         {
             var statusMap = new Dictionary<string, int>
             {
-                ["pending"] = 0,
-                ["active"] = 1,
-                ["suspended"] = 2
+                ["pending"] = 2,
+                ["active"] = 0,
+                ["suspended"] = 1
             };
             if (statusMap.TryGetValue(status, out var sv))
                 url += $"&status={sv}";
         }
         else
         {
-            url += "&verifiedOnly=false";
+            url += "&status=2";
         }
 
         try

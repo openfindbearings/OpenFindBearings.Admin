@@ -87,8 +87,8 @@
 | 营业执照列表 | API | `GET /api/admin/licenses/pending` | ✅ |
 | 营业执照审核通过 | API | `POST /api/admin/licenses/{id}/approve` | ✅ |
 | 营业执照审核拒绝 | API | `POST /api/admin/licenses/{id}/reject` | ✅ |
-| 商家认证搜索 | API | `GET /api/merchants/search?unverified=true` | ✅ |
-| 入驻申请审批 | API | `POST /api/admin/merchants/{id}/verify`（不再清除爬虫数据） | ✅ |
+| 入驻申请列表（排除爬虫来源） | API | `GET /api/admin/merchants?excludeCrawler=true&status=`（status：2=待认证、0=已认证、1=已拒绝） | ✅ |
+| 入驻申请认证 | API | `POST /api/admin/merchants/{id}/verify`（不再清除爬虫数据） | ✅ |
 | 查看同步数据 | API | 弹窗调用 `GET /api/merchants/{id}/bearings?dataSource=Crawler`，支持"显示全部"切换 | ✅ |
 
 ### 第三层：任务管理
@@ -186,4 +186,4 @@
 | v1.9.0 | 2026-08-03 | 爬虫管理降级为只读展示：数据爬虫功能改为经 Sync /api/datasources 动态读取数据源清单 + 静态调度策略；移除 Crawler API 调用、CrawlerController、Crawler 审计日志源；控制器清单 13→12、权限键 18→17；健康检测收敛为 3 服务 |
 | v1.10.0 | 2026-08-12 | 同步数据审核升级为编辑式审核：通过按钮打开编辑弹窗，经 GET /api/audit/{id} 拉取 Staging 实体可编辑字段预填，提交时以 JSON 携带 fields 字典（ReviewApproveRequest）调用 POST /api/audit/{id}/approve；新增 ReviewController.GetDetail action 透传详情；ReviewController.Approve 由 FormUrlEncoded 改为 JSON |
 | v1.11.0 | 2026-08-19 | 仪表盘商家卡片归类：商家总量卡内嵌显示"已入驻 X"（Merchants.VerifiedCount）；"商家认证待审核数"改为"入驻申请待审批数"（Merchants.PendingApplicationCount，统计待审核且非爬虫来源的商家）；删除 API SeedData 演示商家相关数据 |
-| v1.12.0 | 2026-08-20 | 审核管理菜单与仪表盘卡片名称统一（去"待"字）：同步数据审核 / 信息纠错审核 / 营业执照审核 / 入驻申请审批（原"商家认证审核"）；四个审核界面统一样式为同步数据审核风格（page-header + nav-tabs 状态筛选 + 统一表格 / 操作按钮 / 分页 / 空状态），Correction 与 License 新增分页 |
+| v1.12.0 | 2026-08-20 | 审核管理菜单与仪表盘卡片名称统一（去"待"字）：同步数据审核 / 信息纠错审核 / 营业执照审核 / 入驻申请审批（原"商家认证审核"）；四个审核界面统一样式为同步数据审核风格（page-header + nav-tabs 状态筛选 + 统一表格 / 操作按钮 / 分页 / 空状态），Correction 与 License 新增分页；入驻申请审批列表改为仅显示非爬虫来源商家（GET /api/admin/merchants?excludeCrawler=true），修正状态筛选映射（2=待认证/0=已认证/1=已拒绝） |

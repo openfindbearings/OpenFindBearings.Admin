@@ -22,7 +22,7 @@
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == null ? "active" : "")" href="@Url.Action("Index", new { status = "", search, page = 1 })">待认证</a>
+        <a class="nav-link @(currentStatus == "pending" ? "active" : "")" href="@Url.Action("Index", new { status = "pending", search, page = 1 })">待认证</a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentStatus == "active" ? "active" : "")" href="@Url.Action("Index", new { status = "active", search, page = 1 })">已认证</a>

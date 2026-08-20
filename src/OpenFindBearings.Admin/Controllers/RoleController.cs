@@ -34,7 +34,8 @@ public class RoleController : Controller
             })
             .OrderBy(r => r.RoleName)
             .ToList();
-        return View(roles);
+        ViewBag.Items = roles;
+        return View();
     }
 
     /// <summary>

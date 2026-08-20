@@ -39,7 +39,7 @@ public class UsersController : Controller
             if (resp.IsSuccessStatusCode)
             {
                 var json = await resp.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponseWrapper<PaginatedWrapper<UserItemDto>>>(json);
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<PagedData<UserItemDto>>>(json);
                 ViewBag.Items = result?.Data?.Items ?? [];
                 ViewBag.TotalCount = result?.Data?.TotalCount ?? 0;
                 ViewBag.Page = page;
@@ -164,21 +164,4 @@ public class UsersController : Controller
         }
         return RedirectToAction("Index");
     }
-
-    #region 内部类型
-
-    private class ApiResponseWrapper<T>
-    {
-        public T? Data { get; set; }
-    }
-
-    private class PaginatedWrapper<T>
-    {
-        public List<T> Items { get; set; } = [];
-        public int TotalCount { get; set; }
-        public int PageIndex { get; set; }
-        public int PageSize { get; set; }
-    }
-
-    #endregion
 }

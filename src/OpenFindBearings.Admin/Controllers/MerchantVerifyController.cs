@@ -49,7 +49,7 @@ public class MerchantVerifyController : Controller
             var resp = await client.GetAsync(url);
             if (!resp.IsSuccessStatusCode)
             {
-                _logger.LogWarning("商家认证审核 API 请求失败: {Status}", resp.StatusCode);
+                _logger.LogWarning("入驻申请审批 API 请求失败: {Status}", resp.StatusCode);
                 ViewBag.Error = "无法获取商家列表";
                 return View();
             }
@@ -61,7 +61,7 @@ public class MerchantVerifyController : Controller
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取商家认证审核列表异常");
+            _logger.LogError(ex, "获取入驻申请审批列表异常");
             ViewBag.Error = "连接 API 服务异常";
         }
 

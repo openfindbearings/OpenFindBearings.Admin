@@ -98,26 +98,33 @@ public class AuditLogController : Controller
         if (!root.TryGetProperty("data", out var data))
             return (items, totalCount);
 
-        // Parse items
+        // Parse items（兼容各项目 DTO 字段命名差异：Sync 用 operatorId/operatorName/resourceType/resourceId/ipAddress/createdAt，Identity 用 userId/username，API 用 entityType/entityId/entityName/operatedAt）
         if (data.TryGetProperty("items", out var itemsEl))
         {
             foreach (var item in itemsEl.EnumerateArray())
             {
-                    items.Add(new AuditLogItemDto(
-                        Id: item.TryGetProperty("id", out var id) && id.TryGetGuid(out var guid) ? guid : Guid.Empty,
-                        UserId: item.TryGetProperty("operatorId", out var uid) && uid.TryGetGuid(out var uGuid) ? uGuid : null,
-                        Username: item.TryGetProperty("operatorName", out var un) ? un.GetString() ?? "" : null,
-                        Action: item.TryGetProperty("action", out var action) ? action.GetString() ?? "" : "",
-                        ResourceType: item.TryGetProperty("resourceType", out var rt) ? rt.GetString() ?? "" : null,
-                        ResourceId: item.TryGetProperty("resourceId", out var rid) ? rid.GetString() ?? "" : null,
-                        Details: null,
-                        Status: null,
-                        FailureReason: null,
-                        ClientId: null,
-                        IpAddress: item.TryGetProperty("ipAddress", out var ip) ? ip.GetString() ?? "" : null,
-                        UserAgent: null,
-                        CreatedAt: item.TryGetProperty("createdAt", out var ca) && ca.TryGetDateTimeOffset(out var dto) ? dto : DateTimeOffset.MinValue
-                    ));
+                var details = GetString(item, "details", "remarks");
+                ParseDetails(details, out var detailMethod, out var detailPath, out var statusCode, out var durationMs);
+
+                items.Add(new AuditLogItemDto(
+                    Id: GetGuid(item, "id") ?? Guid.Empty,
+                    UserId: GetGuid(item, "operatorId", "userId"),
+                    Username: GetString(item, "operatorName", "username"),
+                    Action: GetString(item, "action") ?? "",
+                    ResourceType: GetString(item, "resourceType", "entityType"),
+                    ResourceId: GetResourceId(item),
+                    Details: details,
+                    Status: GetString(item, "status"),
+                    FailureReason: GetString(item, "failureReason"),
+                    ClientId: GetString(item, "clientId"),
+                    IpAddress: GetString(item, "ipAddress"),
+                    UserAgent: GetString(item, "userAgent"),
+                    CreatedAt: GetDateTime(item, "createdAt", "operatedAt"),
+                    HttpMethod: GetString(item, "requestMethod") ?? detailMethod,
+                    RequestPath: GetString(item, "requestPath") ?? detailPath,
+                    StatusCode: statusCode,
+                    DurationMs: durationMs
+                ));
             }
         }
 
@@ -125,5 +132,84 @@ public class AuditLogController : Controller
             totalCount = tc.GetInt32();
 
         return (items, totalCount);
+    }
+
+    private static string? GetString(System.Text.Json.JsonElement item, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (item.TryGetProperty(name, out var value) &&
+                value.ValueKind == System.Text.Json.JsonValueKind.String)
+                return value.GetString();
+        }
+        return null;
+    }
+
+    private static Guid? GetGuid(System.Text.Json.JsonElement item, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (item.TryGetProperty(name, out var value) &&
+                value.ValueKind == System.Text.Json.JsonValueKind.String &&
+                value.TryGetGuid(out var guid))
+                return guid;
+        }
+        return null;
+    }
+
+    private static DateTimeOffset GetDateTime(System.Text.Json.JsonElement item, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (item.TryGetProperty(name, out var value) &&
+                value.TryGetDateTimeOffset(out var dto))
+                return dto;
+        }
+        return DateTimeOffset.MinValue;
+    }
+
+    private static string? GetResourceId(System.Text.Json.JsonElement item)
+    {
+        if (item.TryGetProperty("resourceId", out var rid) &&
+            rid.ValueKind == System.Text.Json.JsonValueKind.String)
+            return rid.GetString();
+
+        if (item.TryGetProperty("entityName", out var en) &&
+            en.ValueKind == System.Text.Json.JsonValueKind.String)
+        {
+            var name = en.GetString();
+            if (!string.IsNullOrEmpty(name))
+                return name;
+        }
+
+        if (item.TryGetProperty("entityId", out var eid) &&
+            eid.ValueKind == System.Text.Json.JsonValueKind.String)
+            return eid.GetString();
+
+        return null;
+    }
+
+    private static void ParseDetails(string? details, out string? method, out string? path, out int? statusCode, out long? durationMs)
+    {
+        method = null;
+        path = null;
+        statusCode = null;
+        durationMs = null;
+
+        if (string.IsNullOrEmpty(details))
+            return;
+
+        var m = System.Text.RegularExpressions.Regex.Match(details, @"^(\w+)\s+(.+?)\s*->\s*(\d+)");
+        if (m.Success)
+        {
+            method = m.Groups[1].Value;
+            path = m.Groups[2].Value.Trim();
+            if (int.TryParse(m.Groups[3].Value, out var sc))
+                statusCode = sc;
+        }
+
+        var d = System.Text.RegularExpressions.Regex.Match(details, @"\((\d+)ms\)");
+        if (d.Success && long.TryParse(d.Groups[1].Value, out var dm))
+            durationMs = dm;
     }
 }

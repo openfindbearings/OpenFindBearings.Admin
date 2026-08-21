@@ -103,9 +103,6 @@ public class AuditLogController : Controller
         {
             foreach (var item in itemsEl.EnumerateArray())
             {
-                var details = GetString(item, "details", "remarks");
-                ParseDetails(details, out var detailMethod, out var detailPath, out var statusCode, out var durationMs);
-
                 items.Add(new AuditLogItemDto(
                     Id: GetGuid(item, "id") ?? Guid.Empty,
                     UserId: GetGuid(item, "operatorId", "userId"),
@@ -113,17 +110,17 @@ public class AuditLogController : Controller
                     Action: GetString(item, "action") ?? "",
                     ResourceType: GetString(item, "resourceType", "entityType"),
                     ResourceId: GetResourceId(item),
-                    Details: details,
+                    Details: GetString(item, "details", "remarks"),
                     Status: GetString(item, "status"),
                     FailureReason: GetString(item, "failureReason"),
                     ClientId: GetString(item, "clientId"),
                     IpAddress: GetString(item, "ipAddress"),
                     UserAgent: GetString(item, "userAgent"),
                     CreatedAt: GetDateTime(item, "createdAt", "operatedAt"),
-                    HttpMethod: GetString(item, "requestMethod") ?? detailMethod,
-                    RequestPath: GetString(item, "requestPath") ?? detailPath,
-                    StatusCode: statusCode,
-                    DurationMs: durationMs
+                    HttpMethod: GetString(item, "httpMethod", "requestMethod"),
+                    RequestPath: GetString(item, "requestPath"),
+                    StatusCode: GetInt(item, "statusCode"),
+                    DurationMs: GetLong(item, "durationMs")
                 ));
             }
         }
@@ -168,6 +165,30 @@ public class AuditLogController : Controller
         return DateTimeOffset.MinValue;
     }
 
+    private static int? GetInt(System.Text.Json.JsonElement item, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (item.TryGetProperty(name, out var value) &&
+                value.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                value.TryGetInt32(out var val))
+                return val;
+        }
+        return null;
+    }
+
+    private static long? GetLong(System.Text.Json.JsonElement item, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (item.TryGetProperty(name, out var value) &&
+                value.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                value.TryGetInt64(out var val))
+                return val;
+        }
+        return null;
+    }
+
     private static string? GetResourceId(System.Text.Json.JsonElement item)
     {
         if (item.TryGetProperty("resourceId", out var rid) &&
@@ -187,29 +208,5 @@ public class AuditLogController : Controller
             return eid.GetString();
 
         return null;
-    }
-
-    private static void ParseDetails(string? details, out string? method, out string? path, out int? statusCode, out long? durationMs)
-    {
-        method = null;
-        path = null;
-        statusCode = null;
-        durationMs = null;
-
-        if (string.IsNullOrEmpty(details))
-            return;
-
-        var m = System.Text.RegularExpressions.Regex.Match(details, @"^(\w+)\s+(.+?)\s*->\s*(\d+)");
-        if (m.Success)
-        {
-            method = m.Groups[1].Value;
-            path = m.Groups[2].Value.Trim();
-            if (int.TryParse(m.Groups[3].Value, out var sc))
-                statusCode = sc;
-        }
-
-        var d = System.Text.RegularExpressions.Regex.Match(details, @"\((\d+)ms\)");
-        if (d.Success && long.TryParse(d.Groups[1].Value, out var dm))
-            durationMs = dm;
     }
 }

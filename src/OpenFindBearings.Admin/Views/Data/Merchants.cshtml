@@ -1,8 +1,21 @@
 @model MerchantListViewModel
 @{
     ViewData["Title"] = "商家列表";
-    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}";
+    var vo = Model.VerifiedOnly;
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}";
 }
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(vo == null ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = (string?)null, search = Model.Search, page = 1 })">全部</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(vo == "true" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "true", search = Model.Search, page = 1 })">已认证</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(vo == "false" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "false", search = Model.Search, page = 1 })">未认证</a>
+    </li>
+</ul>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -15,6 +28,7 @@
                 <i class="fas fa-file-excel"></i> Excel 导入
             </button>
             <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
+                <input type="hidden" name="verifiedOnly" value="@vo" />
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." style="min-width:140px" />
                 <button class="btn btn-primary"><i class="fas fa-search"></i></button>
             </form>
@@ -268,8 +282,13 @@ document.querySelectorAll('.btn-on-sale').forEach(function(btn){
         document.getElementById('onSaleMerchant').textContent=name;
         document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3">加载中...</td></tr>';
         new bootstrap.Modal(document.getElementById('onSaleModal')).show();
-        fetch('/api/proxy/merchant-bearings/'+id).then(function(r){return r.json()}).then(function(d){
-            var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.partNumber||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.status||'-')+'</td></tr>';});
+        fetch('@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', id)).then(function(r){return r.json()}).then(function(d){
+            var items = d && d.data ? d.data.items || [] : d.items || d || [];
+            if (!Array.isArray(items)) items = [];
+            var h='';items.forEach(function(r){
+                var statusText = r.isOnSale ? '在售' : '下架';
+                h+='<tr><td>'+(r.partNumber||'-')+'</td><td>'+(r.brandName||r.brand||'-')+'</td><td>'+statusText+'</td></tr>';
+            });
             document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无在售商品</td></tr>';
         }).catch(function(){document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
     });

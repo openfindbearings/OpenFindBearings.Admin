@@ -319,12 +319,14 @@ public class DataController : Controller
     /// <summary>
     /// 商家列表（分页），支持显示已删除项
     /// </summary>
-    public async Task<IActionResult> Merchants(string? search, bool includeDeleted = false, int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Merchants(string? search, string? verifiedOnly, bool includeDeleted = false, int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted={includeDeleted.ToString().ToLower()}";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&keyword={Uri.EscapeDataString(search)}";
+        if (!string.IsNullOrWhiteSpace(verifiedOnly))
+            url += $"&verifiedOnly={verifiedOnly}";
         var resp = await client.GetAsync(url);
         if (!resp.IsSuccessStatusCode)
             return View(new MerchantListViewModel());
@@ -338,6 +340,7 @@ public class DataController : Controller
             Page = page,
             PageSize = pageSize,
             Search = search,
+            VerifiedOnly = verifiedOnly,
             IncludeDeleted = includeDeleted
         });
     }
@@ -404,6 +407,30 @@ public class DataController : Controller
         var resp = await client.DeleteAsync($"{ApiBase()}/api/admin/merchants/{id}/hard");
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "商家已彻底删除" : $"彻底删除失败: {resp.StatusCode}";
         return RedirectToAction("Merchants");
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int pageSize = 100)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var url = $"{ApiBase()}/api/merchants/{id}/bearings?pageSize={pageSize}";
+            if (onlyOnSale) url += "&onlyOnSale=true";
+
+            var resp = await client.GetAsync(url);
+            var json = await resp.Content.ReadAsStringAsync();
+            if (resp.IsSuccessStatusCode)
+                return Content(json, "application/json");
+
+            _logger.LogWarning("获取商家在售商品失败: {Id}, {StatusCode}", id, resp.StatusCode);
+            return Json(new { success = false, message = "获取失败" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取商家在售商品异常: {Id}", id);
+            return Json(new { success = false, message = "服务异常" });
+        }
     }
 
     #endregion

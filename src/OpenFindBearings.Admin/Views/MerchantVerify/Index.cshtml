@@ -25,9 +25,6 @@
         <a class="nav-link @(currentStatus == "pending" ? "active" : "")" href="@Url.Action("Index", new { status = "pending", search, page = 1 })">待认证</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == "active" ? "active" : "")" href="@Url.Action("Index", new { status = "active", search, page = 1 })">已认证</a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link @(currentStatus == "suspended" ? "active" : "")" href="@Url.Action("Index", new { status = "suspended", search, page = 1 })">已拒绝</a>
     </li>
 </ul>
@@ -255,7 +252,7 @@
 
         function loadSyncData(id) {
             const showAll = document.getElementById('syncDataShowAll').checked;
-            var url = '/api/proxy/merchant-bearings/' + id + '?dataSource=Crawler&pageSize=9999';
+            var url = '@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', id) + '?dataSource=Crawler&pageSize=9999';
             if (!showAll) url += '&onlyOnSale=true';
             fetch(url)
                 .then(function (r) { return r.json(); })

@@ -39,10 +39,6 @@ public class MerchantVerifyController : Controller
             if (statusMap.TryGetValue(status, out var sv))
                 url += $"&status={sv}";
         }
-        else
-        {
-            url += "&status=2";
-        }
 
         try
         {
@@ -120,6 +116,34 @@ public class MerchantVerifyController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "商家拒绝异常: {Id}", id);
+            return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetMerchantBearings(Guid id, string? dataSource = null, bool onlyOnSale = false, int pageSize = 9999)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var url = $"{ApiBase()}/api/merchants/{id}/bearings?pageSize={pageSize}";
+            if (!string.IsNullOrWhiteSpace(dataSource))
+                url += $"&dataSource={Uri.EscapeDataString(dataSource)}";
+            if (onlyOnSale)
+                url += "&onlyOnSale=true";
+
+            var resp = await client.GetAsync(url);
+            var json = await resp.Content.ReadAsStringAsync();
+
+            if (resp.IsSuccessStatusCode)
+                return Content(json, "application/json");
+
+            _logger.LogWarning("获取商家在售商品失败: {Id}, {StatusCode}", id, resp.StatusCode);
+            return Json(new { success = false, message = "获取失败" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取商家在售商品异常: {Id}", id);
             return Json(new { success = false, message = "服务异常" });
         }
     }

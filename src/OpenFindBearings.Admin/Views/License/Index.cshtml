@@ -1,43 +1,146 @@
-@{ ViewData["Title"] = "营业执照审核"; }
+@{
+    ViewData["Title"] = "营业执照审核";
+    var items = ViewBag.Items as IEnumerable<LicenseItemDto> ?? Enumerable.Empty<LicenseItemDto>();
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var currentStatus = (string?)ViewBag.CurrentStatus ?? "pending";
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    string PageUrl(int p) => $"?status={currentStatus}&page={p}";
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-file-alt"></i> 营业执照审核</h4>
+    <p class="text-muted">商家入驻上传的营业执照审核，通过后商家完成认证</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "pending" ? "active" : "")" asp-action="Index" asp-route-status="pending">待审核</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "approved" ? "active" : "")" asp-action="Index" asp-route-status="approved">已通过</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "rejected" ? "active" : "")" asp-action="Index" asp-route-status="rejected">已拒绝</a>
+    </li>
+</ul>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">营业执照审核</h6>
-        <div class="btn-group btn-group-sm">
-            <a href="?status=pending" class="btn btn-outline-primary @(ViewBag.CurrentStatus=="pending"?"active":"")">待审核</a>
-            <a href="?status=approved" class="btn btn-outline-success @(ViewBag.CurrentStatus=="approved"?"active":"")">已通过</a>
-            <a href="?status=rejected" class="btn btn-outline-danger @(ViewBag.CurrentStatus=="rejected"?"active":"")">已拒绝</a>
-        </div>
-    </div>
     <div class="card-body p-0">
-        <table class="table table-hover">
-            <thead><tr><th>商家</th><th>执照号</th><th>状态</th><th>提交时间</th><th>操作</th></tr></thead>
-            <tbody>
-                @{ var items = ViewBag.Items as IEnumerable<LicenseItemDto> ?? Enumerable.Empty<LicenseItemDto>(); }
-                @if (items.Any())
-                {
-                    @foreach (var item in items)
-                    {
+        @if (!items.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                <p>暂无营业执照记录</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <td>@item.MerchantName</td>
-                            <td>@item.LicenseNumber</td>
-                            <td><span class="badge bg-@(item.Status=="approved"?"success":item.Status=="rejected"?"danger":"warning")">@item.Status</span></td>
-                            <td>@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
-                            <td>
-                                @if (item.Status == "pending")
-                                {
-                                    <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-success">通过</button></form>
-                                    <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">拒绝</button></form>
-                                }
-                            </td>
+                            <th>商家</th>
+                            <th>执照号</th>
+                            <th>状态</th>
+                            <th style="width:140px">提交时间</th>
+                            <th style="width:170px">操作</th>
                         </tr>
-                    }
-                }
-                else
-                {
-                    <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
-                }
-            </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in items)
+                        {
+                            <tr>
+                                <td>@item.MerchantName</td>
+                                <td>@item.LicenseNumber</td>
+                                <td>
+                                    @if (item.Status == "approved")
+                                    {
+                                        <span class="badge bg-success">已通过</span>
+                                    }
+                                    else if (item.Status == "rejected")
+                                    {
+                                        <span class="badge bg-danger">已拒绝</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">待审核</span>
+                                    }
+                                </td>
+                                <td class="text-muted small">@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td>
+                                    @if (item.Status == "pending")
+                                    {
+                                        <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline">
+                                            <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> 通过</button>
+                                        </form>
+                                        <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline">
+                                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i> 拒绝</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(page <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(1)">首页</a>
+                                </li>
+                                <li class="page-item @(page <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(page - 1)">&laquo;</a>
+                                </li>
+                                @{
+                                    var rs = Math.Max(1, page - 2);
+                                    var re = Math.Min(totalPages, page + 2);
+                                }
+                                @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                @for (var i = rs; i <= re; i++)
+                                {
+                                    <li class="page-item @(i == page ? "active" : "")">
+                                        <a class="page-link" href="@PageUrl(i)">@i</a>
+                                    </li>
+                                }
+                                @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(page + 1)">&raquo;</a>
+                                </li>
+                                <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(totalPages)">尾页</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            }
+        }
     </div>
 </div>

@@ -7,7 +7,7 @@
 
 <div class="page-header">
     <h4><i class="fas fa-check-double"></i> 同步数据审核</h4>
-    <p class="text-muted">Sync ETL 数据同步前的待审核项，审核通过后将在下次 T 阶段自动同步至业务库</p>
+    <p class="text-muted">Sync ETL 数据同步前的待审核项，可编辑补全字段后通过，下次 T/L 阶段同步至业务库</p>
 </div>
 
 @if (ViewBag.Error != null)
@@ -58,7 +58,7 @@
                             <th>建议值</th>
                             <th style="width:80px">置信度</th>
                             <th style="width:140px">创建时间</th>
-                            <th style="width:160px">操作</th>
+                            <th style="width:170px">操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -82,7 +82,8 @@
                                 </td>
                                 <td class="text-muted small">@item.CreatedAtDisplay</td>
                                 <td>
-                                    <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id">
+                                    <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id"
+                                            data-entity-type="@item.EntityType">
                                         <i class="fas fa-check"></i> 通过
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id"
@@ -136,28 +137,145 @@
     </div>
 </div>
 
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">审核通过</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="reviewFormTitle" class="text-muted small mb-2"></div>
+                <form id="reviewForm">
+                    <div class="row" id="reviewFields"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" id="btnConfirmApprove">
+                    <i class="fas fa-check"></i> 审核通过
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        var fieldLabels = {
+            'code': '代码', 'name': '名称', 'country': '国家/地区', 'logoUrl': 'Logo 地址',
+            'description': '描述', 'englishName': '英文名称', 'unifiedSocialCreditCode': '统一社会信用代码',
+            'contactPerson': '联系人', 'contactPhone': '电话', 'contactMobile': '手机', 'contactQQ': 'QQ',
+            'contactEmail': '邮箱', 'contactAddress': '地址', 'businessScope': '经营范围',
+            'partNumber': '型号', 'oldNumber': '曾用代号', 'brandName': '品牌', 'bearingTypeName': '轴承类型',
+            'innerDiameter': '内径', 'outerDiameter': '外径', 'width': '宽度', 'weight': '重量',
+            'dynamicLoad': '动载荷 C', 'staticLoad': '静载荷 C0', 'limitingSpeed': '极限转速',
+            'limitingSpeedGrease': '极限转速(脂)', 'limitingSpeedOil': '极限转速(油)',
+            'priceDescription': '价格描述', 'minPrice': '最低价', 'maxPrice': '最高价', 'isNegotiable': '可议价',
+            'image3DUrl': '3D 图地址', 'image2DUrl': '2D 图地址'
+        };
+
+        var currentAuditId = null;
+
         $('.btn-approve').on('click', function () {
             var btn = $(this);
-            var id = btn.data('id');
-            var row = btn.closest('tr');
+            currentAuditId = btn.data('id');
+            var entityType = btn.data('entity-type');
 
             btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
-            $.post('@Url.Action("Approve", "Review")', { id: id })
+            $.get('@Url.Action("GetDetail", "Review")', { id: currentAuditId })
                 .done(function (res) {
                     if (res.success) {
-                        row.addClass('table-success').fadeOut(800, function () { row.remove(); });
+                        var detail = res.data || {};
+                        renderFields(detail.fields || {}, entityType);
+                        $('#reviewFormTitle').text('实体类型：' + (entityType || '') + '，修改后点击审核通过，系统将按编辑后的数据入库');
+                        $('#reviewModal').modal('show');
                     } else {
-                        alert(res.message || '操作失败');
-                        btn.prop('disabled', false).html('<i class="fas fa-check"></i> 通过');
+                        alert(res.message || '获取详情失败');
                     }
                 })
-                .fail(function () {
-                    alert('请求失败');
+                .always(function () {
                     btn.prop('disabled', false).html('<i class="fas fa-check"></i> 通过');
                 });
+        });
+
+        function renderFields(fields, entityType) {
+            var container = $('#reviewFields');
+            container.empty();
+
+            if (!fields || Object.keys(fields).length === 0) {
+                container.html('<div class="text-muted">该记录无可用编辑字段，可直接审核通过</div>');
+                return;
+            }
+
+            Object.keys(fields).forEach(function (key) {
+                var label = fieldLabels[key] || key;
+                var value = fields[key] || '';
+                var col = document.createElement('div');
+                col.className = 'col-md-6 mb-2';
+
+                if (key === 'isNegotiable') {
+                    var sel = document.createElement('select');
+                    sel.className = 'form-select form-control-sm';
+                    sel.name = key;
+                    var option = document.createElement('option');
+                    option.value = '';
+                    option.text = '（未设置）';
+                    sel.appendChild(option);
+                    [['true', '是'], ['false', '否']].forEach(function (pair) {
+                        var o = document.createElement('option');
+                        o.value = pair[0];
+                        o.text = pair[1];
+                        if (value === pair[0]) o.selected = true;
+                        sel.appendChild(o);
+                    });
+                    col.innerHTML = '<label class="form-label small mb-0">' + label + '</label>';
+                    col.appendChild(sel);
+                } else {
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control form-control-sm';
+                    input.name = key;
+                    input.value = value;
+                    col.innerHTML = '<label class="form-label small mb-0">' + label + '</label>';
+                    col.appendChild(input);
+                }
+
+                container.append(col);
+            });
+        }
+
+        $('#btnConfirmApprove').on('click', function () {
+            if (!currentAuditId) return;
+
+            var btn = $(this);
+            var fields = {};
+            $('#reviewFields input, #reviewFields select').each(function () {
+                fields[this.name] = $(this).val();
+            });
+
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+            $.ajax({
+                url: '@Url.Action("Approve", "Review")',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: currentAuditId, fields: fields })
+            }).done(function (res) {
+                if (res.success) {
+                    $('#reviewModal').modal('hide');
+                    $('tr[data-review-id="' + currentAuditId + '"]').addClass('table-success').fadeOut(800, function () {
+                        $(this).remove();
+                    });
+                } else {
+                    alert(res.message || '操作失败');
+                }
+            }).fail(function () {
+                alert('请求失败');
+            }).always(function () {
+                btn.prop('disabled', false).html('<i class="fas fa-check"></i> 审核通过');
+            });
         });
 
         $('.btn-reject').on('click', function () {

@@ -89,33 +89,68 @@ public class ReviewController : Controller
     }
 
     [HttpPost]
-    public async Task<IActionResult> Approve(Guid id, string? finalValue = null)
+    public async Task<IActionResult> Approve([FromBody] ReviewApproveRequest request)
+    {
+        if (request == null || request.Id == Guid.Empty)
+            return Json(new { success = false, message = "请求参数无效" });
+
+        var baseUrl = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+        var client = _factory.CreateClient("SyncClient");
+
+        try
+        {
+            var payload = new
+            {
+                approvedBy = User.Identity?.Name ?? "admin",
+                finalValue = request.FinalValue ?? "",
+                fields = request.Fields ?? new Dictionary<string, string?>()
+            };
+            var content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                System.Text.Encoding.UTF8,
+                "application/json");
+            var response = await client.PostAsync($"{baseUrl}/api/audit/{request.Id}/approve", content);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("审核通过: {Id}", request.Id);
+                return Json(new { success = true, message = "已通过" });
+            }
+
+            _logger.LogWarning("审核通过失败: {Id}, {StatusCode}, {Response}", request.Id, response.StatusCode, json);
+            return Json(new { success = false, message = "操作失败" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "审核通过异常: {Id}", request.Id);
+            return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    /// <summary>
+    /// 获取审核记录详情（含 Staging 实体可编辑字段），供审核弹窗预填
+    /// </summary>
+    public async Task<IActionResult> GetDetail(Guid id)
     {
         var baseUrl = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
         var client = _factory.CreateClient("SyncClient");
 
         try
         {
-            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            var response = await client.GetAsync($"{baseUrl}/api/audit/{id}");
+            if (!response.IsSuccessStatusCode)
             {
-                ["approvedBy"] = User.Identity?.Name ?? "admin",
-                ["finalValue"] = finalValue ?? ""
-            });
-            var response = await client.PostAsync($"{baseUrl}/api/audit/{id}/approve", content);
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation("审核通过: {Id}", id);
-                return Json(new { success = true, message = "已通过" });
+                _logger.LogWarning("审核详情获取失败: {Id}, {StatusCode}", id, response.StatusCode);
+                return Json(new { success = false, message = "获取详情失败" });
             }
 
-            _logger.LogWarning("审核通过失败: {Id}, {StatusCode}, {Response}", id, response.StatusCode, json);
-            return Json(new { success = false, message = "操作失败" });
+            var json = await response.Content.ReadAsStringAsync();
+            return Content(json, "application/json");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "审核通过异常: {Id}", id);
+            _logger.LogError(ex, "审核详情获取异常: {Id}", id);
             return Json(new { success = false, message = "服务异常" });
         }
     }

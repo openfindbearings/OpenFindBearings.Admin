@@ -61,7 +61,7 @@ public class MappingController : Controller
                 if (data.TryGetProperty("items", out var itemsEl))
                 {
                     foreach (var item in itemsEl.EnumerateArray())
-                        items.Add(item);
+                        items.Add(item.Clone());
                 }
                 if (data.TryGetProperty("totalCount", out var tc))
                     totalCount = tc.GetInt32();

@@ -1,8 +1,21 @@
 @model MerchantListViewModel
 @{
     ViewData["Title"] = "商家列表";
-    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}";
+    var vo = Model.VerifiedOnly;
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}";
 }
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(vo == null ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = (string?)null, search = Model.Search, page = 1 })">全部</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(vo == "true" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "true", search = Model.Search, page = 1 })">已认证</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(vo == "false" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "false", search = Model.Search, page = 1 })">未认证</a>
+    </li>
+</ul>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -15,6 +28,7 @@
                 <i class="fas fa-file-excel"></i> Excel 导入
             </button>
             <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
+                <input type="hidden" name="verifiedOnly" value="@vo" />
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." style="min-width:140px" />
                 <button class="btn btn-primary"><i class="fas fa-search"></i></button>
             </form>
@@ -208,9 +222,18 @@
 
 <!-- 在售商品弹窗 -->
 <div class="modal fade" id="onSaleModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-dialog modal-xl"><div class="modal-content">
         <div class="modal-header"><h6 class="modal-title">在售商品 - <span id="onSaleMerchant"></span></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><table class="modal-table"><thead><tr><th>型号</th><th>品牌</th><th>状态</th></tr></thead><tbody id="onSaleBody"></tbody></table></div>
+        <div class="modal-body p-0">
+            <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
+                <small class="text-muted" id="onSaleTotal"></small>
+                <div style="width:240px"><input type="text" class="form-control form-control-sm" id="onSaleSearch" placeholder="搜索型号/曾用代号/品牌..."></div>
+            </div>
+            <div style="max-height:55vh;overflow-y:auto">
+                <table class="modal-table"><thead class="sticky-thead"><tr><th>型号</th><th>曾用代号</th><th>类型</th><th>尺寸</th><th>品牌</th><th>状态</th></tr></thead><tbody id="onSaleBody"></tbody></table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center px-3 py-2" id="onSalePager" style="display:none!important"></div>
+        </div>
     </div></div>
 </div>
 
@@ -262,18 +285,69 @@ function openEditMerchant(item) {
     document.getElementById('merchantAddress').value = item.address || '';
     new bootstrap.Modal(document.getElementById('editMerchantModal')).show();
 }
+var _onSaleAllItems=[];var _onSaleMerchantId='';
 document.querySelectorAll('.btn-on-sale').forEach(function(btn){
     btn.addEventListener('click',function(){
         var id=this.dataset.id, name=this.dataset.name;
+        _onSaleMerchantId=id;
         document.getElementById('onSaleMerchant').textContent=name;
-        document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3">加载中...</td></tr>';
+        document.getElementById('onSaleBody').innerHTML='<tr><td colspan="6">加载中...</td></tr>';
+        document.getElementById('onSalePager').style.display='none';
+        document.getElementById('onSaleSearch').value='';
         new bootstrap.Modal(document.getElementById('onSaleModal')).show();
-        fetch('/api/proxy/merchant-bearings/'+id).then(function(r){return r.json()}).then(function(d){
-            var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.partNumber||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.status||'-')+'</td></tr>';});
-            document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无在售商品</td></tr>';
-        }).catch(function(){document.getElementById('onSaleBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
+        loadOnSalePage(id, 1);
     });
 });
+document.getElementById('onSaleSearch').addEventListener('input',function(){
+    var kw=this.value.trim().toLowerCase();
+    if(!kw){renderOnSaleRows(_onSaleAllItems);return;}
+    var filtered=_onSaleAllItems.filter(function(r){
+        return (r.bearingPartNumber||'').toLowerCase().indexOf(kw)>=0||(r.bearingOldNumber||'').toLowerCase().indexOf(kw)>=0||(r.brandName||'').toLowerCase().indexOf(kw)>=0;
+    });
+    renderOnSaleRows(filtered);
+});
+function renderOnSaleRows(items){
+    var h='';items.forEach(function(r){
+        var statusText=r.isOnSale?'在售':'下架';
+        h+='<tr><td>'+(r.bearingPartNumber||'-')+'</td><td>'+(r.bearingOldNumber||'-')+'</td><td>'+(r.bearingTypeName||'-')+'</td><td>'+(r.dimensions||'-')+'</td><td>'+(r.brandName||'-')+'</td><td>'+statusText+'</td></tr>';
+    });
+    document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="6" class="text-center text-muted">无匹配结果</td></tr>';
+}
+function loadOnSalePage(merchantId, page) {
+    var body = document.getElementById('onSaleBody');
+    var pager = document.getElementById('onSalePager');
+    body.innerHTML='<tr><td colspan="6">加载中...</td></tr>';
+    pager.style.display='none';
+    fetch('@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', merchantId)+'?page='+page+'&pageSize=20')
+    .then(function(r){return r.json()}).then(function(d){
+        var data = d && d.data ? d.data : d || {};
+        var items = data.items || data || [];
+        var totalCount = data.totalCount || 0;
+        var totalPages = data.totalPages || Math.ceil(totalCount/20) || 1;
+        if (!Array.isArray(items)) items = [];
+        _onSaleAllItems=items;
+        var kw=document.getElementById('onSaleSearch').value.trim().toLowerCase();
+        document.getElementById('onSaleTotal').textContent='共 '+totalCount+' 条记录'+(kw?' (当前页筛选)':'');
+        if(kw){
+            var filtered=items.filter(function(r){return(r.bearingPartNumber||'').toLowerCase().indexOf(kw)>=0||(r.bearingOldNumber||'').toLowerCase().indexOf(kw)>=0||(r.brandName||'').toLowerCase().indexOf(kw)>=0;});
+            renderOnSaleRows(filtered);
+        } else {
+            renderOnSaleRows(items);
+        }
+        if (totalPages>1) {
+            var ph='';ph+='<ul class="pagination pagination-sm mb-0">';
+            ph+='<li class="page-item '+(page<=1?'disabled':'')+'"><a class="page-link" href="javascript:void(0)" onclick="loadOnSalePage(\''+merchantId+'\','+(page-1)+')">&laquo;</a></li>';
+            var rs=Math.max(1,page-2),re=Math.min(totalPages,page+2);
+            if(rs>1) ph+='<li class="page-item disabled"><span class="page-link">...</span></li>';
+            for(var i=rs;i<=re;i++) ph+='<li class="page-item '+(i===page?'active':'')+'"><a class="page-link" href="javascript:void(0)" onclick="loadOnSalePage(\''+merchantId+'\','+i+')">'+i+'</a></li>';
+            if(re<totalPages) ph+='<li class="page-item disabled"><span class="page-link">...</span></li>';
+            ph+='<li class="page-item '+(page>=totalPages?'disabled':'')+'"><a class="page-link" href="javascript:void(0)" onclick="loadOnSalePage(\''+merchantId+'\','+(page+1)+')">&raquo;</a></li>';
+            ph+='</ul>';
+            pager.innerHTML=ph;
+            pager.style.display='flex';
+        } else { pager.style.display='none'; }
+    }).catch(function(){body.innerHTML='<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';});
+}
 document.getElementById('importExcelForm').addEventListener('submit', function(e) {
     e.preventDefault();
     var fileInput = document.getElementById('importExcelFile');

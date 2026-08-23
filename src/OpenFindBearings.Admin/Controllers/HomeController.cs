@@ -115,7 +115,7 @@ public class HomeController : Controller
         if (root.TryGetProperty("data", out var dataElem) && dataElem.ValueKind == System.Text.Json.JsonValueKind.Object)
         {
             var inner = dataElem.GetRawText();
-            var merged = inner.TrimEnd('}') + ",\"syncPendingReviews\":" + syncJsonStr + "}";
+            var merged = inner[..^1] + ",\"syncPendingReviews\":" + syncJsonStr + "}";
             return Content("{\"data\":" + merged + "}", "application/json");
         }
 
@@ -129,10 +129,10 @@ public class HomeController : Controller
             bearings = new { totalCount = "N/A", todayAdded = 0, thisWeekAdded = 0, thisMonthAdded = 0, topBrands = Array.Empty<object>(), topTypes = Array.Empty<object>() },
             brands = new { totalCount = "N/A" },
             types = new { totalCount = "N/A" },
-            merchants = new { totalCount = "N/A", verifiedCount = 0, pendingVerification = 0, todayRegistered = 0, typeDistribution = Array.Empty<object>() },
+            merchants = new { totalCount = "N/A", verifiedCount = 0, pendingApplicationCount = 0, todayRegistered = 0, typeDistribution = Array.Empty<object>() },
             users = new { totalCount = 0, adminCount = 0, merchantStaffCount = 0, individualCount = 0, todayRegistered = 0, activeToday = 0 },
             corrections = new { totalCount = 0, pendingCount = "N/A", approvedCount = 0, rejectedCount = 0, todaySubmitted = 0 },
-            pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingLicenses = "N/A", pendingMerchantVerifications = "N/A" }
+            pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingLicenses = "N/A" }
         }
     });
 

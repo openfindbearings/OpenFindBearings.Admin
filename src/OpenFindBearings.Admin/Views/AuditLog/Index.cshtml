@@ -26,15 +26,18 @@
         {
             <div class="alert alert-warning m-3">@error</div>
         }
-        <table class="table table-hover">
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
+                    <th>时间</th>
                     <th>用户</th>
                     <th>操作</th>
-                    <th>资源类型</th>
-                    <th>资源 ID</th>
+                    <th>请求</th>
+                    <th>资源</th>
                     <th>IP</th>
-                    <th>时间</th>
+                    <th>结果</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -43,21 +46,53 @@
                     @foreach (var item in items)
                     {
                         <tr>
+                            <td class="text-nowrap text-muted small">@item.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
                             <td>@(item.Username ?? "-")</td>
-                            <td><span class="badge bg-secondary">@item.Action</span></td>
-                            <td>@(item.ResourceType ?? "-")</td>
-                            <td class="text-muted small">@(item.ResourceId != null && item.ResourceId != Guid.Empty.ToString() ? item.ResourceId[..Math.Min(8, item.ResourceId.Length)] : "-")</td>
+                            <td><span class="badge @item.ActionBadgeClass">@item.ActionDisplay</span></td>
+                            <td class="text-muted small">
+                                @if (!string.IsNullOrEmpty(item.HttpMethod))
+                                {
+                                    <span class="badge bg-light text-dark border me-1">@item.HttpMethod</span>@item.RequestPath
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td class="text-muted small">
+                                @item.ResourceTypeDisplay
+                                @if (!string.IsNullOrEmpty(item.ResourceId) && item.ResourceId != Guid.Empty.ToString())
+                                {
+                                    <span class="text-muted ms-1">#@(item.ResourceId.Length > 12 ? item.ResourceId[..12] + "..." : item.ResourceId)</span>
+                                }
+                            </td>
                             <td>@(item.IpAddress ?? "-")</td>
-                            <td>@item.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>
+                                @if (item.StatusCode.HasValue)
+                                {
+                                    <span class="badge @item.StatusBadgeClass">@item.ResultDisplay</span>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.Details))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary detail-btn" data-bs-toggle="modal" data-bs-target="#auditDetailModal" data-details="@item.Details">详情</button>
+                                }
+                            </td>
                         </tr>
                     }
                 }
                 else
                 {
-                    <tr><td colspan="6" class="text-center text-muted py-4">@(error ?? "暂无日志")</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">@(error ?? "暂无日志")</td></tr>
                 }
             </tbody>
         </table>
+        </div>
     </div>
     @if (totalPages > 1)
     {
@@ -100,3 +135,30 @@
         </div>
     }
 </div>
+
+<div class="modal fade" id="auditDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title mb-0">操作详情</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="auditDetailContent" class="mb-0" style="white-space: pre-wrap; word-break: break-all; font-size: 0.85rem;">-</pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.detail-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('auditDetailContent').textContent = btn.getAttribute('data-details') || '(无详情)';
+            });
+        });
+    </script>
+}

@@ -32,6 +32,8 @@ public class UsersController : Controller
             url += $"&search={Uri.EscapeDataString(search)}";
         if (!string.IsNullOrWhiteSpace(status))
             url += $"&status={status}";
+        if (includeDeleted)
+            url += "&includeDeleted=true";
 
         try
         {
@@ -39,7 +41,7 @@ public class UsersController : Controller
             if (resp.IsSuccessStatusCode)
             {
                 var json = await resp.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponseWrapper<PaginatedWrapper<UserItemDto>>>(json);
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<PagedData<UserItemDto>>>(json);
                 ViewBag.Items = result?.Data?.Items ?? [];
                 ViewBag.TotalCount = result?.Data?.TotalCount ?? 0;
                 ViewBag.Page = page;
@@ -165,20 +167,23 @@ public class UsersController : Controller
         return RedirectToAction("Index");
     }
 
-    #region 内部类型
-
-    private class ApiResponseWrapper<T>
+    /// <summary>
+    /// 彻底删除用户（物理删除，不可恢复）
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> HardDelete(string id)
     {
-        public T? Data { get; set; }
+        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var client = _factory.CreateClient("IdentityClient");
+        try
+        {
+            var resp = await client.DeleteAsync($"{identityBase}/api/account/admin/users/{id}/permanent");
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "用户已彻底删除" : $"删除失败: {resp.StatusCode} - {await resp.Content.ReadAsStringAsync()}";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"删除失败: {ex.Message}";
+        }
+        return RedirectToAction("Index", new { includeDeleted = true });
     }
-
-    private class PaginatedWrapper<T>
-    {
-        public List<T> Items { get; set; } = [];
-        public int TotalCount { get; set; }
-        public int PageIndex { get; set; }
-        public int PageSize { get; set; }
-    }
-
-    #endregion
 }

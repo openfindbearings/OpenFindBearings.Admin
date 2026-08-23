@@ -159,14 +159,16 @@
                         <thead>
                             <tr>
                                 <th>型号</th>
-                                <th>品牌</th>
+                                <th>曾用代号</th>
                                 <th>类型</th>
+                                <th>尺寸</th>
+                                <th>品牌</th>
                                 <th>来源</th>
                                 <th>状态</th>
                             </tr>
                         </thead>
                         <tbody id="syncDataBody">
-                            <tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-4">加载中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -262,18 +264,18 @@
                     if (!Array.isArray(items)) items = [];
                     $('#syncDataTotalCount').text(totalCount);
                     if (items.length === 0) {
-                        $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-muted py-4">无同步数据</td></tr>');
+                        $('#syncDataBody').html('<tr><td colspan="7" class="text-center text-muted py-4">无同步数据</td></tr>');
                         return;
                     }
                     var h = '';
                     items.forEach(function (r) {
                         var statusText = r.isOnSale ? '在售' : '下架';
-                        h += '<tr><td>' + (r.partNumber || '-') + '</td><td>' + (r.brand || r.brandName || '-') + '</td><td>' + (r.bearingType || '-') + '</td><td>爬虫</td><td>' + statusText + '</td></tr>';
+                        h += '<tr><td>' + (r.bearingPartNumber || '-') + '</td><td>' + (r.bearingOldNumber || '-') + '</td><td>' + (r.bearingTypeName || r.bearingType || '-') + '</td><td>' + (r.dimensions || '-') + '</td><td>' + (r.brandName || r.brand || '-') + '</td><td>爬虫</td><td>' + statusText + '</td></tr>';
                     });
                     $('#syncDataBody').html(h);
                 })
                 .catch(function () {
-                    $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-danger py-4">加载失败</td></tr>');
+                    $('#syncDataBody').html('<tr><td colspan="7" class="text-center text-danger py-4">加载失败</td></tr>');
                 });
         }
 

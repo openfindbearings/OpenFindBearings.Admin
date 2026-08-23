@@ -214,8 +214,9 @@ body.dark-theme .table-striped > tbody > tr:nth-of-type(odd) > td { background-c
 .modal-header { background: var(--modal-head-bg); border-bottom-color: var(--border-color); }
 .modal-header .btn-close { filter: var(--close-btn-filter, none); }
 .modal-table { width: 100%; font-size: 13px; }
-.modal-table th { font-size: 11px; text-transform: uppercase; color: var(--table-th-color); }
-.modal-body { max-height: 400px; overflow-y: auto; }
+.modal-table th { font-size: 11px; text-transform: uppercase; color: var(--table-th-color); background: var(--bg-card); }
+.sticky-thead th { position: sticky; top: 0; z-index: 1; }
+#onSaleModal .modal-body { max-height: none; overflow-y: visible; }
 
 /* ===== Pagination ===== */
 .pagination-sm .page-link { padding: .25rem .5rem; font-size: .8rem; background: var(--pagination-link-bg); border-color: var(--pagination-link-border); color: var(--pagination-link-color); }

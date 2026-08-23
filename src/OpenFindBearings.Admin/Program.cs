@@ -176,11 +176,12 @@ app.MapGet("/api/proxy/interchanges/{bearingId:guid}", async (Guid bearingId, IH
 
 // 代理商家商品查询（支持 onlyOnSale 和 dataSource 过滤）
 app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchantId, IHttpClientFactory factory, IConfiguration config,
-    [FromQuery] bool? onlyOnSale = null, [FromQuery] string? dataSource = null) =>
+    [FromQuery] bool? onlyOnSale = null, [FromQuery] string? dataSource = null,
+    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
 {
     var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
     var client = factory.CreateClient("ApiClient");
-    var url = $"{apiBase}/api/merchants/{merchantId}/bearings?pageSize=100";
+    var url = $"{apiBase}/api/merchants/{merchantId}/bearings?page={page}&pageSize={pageSize}";
     if (onlyOnSale.HasValue) url += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
     if (!string.IsNullOrEmpty(dataSource)) url += $"&dataSource={dataSource}";
     var response = await client.GetAsync(url);

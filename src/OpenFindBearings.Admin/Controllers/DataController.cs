@@ -410,12 +410,12 @@ public class DataController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int pageSize = 100)
+    public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var url = $"{ApiBase()}/api/merchants/{id}/bearings?pageSize={pageSize}";
+            var url = $"{ApiBase()}/api/merchants/{id}/bearings?page={page}&pageSize={pageSize}";
             if (onlyOnSale) url += "&onlyOnSale=true";
 
             var resp = await client.GetAsync(url);

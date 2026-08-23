@@ -1,8 +1,26 @@
-# Admin 功能需求与后端服务映射 v1.12.0
+# Admin 功能需求与后端服务映射 v1.14.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
+
+## 变更日志
+
+### v1.13.0 → v1.14.0 更新内容
+
+1. **Dashboard 商家统计三分类**：首行商家总数卡内嵌"已入驻 X" 格式（如 0/690），第二行第 4 卡由"认证商家数量"改为"入驻申请待审批"，不统计爬虫商家数量。卡片文字变更：h3 显示 0/690（已入驻/总数），标题改"商家数量（已入驻/总数）"、移除原内嵌小字。
+
+2. **四审核界面统一 Review 风格**：将审核管理名称与 dashboard 卡片统一并统一四个审核界面为 Review 风格：page-header、nav-tabs 状态筛选、card 内 table-hover 表格、空状态居中图标、btn-success 通过 / btn-outline-danger 拒绝、card-footer 分页。Controller 层零改动（License 表单 POST 调 Approve/Reject 保留，三个 Controller 已有全部所需 ViewBag）。
+
+3. **审核管理命名统一**：使用"入驻申请审批"替代"商家认证审核"；菜单与 dashboard 卡片统一为"同步数据审核/信息纠错审核/营业执照审核/入驻申请审批"，名称不含"待"字。
+
+4. **入驻申请审批列表数据源**：MerchantVerifyController 调 GET /api/admin/merchants 恒带 excludeCrawler=true 过滤爬虫商家；statusMap 为 pending=2/active=0/suspended=1，默认 tab 为"待认证"（status=pending）。入驻申请审批只看未认证商家，不加全部/已认证筛选。
+
+5. **商家管理页筛选与排序**：/Data/Merchants 页面支持按 IsVerified 筛选：tabs 为全部/已认证/未认证，透传 API 的 `verifiedOnly` 参数；排序为 OrderByDescending(IsVerified).ThenBy(Name)（已认证优先，同级按名称）。
+
+6. **编辑式审核流程**：Admin 审核页"通过"按钮打开编辑弹窗，经 GET /api/audit/{auditId:guid} 预填 staging 当前字段值，提交 = ApproveAuditCommand.Fields 字典写字段 + ReadyToSync + IsManuallyApproved=true；字段经 AuditFieldMapper 按 EntityType 白名单双向映射，轴承 Dimensions/Performance/Price 值对象任一子字段出现即整体重建。E 阶段轴承/商家/替代品三处 UpdateFrom 前置 IsManuallyApproved 跳过，与 T 阶段 TransformService 对 IsManuallyApproved 记录直接 MarkAsReadyToSync 跳过重评分，共同保证人工记录不被自动任务覆盖。
+
+7. **L阶段不再清空爬虫数据**：商家/关联数据不再受 L阶段直接清理影响，爬虫数据保留在 staging 表中作为备用，商家审核通过不自动清空源数据。
 
 ## 功能总览
 

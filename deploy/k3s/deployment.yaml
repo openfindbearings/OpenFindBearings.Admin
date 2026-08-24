@@ -17,42 +17,45 @@ spec:
       imagePullSecrets:
       - name: ghcr-pull-secret
       containers:
-          image: ghcr.io/openfindbearings/admin:latest
-          ports:
-            - containerPort: 8080
-          env:
-            - name: ASPNETCORE_ENVIRONMENT
-              value: Production
-            - name: ConnectionStrings__DefaultConnection
-              valueFrom:
-                secretKeyRef:
-                  name: openfindbearings-admin-secrets
-                  key: connection-string
-            - name: ApiUrls__OpenFindBearingsApi
-              value: "http://openfindbearings-api-service:80"
-            - name: ApiUrls__FindBearingsSync
-              value: "http://openfindbearings-sync-api:80"
-            - name: ApiUrls__OpenFindBearingsIdentity
-              value: "http://openfindbearings-identity-service:80"
-          livenessProbe:
-            httpGet:
-              path: /health/live
-              port: 8080
-            initialDelaySeconds: 10
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "500m"
+      - name: admin
+        image: ghcr.io/openfindbearings/openfindbearings-admin:v1.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: Production
+        - name: ASPNETCORE_URLS
+          value: "http://+:8080"
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: openfindbearings-admin-secrets
+              key: connection-string
+        - name: ApiUrls__OpenFindBearingsApi
+          value: "http://openfindbearings-api-service:80"
+        - name: ApiUrls__FindBearingsSync
+          value: "http://openfindbearings-sync-api:80"
+        - name: ApiUrls__OpenFindBearingsIdentity
+          value: "http://openfindbearings-identity-service:80"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
 ---
 apiVersion: v1
 kind: Service

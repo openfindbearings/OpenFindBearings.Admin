@@ -5,6 +5,7 @@ metadata:
   namespace: openfindbearings
 spec:
   replicas: 1
+  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: admin-web

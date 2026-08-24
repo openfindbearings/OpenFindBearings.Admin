@@ -5,6 +5,7 @@ metadata:
   namespace: openfindbearings
 spec:
   replicas: 1
+  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: admin-web
@@ -24,7 +25,7 @@ spec:
             - name: ConnectionStrings__DefaultConnection
               valueFrom:
                 secretKeyRef:
-                  name: admin-secret
+                  name: openfindbearings-admin-secrets
                   key: connection-string
             - name: ApiUrls__OpenFindBearingsApi
               value: "http://openfindbearings-api-service:80"

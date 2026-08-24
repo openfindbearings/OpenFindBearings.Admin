@@ -37,6 +37,10 @@ spec:
           value: "http://openfindbearings-sync-api:80"
         - name: ApiUrls__OpenFindBearingsIdentity
           value: "http://openfindbearings-identity-service:80"
+        - name: Identity__Authority
+          value: "https://auth.abcsxl.com"
+        - name: Identity__CallbackUrl
+          value: "https://admin.515813.xyz/callback"
         livenessProbe:
           httpGet:
             path: /health/live

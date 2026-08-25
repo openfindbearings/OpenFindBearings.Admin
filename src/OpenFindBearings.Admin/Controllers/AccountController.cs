@@ -152,7 +152,9 @@ namespace OpenFindBearings.Admin.Controllers
                 {
                     _logger.LogInformation("状态为 changepwd，跳转至 Identity 修改密码页");
                     var identityAuth = _configuration["Identity:Authority"] ?? "https://localhost:7201";
-                    return Redirect($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString("https://localhost:7167/")}&realm=openfindbearings");
+                    var callbackScheme = HttpContext.Request.Scheme;
+                    var callbackHost = HttpContext.Request.Host.Value;
+                    return Redirect($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString($"{callbackScheme}://{callbackHost}/")}&realm=openfindbearings");
                 }
 
                 return Redirect("/");
@@ -174,7 +176,9 @@ namespace OpenFindBearings.Admin.Controllers
 
             // 重定向到 Identity 结束会话，清除 Identity.Application cookie
             var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
-            var callbackUrl = Uri.EscapeDataString("https://localhost:7167/");
+            var scheme = HttpContext.Request.Scheme;
+            var host = HttpContext.Request.Host.Value;
+            var callbackUrl = Uri.EscapeDataString($"{scheme}://{host}/");
             _logger.LogInformation("用户已登出，重定向至 Identity 结束会话");
             return Redirect($"{authority}/connect/logout?admin_redirect={callbackUrl}");
         }

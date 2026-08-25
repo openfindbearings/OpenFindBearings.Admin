@@ -152,9 +152,8 @@ namespace OpenFindBearings.Admin.Controllers
                 {
                     _logger.LogInformation("状态为 changepwd，跳转至 Identity 修改密码页");
                     var identityAuth = _configuration["Identity:Authority"] ?? "https://localhost:7201";
-                    var callbackScheme = HttpContext.Request.Scheme;
                     var callbackHost = HttpContext.Request.Host.Value;
-                    return Redirect($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString($"{callbackScheme}://{callbackHost}/")}&realm=openfindbearings");
+                    return Redirect($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString($"https://{callbackHost}/")}&realm=openfindbearings");
                 }
 
                 return Redirect("/");
@@ -176,9 +175,8 @@ namespace OpenFindBearings.Admin.Controllers
 
             // 标准 OIDC RP-Initiated Logout：使用 post_logout_redirect_uri 参数
             var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
-            var scheme = HttpContext.Request.Scheme;
             var host = HttpContext.Request.Host.Value;
-            var postLogoutUri = $"{scheme}://{host}/signout-callback-oidc";
+            var postLogoutUri = $"https://{host}/signout-callback-oidc";
             _logger.LogInformation("用户已登出，重定向至 Identity 结束会话");
             return Redirect($"{authority}/connect/logout?post_logout_redirect_uri={Uri.EscapeDataString(postLogoutUri)}");
         }

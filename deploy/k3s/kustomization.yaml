@@ -5,3 +5,4 @@ namespace: openfindbearings
 
 resources:
   - deployment.yaml
+  - ingress.yaml

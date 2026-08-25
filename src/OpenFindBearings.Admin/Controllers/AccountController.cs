@@ -174,13 +174,23 @@ namespace OpenFindBearings.Admin.Controllers
         {
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            // 重定向到 Identity 结束会话，清除 Identity.Application cookie
+            // 标准 OIDC RP-Initiated Logout：使用 post_logout_redirect_uri 参数
             var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
             var scheme = HttpContext.Request.Scheme;
             var host = HttpContext.Request.Host.Value;
-            var callbackUrl = Uri.EscapeDataString($"{scheme}://{host}/signout-callback-oidc");
+            var postLogoutUri = $"{scheme}://{host}/signout-callback-oidc";
             _logger.LogInformation("用户已登出，重定向至 Identity 结束会话");
-            return Redirect($"{authority}/connect/logout?admin_redirect={callbackUrl}");
+            return Redirect($"{authority}/connect/logout?post_logout_redirect_uri={Uri.EscapeDataString(postLogoutUri)}");
+        }
+
+        /// <summary>
+        /// OIDC 登出回调端点 - Identity 签出后重定向至此
+        /// </summary>
+        [HttpGet("~/signout-callback-oidc")]
+        public IActionResult SignoutCallbackOidc()
+        {
+            _logger.LogInformation("OIDC 登出回调，重定向至登录页");
+            return RedirectToAction("Login");
         }
 
         /// <summary>

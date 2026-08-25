@@ -23,7 +23,7 @@ kubectl apply -k deploy/k3s/
 3. 等待就绪：
 
 ```bash
-kubectl rollout status deployment/admin-web -n openfindbearings
+kubectl rollout status deployment/openfindbearings-admin -n openfindbearings
 ```
 
 ## 更新部署
@@ -32,7 +32,7 @@ Docker Hub 推送后自动通过 GitHub Actions 更新：
 
 ```bash
 # 手动更新版本
-kubectl set image deployment/admin-web admin-web=ghcr.io/openfindbearings/admin:v1.0.0 -n openfindbearings
+kubectl set image deployment/openfindbearings-admin admin=ghcr.io/openfindbearings/openfindbearings-admin:v1.0.0 -n openfindbearings
 ```
 
 ## 本地开发

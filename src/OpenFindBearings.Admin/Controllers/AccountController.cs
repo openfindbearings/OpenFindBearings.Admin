@@ -178,7 +178,7 @@ namespace OpenFindBearings.Admin.Controllers
             var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
             var scheme = HttpContext.Request.Scheme;
             var host = HttpContext.Request.Host.Value;
-            var callbackUrl = Uri.EscapeDataString($"{scheme}://{host}/");
+            var callbackUrl = Uri.EscapeDataString($"{scheme}://{host}/signout-callback-oidc");
             _logger.LogInformation("用户已登出，重定向至 Identity 结束会话");
             return Redirect($"{authority}/connect/logout?admin_redirect={callbackUrl}");
         }

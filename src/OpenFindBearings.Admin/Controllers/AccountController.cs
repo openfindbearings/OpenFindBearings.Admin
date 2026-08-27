@@ -52,13 +52,24 @@ namespace OpenFindBearings.Admin.Controllers
             var clientId = _configuration["Identity:ClientId"] ?? "admin_client";
             var scope = _configuration["Identity:Scope"] ?? "openid profile email roles api:admin";
 
+            // 生成设备标识并存入 HttpOnly cookie（用于刷新令牌时设备绑定）
+            var deviceId = Guid.NewGuid().ToString("N");
+            HttpContext.Response.Cookies.Append("device_id", deviceId, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(30)
+            });
+
             var authorizationUrl = $"{authority}/connect/authorize" +
                 $"?response_type=code" +
                 $"&client_id={Uri.EscapeDataString(clientId)}" +
                 $"&redirect_uri={Uri.EscapeDataString(_configuration["Identity:CallbackUrl"] ?? "https://localhost:7167/callback")}" +
                 $"&scope={Uri.EscapeDataString(scope)}" +
                 $"&state={Guid.NewGuid():N}" +
-                $"&realm={TenantConstants.Realm}";
+                $"&realm={TenantConstants.Realm}" +
+                $"&device_id={Uri.EscapeDataString(deviceId)}";
 
             _logger.LogInformation("用户点击登录，跳转 Identity: {Url}", authorizationUrl);
             return Redirect(authorizationUrl);
@@ -86,13 +97,22 @@ namespace OpenFindBearings.Admin.Controllers
                 var credentials = Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}"));
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
 
-                var tokenRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+                var tokenRequestDict = new Dictionary<string, string>
                 {
                     ["grant_type"] = "authorization_code",
                     ["code"] = code,
                     ["redirect_uri"] = _configuration["Identity:CallbackUrl"] ?? "https://localhost:7167/callback",
                     ["realm"] = TenantConstants.Realm
-                });
+                };
+
+                // 从 cookie 读取 device_id 并附加到 token 请求
+                if (HttpContext.Request.Cookies.TryGetValue("device_id", out var deviceIdFromCookie) &&
+                    !string.IsNullOrEmpty(deviceIdFromCookie))
+                {
+                    tokenRequestDict["device_id"] = deviceIdFromCookie;
+                }
+
+                var tokenRequest = new FormUrlEncodedContent(tokenRequestDict);
 
                 _logger.LogInformation("Callback: 开始 token 交换, Authority={Authority}", authority);
 

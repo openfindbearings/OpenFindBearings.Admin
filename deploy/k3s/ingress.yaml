@@ -25,6 +25,6 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: openfindbearings-admin-service
+              name: openfindbearings-admin
               port:
                 number: 80

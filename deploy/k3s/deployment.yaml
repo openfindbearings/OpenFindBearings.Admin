@@ -32,11 +32,11 @@ spec:
               name: openfindbearings-admin-secrets
               key: connection-string
         - name: ApiUrls__OpenFindBearingsApi
-          value: "http://openfindbearings-api-service:80"
+          value: "http://openfindbearings-api:80"
         - name: ApiUrls__FindBearingsSync
-          value: "http://openfindbearings-sync-api-service:80"
+          value: "http://openfindbearings-sync-api:80"
         - name: ApiUrls__OpenFindBearingsIdentity
-          value: "http://openfindbearings-identity-service:80"
+          value: "http://openfindbearings-identity:80"
         - name: Identity__Authority
           value: "https://auth.abcsxl.com"
         - name: Identity__CallbackUrl
@@ -64,7 +64,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openfindbearings-admin-service
+  name: openfindbearings-admin
   namespace: openfindbearings
 spec:
   selector:

@@ -189,6 +189,19 @@ app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchan
     return Results.Content(content, "application/json");
 }).RequireAuthorization();
 
+// 代理轴承在售商家查询（反向：按轴承查商家）
+app.MapGet("/api/proxy/bearing-merchants/{bearingId:guid}", async (Guid bearingId, IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] bool? onlyOnSale = true, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var url = $"{apiBase}/api/bearings/{bearingId}/merchants?page={page}&pageSize={pageSize}";
+    if (onlyOnSale.HasValue) url += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
+    var response = await client.GetAsync(url);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json");
+}).RequireAuthorization();
+
 // 代理 Excel 批量导入在售轴承（转发到 Sync API）
 app.MapPost("/api/proxy/excel/import-bearing", async (IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
 {

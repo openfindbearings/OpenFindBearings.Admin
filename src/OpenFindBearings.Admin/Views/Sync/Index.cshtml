@@ -1,34 +1,85 @@
-@{ ViewData["Title"] = "ETL 同步"; }
+@{
+    ViewData["Title"] = "ETL 同步";
+    // 首屏数据（来自控制器预取，失败则为 null，由前端轮询代理端点补充）
+    var initialSummaryJson = ViewBag.EtlSummaryJson as string;
+    var initialTasksJson = ViewBag.EtlTasksJson as string;
+}
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header"><h6 class="mb-0">ETL 控制</h6></div>
+<div class="row mb-3">
+    <div class="col-12">
+        <h4 class="mb-0">ETL 同步管理</h4>
+        <small class="text-muted">当前 Sync 状态: <strong>@(ViewBag.SyncStatus ?? "未知")</strong></small>
+    </div>
+</div>
+
+<!-- 运行态卡片 -->
+<div class="row mb-3" id="phaseCards">
+    <div class="col-md-3 col-sm-6 mb-2">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Extract 抽取</h6></div>
             <div class="card-body">
-                <p>当前 Sync 状态: <strong>@(ViewBag.SyncStatus ?? "未知")</strong></p>
-                <div class="d-grid gap-2">
-                    <form method="post" asp-action="Trigger" asp-route-phase="run">
-                        <button type="submit" class="btn btn-primary w-100">触发全量 ETL</button>
-                    </form>
-                    <form method="post" asp-action="Trigger" asp-route-phase="extract">
-                        <button type="submit" class="btn btn-outline-primary w-100">触发 Extract</button>
-                    </form>
-                    <form method="post" asp-action="Trigger" asp-route-phase="transform">
-                        <button type="submit" class="btn btn-outline-primary w-100">触发 Transform</button>
-                    </form>
-                    <form method="post" asp-action="Trigger" asp-route-phase="load">
-                        <button type="submit" class="btn btn-outline-primary w-100">触发 Load</button>
-                    </form>
-                </div>
+                <span class="badge" id="badge-Extract">--</span>
+                <div class="small text-muted mt-2" id="desc-Extract">--</div>
+                <form method="post" asp-action="Trigger" asp-route-phase="extract" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary w-100 btn-trigger" data-phase="Extract">触发 Extract</button>
+                </form>
             </div>
         </div>
     </div>
-    <div class="col-md-8">
-        <div class="card">
+    <div class="col-md-3 col-sm-6 mb-2">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Transform 转换</h6></div>
+            <div class="card-body">
+                <span class="badge" id="badge-Transform">--</span>
+                <div class="small text-muted mt-2" id="desc-Transform">--</div>
+                <form method="post" asp-action="Trigger" asp-route-phase="transform" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary w-100 btn-trigger" data-phase="Transform">触发 Transform</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-2">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Load 加载</h6></div>
+            <div class="card-body">
+                <span class="badge" id="badge-Load">--</span>
+                <div class="small text-muted mt-2" id="desc-Load">--</div>
+                <form method="post" asp-action="Trigger" asp-route-phase="load" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary w-100 btn-trigger" data-phase="Load">触发 Load</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-2">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">爬虫最近执行</h6></div>
+            <div class="card-body">
+                <span class="badge" id="badge-Crawler">--</span>
+                <div class="small text-muted mt-2" id="desc-Crawler">--</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 完整流程触发 + 调度说明 -->
+<div class="row mb-3">
+    <div class="col-md-4 mb-2">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">完整流程</h6></div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">依次创建 抽取 → 转换 → 加载 任务。任一批次正在进行或排队时禁止重复触发（含定时调度）。</p>
+                <form method="post" asp-action="Trigger" asp-route-phase="run">
+                    <button type="submit" class="btn btn-primary w-100 btn-trigger" data-phase="Full">触发全量 ETL</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8 mb-2">
+        <div class="card h-100">
             <div class="card-header"><h6 class="mb-0">ETL 调度说明</h6></div>
             <div class="card-body">
-                <table class="table table-sm">
-                    <thead><tr><th>阶段</th><th>调度时间</th><th>说明</th></tr></thead>
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>阶段</th><th>调度时间(UTC)</th><th>说明</th></tr></thead>
                     <tbody>
                         <tr><td>Extract</td><td>每日 04:00</td><td>从 db_raw 提取数据到 staging 表</td></tr>
                         <tr><td>Transform</td><td>每日 04:30</td><td>数据清洗、映射、评分</td></tr>
@@ -41,3 +92,196 @@
         </div>
     </div>
 </div>
+
+<!-- 最近执行记录 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                <h6 class="mb-0">最近执行记录</h6>
+                <div class="d-flex gap-2 mt-2 mt-md-0">
+                    <select id="filterPhase" class="form-select form-select-sm" style="width:auto;">
+                        <option value="">全部阶段</option>
+                        <option value="Extract">Extract</option>
+                        <option value="Transform">Transform</option>
+                        <option value="Load">Load</option>
+                    </select>
+                    <button id="refreshBtn" class="btn btn-sm btn-outline-secondary">刷新</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>阶段</th><th>状态</th><th>开始时间</th><th>结束时间</th>
+                                <th>成功</th><th>失败</th><th>跳过</th><th>错误信息</th>
+                            </tr>
+                        </thead>
+                        <tbody id="taskRows">
+                            <tr><td colspan="8" class="text-center text-muted">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 首屏数据（控制器预取的 JSON 字符串，可能为 null）
+    const initialSummary = @Html.Raw(initialSummaryJson ?? "null");
+    const initialTasks = @Html.Raw(initialTasksJson ?? "null");
+
+    function fmtTime(v) {
+        if (!v) return "-";
+        // 后端存储为 UTC；若字符串缺少时区标记（naive 时间）则补 Z，确保按 UTC 解析后再转浏览器本地时区显示，避免直接展示 UTC
+        const s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
+        const d = new Date(s);
+        if (isNaN(d)) return "-";
+        return d.toLocaleString(undefined, {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit"
+        });
+    }
+
+    function statusBadge(text, kind) {
+        // kind: primary/success/warning/danger/secondary
+        return `<span class="badge bg-${kind}">${text}</span>`;
+    }
+
+    // 根据阶段运行态设置卡片 + 触发按钮禁用状态与提示
+    function applyPhase(phase) {
+        const cmd = phase.CommandType;
+        const badge = document.getElementById("badge-" + cmd);
+        const desc = document.getElementById("desc-" + cmd);
+        if (!badge || !desc) return;
+
+        if (cmd === "Extract" || cmd === "Transform" || cmd === "Load") {
+            if (phase.IsActive) {
+                badge.className = "badge bg-warning";
+                badge.textContent = "进行中/排队中";
+                desc.textContent = "最近状态: " + (phase.LatestStatus || "-")
+                    + (phase.LatestStartedAt ? " at " + fmtTime(phase.LatestStartedAt) : "");
+            } else {
+                badge.className = "badge bg-secondary";
+                badge.textContent = "空闲";
+                desc.textContent = "最近状态: " + (phase.LatestStatus || "-")
+                    + (phase.LatestStartedAt ? " at " + fmtTime(phase.LatestStartedAt) : "");
+            }
+        }
+    }
+
+    function applyCrawler(crawler) {
+        const badge = document.getElementById("badge-Crawler");
+        const desc = document.getElementById("desc-Crawler");
+        if (!badge || !desc || !crawler) return;
+        if (crawler.HasStuckProcessing) {
+            badge.className = "badge bg-danger";
+            badge.textContent = "存在中断";
+        } else {
+            badge.className = "badge bg-secondary";
+            badge.textContent = "正常";
+        }
+        const total = Object.values(crawler.BearingStatusCounts).reduce((a, b) => a + b, 0)
+            + Object.values(crawler.MerchantStatusCounts).reduce((a, b) => a + b, 0)
+            + Object.values(crawler.MerchantBearingStatusCounts).reduce((a, b) => a + b, 0);
+        desc.innerHTML = "最近抓取: " + fmtTime(crawler.LastCrawlAt)
+            + "<br/>记录总数: " + total
+            + (crawler.HasStuckProcessing ? "<br/><span class='text-danger'>存在 processing 卡住记录</span>" : "");
+    }
+
+    // 触发按钮禁用：某阶段活跃则禁用对应按钮；完整流程在任一阶段活跃时禁用
+    function applyButtons(summary) {
+        const active = new Set((summary.Phases || [])
+            .filter(p => p.IsActive)
+            .map(p => p.CommandType));
+        const blockMsg = "该阶段当前有进行中或排队中的任务（可能来自定时调度），暂不能手动执行，请稍后重试。";
+        document.querySelectorAll(".btn-trigger").forEach(btn => {
+            const phase = btn.getAttribute("data-phase");
+            let disabled = false;
+            if (phase === "Full") {
+                disabled = active.size > 0;
+            } else if (active.has(phase)) {
+                disabled = true;
+            }
+            btn.disabled = disabled;
+            btn.title = disabled ? blockMsg : "";
+        });
+    }
+
+    function renderSummary(summary) {
+        if (!summary) return;
+        (summary.Phases || []).forEach(applyPhase);
+        applyCrawler(summary.Crawler);
+        applyButtons(summary);
+    }
+
+    function renderTasks(data) {
+        const tbody = document.getElementById("taskRows");
+        if (!tbody) return;
+        const items = (data && data.Items) ? data.Items : (Array.isArray(data) ? data : []);
+        if (!items.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无执行记录</td></tr>';
+            return;
+        }
+        const rows = items.map(t => {
+            const status = (t.Status || "").toLowerCase();
+            let kind = "secondary";
+            if (status === "running") kind = "warning";
+            else if (status === "success") kind = "success";
+            else if (status === "failed") kind = "danger";
+            else if (status === "pending") kind = "info";
+            const err = t.ErrorMessage ? (t.ErrorMessage.length > 40 ? t.ErrorMessage.substring(0, 40) + "…" : t.ErrorMessage) : "-";
+            return `<tr>
+                <td>${t.CommandType || "-"}</td>
+                <td>${statusBadge(t.Status || "-", kind)}</td>
+                <td>${fmtTime(t.StartedAt)}</td>
+                <td>${fmtTime(t.CompletedAt)}</td>
+                <td>${t.SuccessRecords ?? 0}</td>
+                <td>${t.FailedRecords ?? 0}</td>
+                <td>${t.SkippedRecords ?? 0}</td>
+                <td title="${t.ErrorMessage || ""}">${err}</td>
+            </tr>`;
+        }).join("");
+        tbody.innerHTML = rows;
+    }
+
+    function unwrap(resp) {
+        // 后端统一 ApiResponse<T> 包装：{ success, code, data, message }
+        return resp && resp.data !== undefined ? resp.data : resp;
+    }
+
+    async function loadSummary() {
+        try {
+            const r = await fetch("/api/proxy/etl/summary");
+            if (!r.ok) return;
+            const j = await r.json();
+            renderSummary(unwrap(j));
+        } catch (e) { /* 忽略轮询异常，保留首屏数据 */ }
+    }
+
+    async function loadTasks() {
+        const phase = document.getElementById("filterPhase").value;
+        const url = "/api/proxy/etl/tasks?page=1&pageSize=10" + (phase ? ("&commandType=" + phase) : "");
+        try {
+            const r = await fetch(url);
+            if (!r.ok) return;
+            const j = await r.json();
+            renderTasks(unwrap(j));
+        } catch (e) { /* 忽略 */ }
+    }
+
+    // 首屏渲染
+    if (initialSummary) renderSummary(unwrap(initialSummary));
+    if (initialTasks) renderTasks(unwrap(initialTasks));
+    else loadTasks();
+
+    // 轮询刷新
+    setInterval(loadSummary, 15000);
+    setInterval(loadTasks, 15000);
+    document.getElementById("refreshBtn").addEventListener("click", () => { loadSummary(); loadTasks(); });
+    document.getElementById("filterPhase").addEventListener("change", loadTasks);
+</script>
+}

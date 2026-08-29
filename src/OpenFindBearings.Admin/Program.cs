@@ -227,4 +227,29 @@ app.MapGet("/api/proxy/excel/template", async (IHttpClientFactory factory, IConf
     return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "bearings_import_template.xlsx");
 }).RequireAuthorization();
 
+// 代理 ETL 任务管理总览（各阶段运行态 + 最近任务 + 爬虫最近执行情况）
+app.MapGet("/api/proxy/etl/summary", async (IHttpClientFactory factory, IConfiguration config) =>
+{
+    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+    var client = factory.CreateClient("SyncClient");
+    var response = await client.GetAsync($"{syncBase}/api/etl/summary");
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理 ETL 任务历史列表（支持分页与过滤）
+app.MapGet("/api/proxy/etl/tasks", async (IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+    [FromQuery] string? commandType = null, [FromQuery] string? status = null) =>
+{
+    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
+    var client = factory.CreateClient("SyncClient");
+    var url = $"{syncBase}/api/etl/tasks?page={page}&pageSize={pageSize}";
+    if (!string.IsNullOrEmpty(commandType)) url += $"&commandType={commandType}";
+    if (!string.IsNullOrEmpty(status)) url += $"&status={status}";
+    var response = await client.GetAsync(url);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
 app.Run();

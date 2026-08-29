@@ -28,7 +28,28 @@ public class SyncController : Controller
         {
             ViewBag.SyncStatus = "离线";
         }
+
+        // 预取 ETL 总览与最近任务，注入视图作为首屏数据（JS 后续经代理端点轮询刷新）
+        ViewBag.EtlSummaryJson = await TryGetJson(client, $"{baseUrl}/api/etl/summary");
+        ViewBag.EtlTasksJson = await TryGetJson(client, $"{baseUrl}/api/etl/tasks?page=1&pageSize=10");
         return View();
+    }
+
+    /// <summary>
+    /// 尝试拉取 JSON 字符串，失败返回 null（由前端代理轮询补充）
+    /// </summary>
+    private static async Task<string?> TryGetJson(HttpClient client, string url)
+    {
+        try
+        {
+            var resp = await client.GetAsync(url);
+            if (!resp.IsSuccessStatusCode) return null;
+            return await resp.Content.ReadAsStringAsync();
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [HttpPost]

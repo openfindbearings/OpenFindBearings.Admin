@@ -381,5 +381,14 @@ document.getElementById('importExcelForm').addEventListener('submit', function(e
             btn.innerHTML = '<i class="fas fa-upload"></i> 开始导入';
         });
 });
+
+// 从轴承“在售商家”页跳转过来时，自动打开对应商家的“在售商品”弹窗（复用现有弹窗）
+(function(){
+    var params = new URLSearchParams(location.search);
+    var mid = params.get('merchantId');
+    if (!mid) return;
+    var btn = document.querySelector('.btn-on-sale[data-id="' + mid + '"]');
+    if (btn) btn.click();
+})();
 </script>
 }

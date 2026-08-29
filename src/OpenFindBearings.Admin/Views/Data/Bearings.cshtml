@@ -5,13 +5,13 @@
 }
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">轴承列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBearingModal">
-                <i class="fas fa-plus"></i> 新建
+                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
             </button>
-            <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
+            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索型号..." style="min-width:140px" />
                 <div class="form-check" style="white-space:nowrap;padding-left:1.5em">
                     <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
@@ -38,6 +38,7 @@
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" onclick='openEditBearing(@Html.Raw(Json.Serialize(item)))'>编辑</button>
                                 <button class="btn btn-sm btn-outline-info btn-interchange" data-id="@item.Id" data-name="@item.PartNumber">替代品</button>
+                                <button class="btn btn-sm btn-outline-secondary btn-merchants" data-id="@item.Id" data-name="@item.PartNumber">在售商家</button>
                                 @if (Model.IncludeDeleted)
                                 {
                                     <form method="post" asp-action="RestoreBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该轴承吗？')">
@@ -197,6 +198,25 @@
     </div></div>
 </div>
 
+<!-- 在售商家弹窗 -->
+<div class="modal fade" id="merchantsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">在售商家 - <span id="merchantsBearing"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2 text-muted small">共 <span id="merchantsCount">0</span> 家在售商家</div>
+                <table class="table table-sm table-hover">
+                    <thead><tr><th>商家名称</th><th>状态</th></tr></thead>
+                    <tbody id="merchantsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 function openEditBearing(item) {
@@ -218,6 +238,27 @@ document.querySelectorAll('.btn-interchange').forEach(function(btn){
             var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.type||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.partNumber||'-')+'</td></tr>';});
             document.getElementById('interchangeBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无替代品</td></tr>';
         }).catch(function(){document.getElementById('interchangeBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
+    });
+});
+
+// 在售商家：按轴承反查多家在售商家，点击商家行跳转到商家管理页并自动打开其“在售商品”弹窗
+document.querySelectorAll('.btn-merchants').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        var id=this.dataset.id, name=this.dataset.name;
+        document.getElementById('merchantsBearing').textContent=name;
+        document.getElementById('merchantsBody').innerHTML='<tr><td colspan="2">加载中...</td></tr>';
+        new bootstrap.Modal(document.getElementById('merchantsModal')).show();
+        fetch('/api/proxy/bearing-merchants/'+id+'?onlyOnSale=true&pageSize=50').then(function(r){return r.json()}).then(function(d){
+            var data = d && d.data ? d.data : (d || {});
+            var list = data.items || [];
+            document.getElementById('merchantsCount').textContent = (data.totalCount != null) ? data.totalCount : list.length;
+            var h='';
+            list.forEach(function(m){
+                var url='/Data/Merchants?merchantId='+encodeURIComponent(m.id)+'&search='+encodeURIComponent(m.name||'');
+                h+='<tr style="cursor:pointer" onclick="location.href=\''+url+'\'"><td>'+(m.name||'-')+'</td><td>'+(m.isVerified?'已认证':'未认证')+'</td></tr>';
+            });
+            document.getElementById('merchantsBody').innerHTML=h||'<tr><td colspan="2" class="text-center text-muted">暂无在售商家</td></tr>';
+        }).catch(function(){document.getElementById('merchantsBody').innerHTML='<tr><td colspan="2" class="text-center text-danger">加载失败</td></tr>';});
     });
 });
 </script>

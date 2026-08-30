@@ -41,15 +41,34 @@ public class UsersController : Controller
             if (resp.IsSuccessStatusCode)
             {
                 var json = await resp.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<PagedData<UserItemDto>>>(json);
+                // 改动说明：原实现用默认 JsonSerializerOptions，Default 配置为大小写敏感。
+                //           Identity 实际序列化为 camelCase（与 API 约定一致），字段名全对得上。
+                //           显式声明 PropertyNameCaseInsensitive 仍保留作为防御，避免后续字段调整时
+                //           静默反序列化为默认值
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<PagedData<UserItemDto>>>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 ViewBag.Items = result?.Data?.Items ?? [];
                 ViewBag.TotalCount = result?.Data?.TotalCount ?? 0;
                 ViewBag.Page = page;
                 ViewBag.PageSize = pageSize;
             }
+            else
+            {
+                // 改动说明：失败分支显式写入"空结果"占位，避免视图读 null 抛异常；
+                //   并通过 TempData 给出可观测的诊断信息，区分"API 不可达"与"无数据"
+                ViewBag.Items = new List<UserItemDto>();
+                ViewBag.TotalCount = 0;
+                ViewBag.Page = page;
+                ViewBag.PageSize = pageSize;
+                TempData["Error"] = $"加载用户列表失败: HTTP {(int)resp.StatusCode} {resp.StatusCode}";
+            }
         }
         catch (Exception ex)
         {
+            ViewBag.Items = new List<UserItemDto>();
+            ViewBag.TotalCount = 0;
+            ViewBag.Page = page;
+            ViewBag.PageSize = pageSize;
             TempData["Error"] = $"加载失败: {ex.Message}";
         }
 

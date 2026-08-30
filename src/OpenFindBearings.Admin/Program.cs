@@ -93,6 +93,7 @@ builder.Services.AddHttpClient("IdentityClient", c =>
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddScoped<ServiceHealthService>();
+builder.Services.AddSingleton<PriceConfigService>();
 
 var app = builder.Build();
 

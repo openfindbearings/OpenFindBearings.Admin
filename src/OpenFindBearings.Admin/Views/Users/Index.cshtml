@@ -1,12 +1,16 @@
 @using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "用户管理";
+    // 改动说明：ViewBag 改用 ?? 兜底。原实现在 API 调用失败时 Page/PageSize/TotalCount 全为 null，
+    //           强转 int 后 pageSize 为 0，下方 totalCount/pageSize 触发除零 → 强转 int(NaN) 抛
+    //           InvalidOperationException，整个页面崩溃。改为统一用 ?? 兜底后，
+    //           API 失败时安全显示空列表与"暂无数据"
     var search = (string?)ViewBag.Search ?? "";
-    var page = (int)ViewBag.Page;
-    var pageSize = (int)ViewBag.PageSize;
-    var totalCount = (int)ViewBag.TotalCount;
-    var includeDeleted = (bool)ViewBag.IncludeDeleted;
-    var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
+    var page = ViewBag.Page as int? ?? 1;
+    var pageSize = ViewBag.PageSize as int? ?? 20;
+    var totalCount = ViewBag.TotalCount as int? ?? 0;
+    var includeDeleted = (bool)(ViewBag.IncludeDeleted ?? false);
+    var totalPages = totalCount > 0 && pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&includeDeleted={includeDeleted.ToString().ToLower()}";
 }
 

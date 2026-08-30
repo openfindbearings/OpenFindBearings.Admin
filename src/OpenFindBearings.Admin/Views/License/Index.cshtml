@@ -87,7 +87,7 @@
                                         <span class="badge bg-warning text-dark">待审核</span>
                                     }
                                 </td>
-                                <td class="text-muted small">@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td class="text-muted small">@(item.SubmittedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                 <td>
                                     @if (item.Status == "pending")
                                     {

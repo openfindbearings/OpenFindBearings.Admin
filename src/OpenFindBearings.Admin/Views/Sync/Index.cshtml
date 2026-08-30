@@ -79,13 +79,14 @@
             <div class="card-header"><h6 class="mb-0">ETL 调度说明</h6></div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>阶段</th><th>调度时间(UTC)</th><th>说明</th></tr></thead>
+                    <thead><tr><th>阶段</th><th>调度时间</th><th>说明</th></tr></thead>
                     <tbody>
-                        <tr><td>Extract</td><td>每日 04:00</td><td>从 db_raw 提取数据到 staging 表</td></tr>
-                        <tr><td>Transform</td><td>每日 04:30</td><td>数据清洗、映射、评分</td></tr>
-                        <tr><td>Load</td><td>每日 05:30</td><td>加载到 API 业务库</td></tr>
-                        <tr><td>Retry</td><td>每日 06:30</td><td>重试失败记录</td></tr>
-                        <tr><td>Stuck</td><td>每日 07:00</td><td>处理卡住记录</td></tr>
+                        <tr><td>Extract</td><td>每日 12:00</td><td>从 db_raw 提取数据到 staging 表</td></tr>
+                        <tr><td>Transform</td><td>每日 12:30</td><td>数据清洗、映射、评分</td></tr>
+                        <tr><td>Images</td><td>每日 13:00</td><td>异步下载图片</td></tr>
+                        <tr><td>Load</td><td>每日 13:30</td><td>加载到 API 业务库</td></tr>
+                        <tr><td>Retry</td><td>每日 14:30</td><td>重试失败记录</td></tr>
+                        <tr><td>Stuck</td><td>每日 15:00</td><td>处理卡住记录</td></tr>
                     </tbody>
                 </table>
             </div>

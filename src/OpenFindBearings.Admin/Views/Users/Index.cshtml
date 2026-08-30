@@ -67,7 +67,7 @@
                                 }
                             </td>
                             <td>@(item.Roles.Any() ? string.Join(", ", item.Roles) : "-")</td>
-                            <td>@(item.LastLoginAt?.ToString("MM-dd HH:mm") ?? "从未")</td>
+                            <td>@(item.LastLoginAt?.ToLocalTime().ToString("MM-dd HH:mm") ?? "从未")</td>
                             <td>
                                 @if (!item.IsActive)
                                 {

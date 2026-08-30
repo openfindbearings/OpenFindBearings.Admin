@@ -1,8 +1,13 @@
 @model MerchantListViewModel
+@using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "商家列表";
     var vo = Model.VerifiedOnly;
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}";
+    // 从 ViewBag 读取价格配置（由 DataController.Merchants 预加载，5 分钟缓存）
+    var priceConfig = ViewBag.PriceConfig as PriceConfigDto ?? new PriceConfigDto();
+    var showNegotiable = priceConfig.ShowNegotiableLabel;
+    var numericSortable = priceConfig.NumericForSorting;
 }
 
 <ul class="nav nav-tabs mb-3">
@@ -230,7 +235,11 @@
                 <div style="width:240px"><input type="text" class="form-control form-control-sm" id="onSaleSearch" placeholder="搜索型号/曾用代号/品牌..."></div>
             </div>
             <div style="max-height:55vh;overflow-y:auto">
-                <table class="modal-table"><thead class="sticky-thead"><tr><th>型号</th><th>曾用代号</th><th>类型</th><th>尺寸</th><th>品牌</th><th>状态</th></tr></thead><tbody id="onSaleBody"></tbody></table>
+                <table class="modal-table"><thead class="sticky-thead"><tr>
+                    <th>型号</th><th>曾用代号</th><th>类型</th><th>尺寸</th><th>品牌</th>
+                    <th id="onSalePriceHeader" style="cursor:@(numericSortable ? "pointer" : "not-allowed")" title="@(numericSortable ? "点击按价格排序" : "价格排序已关闭")">价格 @if(numericSortable){<i class="fas fa-sort"></i>}</th>
+                    <th>状态</th>
+                </tr></thead><tbody id="onSaleBody"></tbody></table>
             </div>
             <div class="d-flex justify-content-between align-items-center px-3 py-2" id="onSalePager" style="display:none!important"></div>
         </div>
@@ -285,18 +294,28 @@ function openEditMerchant(item) {
     document.getElementById('merchantAddress').value = item.address || '';
     new bootstrap.Modal(document.getElementById('editMerchantModal')).show();
 }
-var _onSaleAllItems=[];var _onSaleMerchantId='';
+var _onSaleAllItems=[];var _onSaleMerchantId='';var _onSaleSort='created';var _onSaleSortOrder='desc';
+// 将 Razor 中的价格配置传递到前端 JS，供 [议价] 角标与价格排序使用
+window.PRICE_CONFIG = { showNegotiableLabel: @showNegotiable.ToString().ToLower(), numericForSorting: @numericSortable.ToString().ToLower() };
 document.querySelectorAll('.btn-on-sale').forEach(function(btn){
     btn.addEventListener('click',function(){
         var id=this.dataset.id, name=this.dataset.name;
         _onSaleMerchantId=id;
         document.getElementById('onSaleMerchant').textContent=name;
-        document.getElementById('onSaleBody').innerHTML='<tr><td colspan="6">加载中...</td></tr>';
+        document.getElementById('onSaleBody').innerHTML='<tr><td colspan="7">加载中...</td></tr>';
         document.getElementById('onSalePager').style.display='none';
         document.getElementById('onSaleSearch').value='';
+        _onSaleSort='created';_onSaleSortOrder='desc';
         new bootstrap.Modal(document.getElementById('onSaleModal')).show();
         loadOnSalePage(id, 1);
     });
+});
+// 价格列头点击切换排序（受 Price.NumericForSorting 配置控制）
+document.getElementById('onSalePriceHeader').addEventListener('click',function(){
+    if(!window.PRICE_CONFIG.numericForSorting){alert('价格排序已关闭，请在系统配置中开启 Price.NumericForSorting');return;}
+    if(_onSaleSort==='price'){_onSaleSortOrder=_onSaleSortOrder==='asc'?'desc':'asc';}
+    else{_onSaleSort='price';_onSaleSortOrder='asc';}
+    loadOnSalePage(_onSaleMerchantId, 1);
 });
 document.getElementById('onSaleSearch').addEventListener('input',function(){
     var kw=this.value.trim().toLowerCase();
@@ -307,18 +326,32 @@ document.getElementById('onSaleSearch').addEventListener('input',function(){
     renderOnSaleRows(filtered);
 });
 function renderOnSaleRows(items){
+    var showNeg = window.PRICE_CONFIG && window.PRICE_CONFIG.showNegotiableLabel;
     var h='';items.forEach(function(r){
         var statusText=r.isOnSale?'在售':'下架';
-        h+='<tr><td>'+(r.bearingPartNumber||'-')+'</td><td>'+(r.bearingOldNumber||'-')+'</td><td>'+(r.bearingTypeName||'-')+'</td><td>'+(r.dimensions||'-')+'</td><td>'+(r.brandName||'-')+'</td><td>'+statusText+'</td></tr>';
+        // 价格列：按 PriceVisibility 决定显示内容
+        var priceCell = renderPriceCell(r, showNeg);
+        h+='<tr><td>'+(r.bearingPartNumber||'-')+'</td><td>'+(r.bearingOldNumber||'-')+'</td><td>'+(r.bearingTypeName||'-')+'</td><td>'+(r.dimensions||'-')+'</td><td>'+(r.brandName||'-')+'</td><td>'+priceCell+'</td><td>'+statusText+'</td></tr>';
     });
-    document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="6" class="text-center text-muted">无匹配结果</td></tr>';
+    document.getElementById('onSaleBody').innerHTML=h||'<tr><td colspan="7" class="text-center text-muted">无匹配结果</td></tr>';
+}
+function renderPriceCell(r, showNeg){
+    // r.priceVisibility: 0=Public, 1=LoginRequired；r.isPriceVisible 由后端按登录态计算
+    if (!r || r.isPriceVisible === false) {
+        return '<span class="text-muted small">登录查看</span>';
+    }
+    var desc = r.priceDescription || '-';
+    if (r.isNegotiable && showNeg) {
+        return desc + ' <span class="badge bg-warning text-dark">议价</span>';
+    }
+    return desc;
 }
 function loadOnSalePage(merchantId, page) {
     var body = document.getElementById('onSaleBody');
     var pager = document.getElementById('onSalePager');
-    body.innerHTML='<tr><td colspan="6">加载中...</td></tr>';
+    body.innerHTML='<tr><td colspan="7">加载中...</td></tr>';
     pager.style.display='none';
-    fetch('@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', merchantId)+'?page='+page+'&pageSize=20')
+    fetch('@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', merchantId)+'?page='+page+'&pageSize=20&sortBy='+_onSaleSort+'&sortOrder='+_onSaleSortOrder)
     .then(function(r){return r.json()}).then(function(d){
         var data = d && d.data ? d.data : d || {};
         var items = data.items || data || [];
@@ -346,7 +379,7 @@ function loadOnSalePage(merchantId, page) {
             pager.innerHTML=ph;
             pager.style.display='flex';
         } else { pager.style.display='none'; }
-    }).catch(function(){body.innerHTML='<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';});
+    }).catch(function(){body.innerHTML='<tr><td colspan="7" class="text-center text-danger">加载失败</td></tr>';});
 }
 document.getElementById('importExcelForm').addEventListener('submit', function(e) {
     e.preventDefault();

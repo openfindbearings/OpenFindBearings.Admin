@@ -1,55 +1,189 @@
-@{ ViewData["Title"] = "选项设置"; }
+@{
+    ViewData["Title"] = "系统配置";
+    // 按 Group 分组的配置列表
+    var groupedItems = ViewBag.GroupedItems as IEnumerable<IGrouping<string, SystemConfigDto>>;
 
-<div class="card">
-    <div class="card-header"><h6 class="mb-0">系统配置</h6></div>
-    <div class="card-body p-0">
-        <table class="table table-hover">
-            <thead><tr><th>配置键</th><th>配置值</th><th>描述</th><th>操作</th></tr></thead>
-            <tbody>
-                @{ var items = ViewBag.Items as IEnumerable<SystemConfigDto> ?? Enumerable.Empty<SystemConfigDto>(); }
-                @if (items.Any())
-                {
-                    @foreach (var item in items)
-                    {
-                        <tr>
-                            <td><code>@item.Key</code></td>
-                            <td>@item.Value</td>
-                            <td>@(item.Description ?? "-")</td>
-                            <td><button class="btn btn-sm btn-outline-primary btn-edit-config" data-key="@item.Key" data-value="@item.Value">编辑</button></td>
-                        </tr>
-                    }
-                }
-                else
-                {
-                    <tr><td colspan="4" class="text-center text-muted py-4">暂无配置</td></tr>
-                }
-            </tbody>
-        </table>
+    // 分组名映射为中文
+    // 改动说明：移除 General / Performance / RateLimit / Reliability 四项历史残留映射，
+    //           这四种分组名在数据库中已不存在（实际只有 Site / Price / Sync）
+    var groupNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Site"] = "站点设置",
+        ["Price"] = "价格显示",
+        ["Sync"] = "数据同步"
+    };
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (groupedItems != null && groupedItems.Any())
+{
+    foreach (var group in groupedItems)
+    {
+        var groupKey = group.Key;
+        var displayName = groupNames.TryGetValue(groupKey, out var name) ? name : groupKey;
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-cog me-1"></i> @displayName</h6>
+                <small class="text-muted">@group.Count() 项</small>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:30%">配置键</th>
+                            <th style="width:30%">配置值</th>
+                            <th style="width:25%">描述</th>
+                            <th style="width:15%" class="text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in group.OrderBy(i => i.Key))
+                        {
+                            <tr>
+                                <td><code class="text-primary">@item.Key</code></td>
+                                <td>
+                                    @* 改动说明：布尔值展示与编辑控件共用同一套真值集合，
+                                       避免 "1"/"yes"/"on" 显示为原始文本而无法识别开关状态 *@
+                                    @if (item.ValueType == "bool")
+                                    {
+                                        var boolTrue = new[] { "true", "1", "yes", "y", "on" }
+                                            .Contains((item.Value ?? "").Trim(), StringComparer.OrdinalIgnoreCase);
+                                        if (boolTrue)
+                                        {
+                                            <span class="badge bg-success">开启</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">关闭</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span>@item.Value</span>
+                                    }
+                                </td>
+                                <td class="text-muted small">@(item.Description ?? "-")</td>
+                                <td class="text-center">
+                                     <button class="btn btn-sm btn-outline-primary btn-edit-config"
+                                             data-key="@item.Key"
+                                             data-value="@item.Value"
+                                             data-group="@item.Group"
+                                             data-valuetype="@item.ValueType">
+                                         <i class="fas fa-edit"></i> 编辑
+                                     </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            <i class="fas fa-cog fa-3x mb-3"></i>
+            <p>暂无配置数据</p>
+            <small>请确认 API 服务已启动且 SystemConfigs 表已初始化种子数据</small>
+        </div>
+    </div>
+}
 
 <!-- 编辑配置弹窗 -->
 <div class="modal fade" id="configModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header"><h6 class="modal-title">编辑配置</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <form method="post" asp-action="Update">
-            <div class="modal-body">
-                <input type="hidden" name="key" id="configKey" />
-                <div class="mb-3"><label class="form-label">配置键</label><input type="text" class="form-control" id="configKeyDisplay" disabled /></div>
-                <div class="mb-3"><label class="form-label">配置值</label><input type="text" name="value" class="form-control" id="configValue" required /></div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">编辑配置</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="submit" class="btn btn-primary">保存</button></div>
-        </form>
-    </div></div>
+            <form method="post" asp-action="Update">
+                <div class="modal-body">
+                    <input type="hidden" name="key" id="configKey" />
+                    <div class="mb-3">
+                        <label class="form-label">配置键</label>
+                        <input type="text" class="form-control" id="configKeyDisplay" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">配置值 <span id="configValueTypeHint" class="text-muted small"></span></label>
+                        <!-- 改动说明：原为单一文本框且带 required，布尔与数值配置只能靠人工输入文本，
+                             填成 "0" 会被服务端静默回退为 true；备案号等可留空项也无法清空。
+                             改为按 ValueType 渲染对应控件，并去掉 required 允许留空 -->
+                        <input type="text" name="value" class="form-control" id="configValue" />
+                        <select name="value" class="form-select d-none" id="configValueBool" disabled>
+                            <option value="true">开启</option>
+                            <option value="false">关闭</option>
+                        </select>
+                        <input type="number" name="value" class="form-control d-none" id="configValueNumber" step="1" disabled />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
 <script>
+// 按配置值类型切换编辑控件：bool 用下拉、int 用数字框、其余用文本框
+var cfgText = document.getElementById('configValue');
+var cfgBool = document.getElementById('configValueBool');
+var cfgNumber = document.getElementById('configValueNumber');
+var cfgHint = document.getElementById('configValueTypeHint');
+
+// 改动说明：真值集合必须与 API 侧 SystemConfigRepository.TryParseBool 及
+//           UpdateSystemConfigCommandValidator 的识别范围完全一致。
+//           原先只认字面量 "true"，配置值为 "1"/"yes"/"on" 时会显示成"关闭"，
+//           管理员一打开就保存会把 true 静默改成 false，与修复目标直接冲突
+var BOOL_TRUE_VALUES = ['true', '1', 'yes', 'y', 'on'];
+
+function isTruthy(value){
+    return BOOL_TRUE_VALUES.indexOf((value || '').trim().toLowerCase()) >= 0;
+}
+
+function setEditor(type, value){
+    var isBool = type === 'bool';
+    var isInt = type === 'int';
+    // 同一 name 只允许一个控件参与提交，其余必须禁用（HTML 规范：disabled 控件不参与提交）
+    cfgText.disabled = isBool || isInt;
+    cfgBool.disabled = !isBool;
+    cfgNumber.disabled = !isInt;
+    cfgText.classList.toggle('d-none', isBool || isInt);
+    cfgBool.classList.toggle('d-none', !isBool);
+    cfgNumber.classList.toggle('d-none', !isInt);
+    cfgHint.textContent = isBool ? '(布尔)' : isInt ? '(整数)' : '(文本)';
+
+    // 布尔控件只提交规范化的 true/false，避免把 "1"/"yes" 原样回写
+    if (isBool) cfgBool.value = isTruthy(value) ? 'true' : 'false';
+    else if (isInt) cfgNumber.value = value || '0';
+    else cfgText.value = value || '';
+}
+
 document.querySelectorAll('.btn-edit-config').forEach(function(btn){
-    btn.addEventListener('click',function(){
-        document.getElementById('configKey').value=this.dataset.key;
-        document.getElementById('configKeyDisplay').value=this.dataset.key;
-        document.getElementById('configValue').value=this.dataset.value;
+    btn.addEventListener('click', function(){
+        document.getElementById('configKey').value = this.dataset.key;
+        document.getElementById('configKeyDisplay').value = this.dataset.key;
+        setEditor(this.dataset.valuetype || 'string', this.dataset.value);
         new bootstrap.Modal(document.getElementById('configModal')).show();
     });
 });

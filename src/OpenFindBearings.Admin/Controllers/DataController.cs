@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
 using OpenFindBearings.Admin.Models.ViewModels;
+using OpenFindBearings.Admin.Services;
 
 namespace OpenFindBearings.Admin.Controllers;
 
@@ -15,13 +16,19 @@ public class DataController : Controller
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
     private readonly ILogger<DataController> _logger;
+    private readonly PriceConfigService _priceConfig;
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public DataController(IHttpClientFactory factory, IConfiguration config, ILogger<DataController> logger)
+    public DataController(
+        IHttpClientFactory factory,
+        IConfiguration config,
+        ILogger<DataController> logger,
+        PriceConfigService priceConfig)
     {
         _factory = factory;
         _config = config;
         _logger = logger;
+        _priceConfig = priceConfig;
     }
 
     private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
@@ -333,6 +340,9 @@ public class DataController : Controller
 
         var json = await resp.Content.ReadAsStringAsync();
         var apiResp = JsonSerializer.Deserialize<ApiResponse<PagedData<MerchantItemDto>>>(json, JsonOpts);
+        // 加载价格配置供在售商品弹窗消费
+        var priceConfig = await _priceConfig.GetAsync();
+        ViewBag.PriceConfig = priceConfig;
         return View(new MerchantListViewModel
         {
             Items = apiResp?.Data?.Items ?? [],
@@ -410,13 +420,25 @@ public class DataController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int page = 1, int pageSize = 20)
+    public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int page = 1, int pageSize = 20, string? sortBy = null, string? sortOrder = null)
     {
         var client = _factory.CreateClient("ApiClient");
         try
         {
+            // 价格排序受 Price.NumericForSorting 配置控制
+            if (string.Equals(sortBy, "price", StringComparison.OrdinalIgnoreCase))
+            {
+                var priceCfg = await _priceConfig.GetAsync();
+                if (!priceCfg.NumericForSorting)
+                {
+                    return Json(new { success = false, message = "价格排序功能已关闭" });
+                }
+            }
+
             var url = $"{ApiBase()}/api/merchants/{id}/bearings?page={page}&pageSize={pageSize}";
             if (onlyOnSale) url += "&onlyOnSale=true";
+            if (!string.IsNullOrEmpty(sortBy)) url += $"&sortBy={sortBy}";
+            if (!string.IsNullOrEmpty(sortOrder)) url += $"&sortOrder={sortOrder}";
 
             var resp = await client.GetAsync(url);
             var json = await resp.Content.ReadAsStringAsync();

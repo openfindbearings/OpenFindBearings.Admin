@@ -56,9 +56,9 @@
                             else
                             { <span class="badge bg-danger">已禁用</span> }
                         </td></tr>
-                        <tr><td>创建时间</td><td>@Model.CreatedAt</td></tr>
-                        <tr><td>更新时间</td><td>@(Model.UpdatedAt ?? "-")</td></tr>
-                        <tr><td>最后登录</td><td>@(Model.LastLoginAt ?? "-")</td></tr>
+                        <tr><td>创建时间</td><td id="createdAt"></td></tr>
+                        <tr><td>更新时间</td><td id="updatedAt">@(Model.UpdatedAt ?? "-")</td></tr>
+                        <tr><td>最后登录</td><td id="lastLoginAt">@(Model.LastLoginAt ?? "-")</td></tr>
                         <tr><td>角色</td><td>
                             @if (Model.Roles.Count > 0)
                             {
@@ -93,3 +93,21 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    function fmtUtc(v, el) {
+        if (!v) { el.textContent = "-"; return; }
+        var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
+        var d = new Date(s);
+        if (isNaN(d)) { el.textContent = v; return; }
+        el.textContent = d.toLocaleString(undefined, {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit"
+        });
+    }
+    fmtUtc("@Model.CreatedAt", document.getElementById("createdAt"));
+    fmtUtc("@Model.UpdatedAt", document.getElementById("updatedAt"));
+    fmtUtc("@Model.LastLoginAt", document.getElementById("lastLoginAt"));
+</script>
+}

@@ -253,37 +253,33 @@ namespace OpenFindBearings.Admin.Controllers
                 return View(model);
             }
 
-            // 2. 调用 Identity API 获取元数据（创建时间、最后登录等）
-            try
+            // 2. 调用 Identity API 获取元数据（创建时间、最后登录等），失败时自动刷新 token 重试
+            var identityData = await FetchIdentityProfileAsync(accessToken);
+            if (identityData == null && await TryRefreshTokenAsync(cookieClaims))
             {
-                var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
-                var identityClient = _httpClientFactory.CreateClient("IdentityClient");
-                var identityRequest = new HttpRequestMessage(HttpMethod.Get, $"{authority}/api/account/me");
-                identityRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-                var identityResponse = await identityClient.SendAsync(identityRequest);
-
-                if (identityResponse.IsSuccessStatusCode)
-                {
-                    var json = await identityResponse.Content.ReadAsStringAsync();
-                    using var doc = System.Text.Json.JsonDocument.Parse(json);
-                    var root = doc.RootElement;
-
-                    if (root.TryGetProperty("data", out var data))
-                    {
-                        if (data.TryGetProperty("lastLoginAt", out var lla) && lla.ValueKind == System.Text.Json.JsonValueKind.String)
-                            model.LastLoginAt = lla.GetString();
-                        if (data.TryGetProperty("createdAt", out var ca) && ca.ValueKind == System.Text.Json.JsonValueKind.String)
-                            model.CreatedAt = ca.GetString();
-                        if (data.TryGetProperty("updatedAt", out var ua) && ua.ValueKind == System.Text.Json.JsonValueKind.String)
-                            model.UpdatedAt = ua.GetString();
-                        if (data.TryGetProperty("isEnabled", out var ie))
-                            model.IsEnabled = ie.ValueKind == System.Text.Json.JsonValueKind.Undefined || ie.GetBoolean();
-                    }
-                }
+                // token 已刷新，从更新后的 cookie 重新读取并重试
+                cookieClaims = HttpContext.User.Claims.ToList();
+                accessToken = cookieClaims.FirstOrDefault(c => c.Type == "access_token")?.Value ?? "";
+                model.AccessToken = accessToken.Length > 50 ? accessToken[..50] + "..." : accessToken;
+                model.ExpiresAt = cookieClaims.FirstOrDefault(c => c.Type == "expires_at")?.Value ?? "";
+                identityData = await FetchIdentityProfileAsync(accessToken);
             }
-            catch (Exception ex)
+
+            if (identityData != null)
             {
-                _logger.LogWarning(ex, "获取 Identity 用户元数据失败");
+                if (identityData.Value.TryGetProperty("lastLoginAt", out var lla) && lla.ValueKind == System.Text.Json.JsonValueKind.String)
+                    model.LastLoginAt = lla.GetString();
+                if (identityData.Value.TryGetProperty("createdAt", out var ca) && ca.ValueKind == System.Text.Json.JsonValueKind.String)
+                    model.CreatedAt = ca.GetString();
+                if (identityData.Value.TryGetProperty("updatedAt", out var ua) && ua.ValueKind == System.Text.Json.JsonValueKind.String)
+                    model.UpdatedAt = ua.GetString();
+                if (identityData.Value.TryGetProperty("isEnabled", out var ie))
+                    model.IsEnabled = ie.ValueKind != System.Text.Json.JsonValueKind.False && ie.GetBoolean();
+            }
+            else
+            {
+                // 两次均失败（含刷新后重试），已登录用户默认视为启用
+                model.IsEnabled = true;
             }
 
             // 3. 调用 API 项目获取业务角色
@@ -327,6 +323,135 @@ namespace OpenFindBearings.Admin.Controllers
             }
 
             return View(model);
+        }
+
+        /// <summary>
+        /// 调用 Identity /api/account/me 获取用户元数据，返回 data 节点或 null
+        /// </summary>
+        private async Task<System.Text.Json.JsonElement?> FetchIdentityProfileAsync(string accessToken)
+        {
+            try
+            {
+                var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
+                // 使用不带 BearerTokenHandler 的裸 HttpClient，避免重复注入过期 token
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var request = new HttpRequestMessage(HttpMethod.Get, $"{authority}/api/account/me");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                var response = await client.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Identity /api/account/me 返回 {StatusCode}", response.StatusCode);
+                    return null;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("data", out var data))
+                    return data.Clone();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "调用 Identity /api/account/me 失败");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 使用 refresh_token 换取新 access_token，成功后更新 cookie 并返回 true
+        /// </summary>
+        private async Task<bool> TryRefreshTokenAsync(List<Claim> cookieClaims)
+        {
+            var refreshToken = cookieClaims.FirstOrDefault(c => c.Type == "refresh_token")?.Value;
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                _logger.LogWarning("无 refresh_token，无法刷新");
+                return false;
+            }
+
+            try
+            {
+                var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
+                var clientId = _configuration["Identity:ClientId"] ?? "admin_client";
+                var clientSecret = _configuration["Identity:ClientSecret"] ?? "admin-secret-key";
+
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}"));
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
+
+                var form = new Dictionary<string, string>
+                {
+                    ["grant_type"] = "refresh_token",
+                    ["refresh_token"] = refreshToken,
+                    ["client_id"] = clientId
+                };
+
+                // 附加 device_id（Identity 校验刷新时设备绑定）
+                if (HttpContext.Request.Cookies.TryGetValue("device_id", out var deviceId) &&
+                    !string.IsNullOrEmpty(deviceId))
+                {
+                    form["device_id"] = deviceId;
+                }
+
+                var response = await client.PostAsync($"{authority}/connect/token", new FormUrlEncodedContent(form));
+                var json = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Token 刷新失败: {StatusCode}, {Response}", response.StatusCode, json);
+                    return false;
+                }
+
+                var tokenData = System.Text.Json.JsonDocument.Parse(json);
+                var newAccessToken = tokenData.RootElement.GetProperty("access_token").GetString();
+                var newRefreshToken = tokenData.RootElement.TryGetProperty("refresh_token", out var rt) ? rt.GetString() : refreshToken;
+                var expiresIn = tokenData.RootElement.GetProperty("expires_in").GetInt32();
+
+                if (string.IsNullOrEmpty(newAccessToken))
+                {
+                    _logger.LogWarning("Token 刷新结果缺少 access_token");
+                    return false;
+                }
+
+                // 更新 cookie 中的 token claims
+                var newPayload = ParseJwtPayload(newAccessToken);
+                var updatedClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, newPayload.TryGetValue("sub", out var newSub) ? newSub : ""),
+                    new Claim(ClaimTypes.Name, newPayload.TryGetValue("name", out var newName) ? newName : newPayload.TryGetValue("preferred_username", out var newUsername) ? newUsername : ""),
+                    new Claim("access_token", newAccessToken),
+                    new Claim("refresh_token", newRefreshToken ?? ""),
+                    new Claim("expires_at", DateTime.UtcNow.AddSeconds(expiresIn).ToString("O"))
+                };
+                if (newPayload.TryGetValue("email", out var newEmail) && !string.IsNullOrEmpty(newEmail))
+                    updatedClaims.Add(new Claim(ClaimTypes.Email, newEmail));
+                if (newPayload.TryGetValue("tenant_id", out var newTenantId) && !string.IsNullOrEmpty(newTenantId))
+                    updatedClaims.Add(new Claim("tenant_id", newTenantId));
+                // 保留原有角色 claims
+                foreach (var roleClaim in cookieClaims.Where(c => c.Type == ClaimTypes.Role))
+                    updatedClaims.Add(roleClaim);
+
+                var identity = new ClaimsIdentity(updatedClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var principal = new ClaimsPrincipal(identity);
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    new AuthenticationProperties
+                    {
+                        IsPersistent = true,
+                        ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+                    });
+
+                _logger.LogInformation("Token 刷新成功，新有效期 {ExpiresIn} 秒", expiresIn);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Token 刷新异常");
+                return false;
+            }
         }
 
         /// <summary>

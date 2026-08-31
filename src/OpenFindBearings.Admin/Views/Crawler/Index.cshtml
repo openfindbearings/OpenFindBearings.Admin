@@ -56,6 +56,9 @@
         });
     }
 
+    // 全局缓存 summary 数据，供数据源表使用
+    var crawlerSummaryData = null;
+
     function renderCrawlerStatus(crawler) {
         var badge = document.getElementById("badge-Crawler");
         var desc = document.getElementById("desc-Crawler");
@@ -92,8 +95,23 @@
             if (!r.ok) return;
             var j = await r.json();
             var summary = unwrap(j);
-            if (summary && summary.crawler) renderCrawlerStatus(summary.crawler);
+            if (summary && summary.crawler) {
+                crawlerSummaryData = summary.crawler;
+                renderCrawlerStatus(summary.crawler);
+                // 如果数据源表已加载，刷新最近抓取列
+                refreshDataSourceLastCrawl();
+            }
         } catch (e) { /* 忽略 */ }
+    }
+
+    // 用 summary 数据刷新数据源表的「最近抓取」列
+    function refreshDataSourceLastCrawl() {
+        if (!crawlerSummaryData) return;
+        var lastCrawl = crawlerSummaryData.lastCrawlAt;
+        var cells = document.querySelectorAll("#crawlerTableBody td.last-crawl");
+        cells.forEach(function (cell) {
+            cell.textContent = lastCrawl ? fmtTime(lastCrawl) : "-";
+        });
     }
 
     // 加载数据源列表（从 Sync /api/datasources）
@@ -109,7 +127,13 @@
                 }
                 var html = '';
                 rows.forEach(function (item) {
-                    html += '<tr><td>' + (item.name || '-') + '</td><td>' + (item.displayName || '-') + '</td><td>-</td><td><span class="badge bg-secondary">--</span></td></tr>';
+                    var lastCrawl = (crawlerSummaryData && crawlerSummaryData.lastCrawlAt) ? fmtTime(crawlerSummaryData.lastCrawlAt) : "-";
+                    var statusBadge = crawlerSummaryData
+                        ? (crawlerSummaryData.hasStuckProcessing
+                            ? '<span class="badge bg-danger">中断</span>'
+                            : '<span class="badge bg-success">正常</span>')
+                        : '<span class="badge bg-secondary">--</span>';
+                    html += '<tr><td>' + (item.name || '-') + '</td><td>' + (item.displayName || '-') + '</td><td class="last-crawl">' + lastCrawl + '</td><td>' + statusBadge + '</td></tr>';
                 });
                 tbody.innerHTML = html;
             })
@@ -119,9 +143,8 @@
             });
     }
 
-    // 首屏加载 + 轮询
-    loadDataSourceList();
-    loadCrawlerStatus();
-    setInterval(loadCrawlerStatus, 30000);
+    // 首屏加载 + 轮询（先加载 summary 获取 lastCrawlAt，再加载数据源列表）
+    loadCrawlerStatus().then(function () { loadDataSourceList(); });
+    setInterval(function () { loadCrawlerStatus().then(function () { refreshDataSourceLastCrawl(); }); }, 30000);
 </script>
 }

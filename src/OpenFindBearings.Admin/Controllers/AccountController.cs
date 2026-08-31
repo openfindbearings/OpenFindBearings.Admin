@@ -255,14 +255,17 @@ namespace OpenFindBearings.Admin.Controllers
 
             // 2. 调用 Identity API 获取元数据（创建时间、最后登录等），失败时自动刷新 token 重试
             var identityData = await FetchIdentityProfileAsync(accessToken);
-            if (identityData == null && await TryRefreshTokenAsync(cookieClaims))
+            if (identityData == null)
             {
-                // token 已刷新，从更新后的 cookie 重新读取并重试
-                cookieClaims = HttpContext.User.Claims.ToList();
-                accessToken = cookieClaims.FirstOrDefault(c => c.Type == "access_token")?.Value ?? "";
-                model.AccessToken = accessToken.Length > 50 ? accessToken[..50] + "..." : accessToken;
-                model.ExpiresAt = cookieClaims.FirstOrDefault(c => c.Type == "expires_at")?.Value ?? "";
-                identityData = await FetchIdentityProfileAsync(accessToken);
+                // 尝试刷新 token；返回新 access_token（同一请求内 HttpContext.User 不会更新）
+                var newAccessToken = await TryRefreshTokenAsync(cookieClaims);
+                if (newAccessToken != null)
+                {
+                    accessToken = newAccessToken;
+                    model.AccessToken = accessToken.Length > 50 ? accessToken[..50] + "..." : accessToken;
+                    model.ExpiresAt = ParseJwtPayload(accessToken).GetValueOrDefault("exp", "");
+                    identityData = await FetchIdentityProfileAsync(accessToken);
+                }
             }
 
             if (identityData != null)
@@ -360,15 +363,15 @@ namespace OpenFindBearings.Admin.Controllers
         }
 
         /// <summary>
-        /// 使用 refresh_token 换取新 access_token，成功后更新 cookie 并返回 true
+        /// 使用 refresh_token 换取新 access_token，成功后更新 cookie 并返回新 token；失败返回 null
         /// </summary>
-        private async Task<bool> TryRefreshTokenAsync(List<Claim> cookieClaims)
+        private async Task<string?> TryRefreshTokenAsync(List<Claim> cookieClaims)
         {
             var refreshToken = cookieClaims.FirstOrDefault(c => c.Type == "refresh_token")?.Value;
             if (string.IsNullOrEmpty(refreshToken))
             {
                 _logger.LogWarning("无 refresh_token，无法刷新");
-                return false;
+                return null;
             }
 
             try
@@ -401,7 +404,7 @@ namespace OpenFindBearings.Admin.Controllers
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Token 刷新失败: {StatusCode}, {Response}", response.StatusCode, json);
-                    return false;
+                    return null;
                 }
 
                 var tokenData = System.Text.Json.JsonDocument.Parse(json);
@@ -412,7 +415,7 @@ namespace OpenFindBearings.Admin.Controllers
                 if (string.IsNullOrEmpty(newAccessToken))
                 {
                     _logger.LogWarning("Token 刷新结果缺少 access_token");
-                    return false;
+                    return null;
                 }
 
                 // 更新 cookie 中的 token claims
@@ -445,12 +448,12 @@ namespace OpenFindBearings.Admin.Controllers
                     });
 
                 _logger.LogInformation("Token 刷新成功，新有效期 {ExpiresIn} 秒", expiresIn);
-                return true;
+                return newAccessToken;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Token 刷新异常");
-                return false;
+                return null;
             }
         }
 

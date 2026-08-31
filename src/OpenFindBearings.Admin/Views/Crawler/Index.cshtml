@@ -66,19 +66,19 @@
             desc.textContent = "爬虫可能尚未运行或 Sync 服务离线";
             return;
         }
-        if (crawler.HasStuckProcessing) {
+        if (crawler.hasStuckProcessing) {
             badge.className = "badge bg-danger";
             badge.textContent = "存在中断";
         } else {
             badge.className = "badge bg-success";
             badge.textContent = "正常";
         }
-        var total = Object.values(crawler.BearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
-            + Object.values(crawler.MerchantStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
-            + Object.values(crawler.MerchantBearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0);
-        desc.innerHTML = "最近抓取: " + fmtTime(crawler.LastCrawlAt)
+        var total = Object.values(crawler.bearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
+            + Object.values(crawler.merchantStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
+            + Object.values(crawler.merchantBearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0);
+        desc.innerHTML = "最近抓取: " + fmtTime(crawler.lastCrawlAt)
             + "<br/>记录总数: " + total
-            + (crawler.HasStuckProcessing ? "<br/><span class='text-danger'>存在 processing 卡住记录</span>" : "");
+            + (crawler.hasStuckProcessing ? "<br/><span class='text-danger'>存在 processing 卡住记录</span>" : "");
     }
 
     function unwrap(resp) {
@@ -92,7 +92,7 @@
             if (!r.ok) return;
             var j = await r.json();
             var summary = unwrap(j);
-            if (summary && summary.Crawler) renderCrawlerStatus(summary.Crawler);
+            if (summary && summary.crawler) renderCrawlerStatus(summary.crawler);
         } catch (e) { /* 忽略 */ }
     }
 
@@ -123,6 +123,5 @@
     loadDataSourceList();
     loadCrawlerStatus();
     setInterval(loadCrawlerStatus, 30000);
-})();
 </script>
 }

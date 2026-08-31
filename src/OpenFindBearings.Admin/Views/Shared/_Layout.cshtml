@@ -7,13 +7,15 @@
     var changePwdUrl = $"{identityAuth}/profile/change-password" +
         $"?returnUrl={Uri.EscapeDataString("https://localhost:7167/")}" +
         $"&realm=openfindbearings";
+    var siteName = Config["SiteName"] ?? "OpenFindBearings";
+    var siteDescription = Config["SiteDescription"] ?? "";
 }
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - OpenFindBearings</title>
+    <title>@ViewData["Title"] - @siteName</title>
     <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/font-awesome/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -22,7 +24,13 @@
 <body>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <a asp-controller="Home" asp-action="Index">OpenFindBearings</a>
+            <a asp-controller="Home" asp-action="Index">
+                @siteName
+                @if (!string.IsNullOrEmpty(siteDescription))
+                {
+                    <small class="d-block text-muted" style="font-size:0.7em;font-weight:normal">@siteDescription</small>
+                }
+            </a>
         </div>
         <nav class="sidebar-nav">
             <ul>
@@ -144,7 +152,11 @@
         </div>
 
         <footer class="main-footer">
-            <strong>OpenFindBearings</strong> &copy; @DateTime.Now.Year
+            <strong>@siteName</strong> &copy; @DateTime.Now.Year
+            @if (!string.IsNullOrEmpty(siteDescription))
+            {
+                <span class="text-muted ms-2">@siteDescription</span>
+            }
         </footer>
     </div>
 

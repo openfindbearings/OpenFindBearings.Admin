@@ -158,27 +158,27 @@
 
     // 根据阶段运行态设置卡片 + 触发按钮禁用状态与提示
     function applyPhase(phase) {
-        const cmd = phase.CommandType;
+        const cmd = phase.commandType;
         const badge = document.getElementById("badge-" + cmd);
         const desc = document.getElementById("desc-" + cmd);
         if (!badge || !desc) return;
 
-        if (phase.IsActive) {
+        if (phase.isActive) {
             badge.className = "badge bg-warning";
             badge.textContent = "进行中/排队中";
         } else {
             badge.className = "badge bg-secondary";
             badge.textContent = "空闲";
         }
-        desc.textContent = "最近: " + (phase.LatestStatus || "-")
-            + (phase.LatestStartedAt ? " " + fmtTime(phase.LatestStartedAt) : "");
+        desc.textContent = "最近: " + (phase.latestStatus || "-")
+            + (phase.latestStartedAt ? " " + fmtTime(phase.latestStartedAt) : "");
     }
 
     // 触发按钮禁用：某阶段活跃则禁用对应按钮；完整流程在任一阶段活跃时禁用
     function applyButtons(summary) {
-        const active = new Set((summary.Phases || [])
-            .filter(p => p.IsActive)
-            .map(p => p.CommandType));
+        const active = new Set((summary.phases || [])
+            .filter(p => p.isActive)
+            .map(p => p.commandType));
         const blockMsg = "该阶段当前有进行中或排队中的任务（可能来自定时调度），暂不能手动执行，请稍后重试。";
         document.querySelectorAll(".btn-trigger").forEach(btn => {
             const phase = btn.getAttribute("data-phase");
@@ -195,35 +195,35 @@
 
     function renderSummary(summary) {
         if (!summary) return;
-        (summary.Phases || []).forEach(applyPhase);
+        (summary.phases || []).forEach(applyPhase);
         applyButtons(summary);
     }
 
     function renderTasks(data) {
         const tbody = document.getElementById("taskRows");
         if (!tbody) return;
-        const items = (data && data.Items) ? data.Items : (Array.isArray(data) ? data : []);
+        const items = (data && data.items) ? data.items : (Array.isArray(data) ? data : []);
         if (!items.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无执行记录</td></tr>';
             return;
         }
         const rows = items.map(t => {
-            const status = (t.Status || "").toLowerCase();
+            const status = (t.status || "").toLowerCase();
             let kind = "secondary";
             if (status === "running") kind = "warning";
             else if (status === "success") kind = "success";
             else if (status === "failed") kind = "danger";
             else if (status === "pending") kind = "info";
-            const err = t.ErrorMessage ? (t.ErrorMessage.length > 40 ? t.ErrorMessage.substring(0, 40) + "..." : t.ErrorMessage) : "-";
+            const err = t.errorMessage ? (t.errorMessage.length > 40 ? t.errorMessage.substring(0, 40) + "..." : t.errorMessage) : "-";
             return `<tr>
-                <td>${t.CommandType || "-"}</td>
-                <td>${statusBadge(t.Status || "-", kind)}</td>
-                <td>${fmtTime(t.StartedAt)}</td>
-                <td>${fmtTime(t.CompletedAt)}</td>
-                <td>${t.SuccessRecords ?? 0}</td>
-                <td>${t.FailedRecords ?? 0}</td>
-                <td>${t.SkippedRecords ?? 0}</td>
-                <td title="${t.ErrorMessage || ""}">${err}</td>
+                <td>${t.commandType || "-"}</td>
+                <td>${statusBadge(t.status || "-", kind)}</td>
+                <td>${fmtTime(t.startedAt)}</td>
+                <td>${fmtTime(t.completedAt)}</td>
+                <td>${t.successRecords ?? 0}</td>
+                <td>${t.failedRecords ?? 0}</td>
+                <td>${t.skippedRecords ?? 0}</td>
+                <td title="${t.errorMessage || ""}">${err}</td>
             </tr>`;
         }).join("");
         tbody.innerHTML = rows;

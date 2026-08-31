@@ -2,39 +2,42 @@
     ViewData["Title"] = "数据爬虫";
 }
 
-<div class="card">
-    <div class="card-header"><h6 class="mb-0">爬虫接入情况</h6></div>
-    <div class="card-body p-0">
-        <table class="table table-hover">
-            <thead><tr><th>数据源</th><th>爬虫名称</th></tr></thead>
-            <tbody id="crawlerTableBody">
-                <tr><td colspan="2" class="text-center text-muted py-4">加载中...</td></tr>
-            </tbody>
-        </table>
+<!-- 爬虫运行态卡片（从 Sync 页面迁移） -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">爬虫运行状态</h6></div>
+            <div class="card-body">
+                <span class="badge" id="badge-Crawler">--</span>
+                <div class="small text-muted mt-2" id="desc-Crawler">--</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">调度策略</h6></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><th style="width:140px">调度方式</th><td>K8s CronJob 定时任务</td></tr>
+                        <tr><th>执行时间</th><td>每日 06:00（北京时间）自动触发</td></tr>
+                        <tr><th>超时限制</th><td>单次运行最长 4 小时，超时自动中止，次日续跑</td></tr>
+                        <tr><th>数据流向</th><td>爬虫 → db_raw → Sync ETL → db_api</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="card mt-3">
-    <div class="card-header"><h6 class="mb-0">调度策略</h6></div>
-    <div class="card-body">
-        <table class="table table-sm mb-0">
-            <tbody>
-                <tr>
-                    <th style="width:180px">调度方式</th>
-                    <td>K8s CronJob 定时任务</td>
-                </tr>
-                <tr>
-                    <th>执行时间</th>
-                    <td>每晚 22:00（UTC / 北京时间次日 06:00）自动触发</td>
-                </tr>
-                <tr>
-                    <th>超时限制</th>
-                    <td>单次运行最长 4 小时，超时自动中止，次日续跑</td>
-                </tr>
-                <tr>
-                    <th>说明</th>
-                    <td>爬虫统一按上述策略调度，数据写入原始库（db_raw），经 Sync ETL 流程处理后进入业务库</td>
-                </tr>
+<!-- 爬虫接入数据源 -->
+<div class="card mb-3">
+    <div class="card-header"><h6 class="mb-0">接入数据源</h6></div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>数据源</th><th>爬虫名称</th><th>最近抓取</th><th>状态</th></tr></thead>
+            <tbody id="crawlerTableBody">
+                <tr><td colspan="4" class="text-center text-muted py-4">加载中...</td></tr>
             </tbody>
         </table>
     </div>
@@ -42,26 +45,84 @@
 
 @section Scripts {
 <script>
-(function () {
-    fetch('/Home/DataSources')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            var rows = data && data.length ? data : [];
-            var tbody = document.getElementById('crawlerTableBody');
-            if (rows.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-4">暂未接入爬虫数据源</td></tr>';
-                return;
-            }
-            var html = '';
-            rows.forEach(function (item) {
-                html += '<tr><td>' + (item.name || '-') + '</td><td>' + (item.displayName || '-') + '</td></tr>';
-            });
-            tbody.innerHTML = html;
-        })
-        .catch(function () {
-            document.getElementById('crawlerTableBody').innerHTML =
-                '<tr><td colspan="2" class="text-center text-muted py-4">加载失败，Sync 服务可能离线</td></tr>';
+    function fmtTime(v) {
+        if (!v) return "-";
+        const s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
+        const d = new Date(s);
+        if (isNaN(d)) return "-";
+        return d.toLocaleString(undefined, {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit"
         });
+    }
+
+    function renderCrawlerStatus(crawler) {
+        var badge = document.getElementById("badge-Crawler");
+        var desc = document.getElementById("desc-Crawler");
+        if (!badge || !desc) return;
+        if (!crawler) {
+            badge.className = "badge bg-secondary";
+            badge.textContent = "无数据";
+            desc.textContent = "爬虫可能尚未运行或 Sync 服务离线";
+            return;
+        }
+        if (crawler.HasStuckProcessing) {
+            badge.className = "badge bg-danger";
+            badge.textContent = "存在中断";
+        } else {
+            badge.className = "badge bg-success";
+            badge.textContent = "正常";
+        }
+        var total = Object.values(crawler.BearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
+            + Object.values(crawler.MerchantStatusCounts || {}).reduce(function(a,b){return a+b;}, 0)
+            + Object.values(crawler.MerchantBearingStatusCounts || {}).reduce(function(a,b){return a+b;}, 0);
+        desc.innerHTML = "最近抓取: " + fmtTime(crawler.LastCrawlAt)
+            + "<br/>记录总数: " + total
+            + (crawler.HasStuckProcessing ? "<br/><span class='text-danger'>存在 processing 卡住记录</span>" : "");
+    }
+
+    function unwrap(resp) {
+        return resp && resp.data !== undefined ? resp.data : resp;
+    }
+
+    // 加载爬虫运行态（从 /api/proxy/etl/summary 的 Crawler 字段）
+    async function loadCrawlerStatus() {
+        try {
+            var r = await fetch("/api/proxy/etl/summary");
+            if (!r.ok) return;
+            var j = await r.json();
+            var summary = unwrap(j);
+            if (summary && summary.Crawler) renderCrawlerStatus(summary.Crawler);
+        } catch (e) { /* 忽略 */ }
+    }
+
+    // 加载数据源列表（从 Sync /api/datasources）
+    function loadDataSourceList() {
+        fetch('/Home/DataSources')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var rows = data && data.length ? data : [];
+                var tbody = document.getElementById('crawlerTableBody');
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">暂未接入爬虫数据源</td></tr>';
+                    return;
+                }
+                var html = '';
+                rows.forEach(function (item) {
+                    html += '<tr><td>' + (item.name || '-') + '</td><td>' + (item.displayName || '-') + '</td><td>-</td><td><span class="badge bg-secondary">--</span></td></tr>';
+                });
+                tbody.innerHTML = html;
+            })
+            .catch(function () {
+                document.getElementById('crawlerTableBody').innerHTML =
+                    '<tr><td colspan="4" class="text-center text-muted py-4">加载失败，Sync 服务可能离线</td></tr>';
+            });
+    }
+
+    // 首屏加载 + 轮询
+    loadDataSourceList();
+    loadCrawlerStatus();
+    setInterval(loadCrawlerStatus, 30000);
 })();
 </script>
 }

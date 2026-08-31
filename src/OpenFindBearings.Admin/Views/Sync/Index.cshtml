@@ -8,7 +8,7 @@
 <div class="row mb-3">
     <div class="col-12">
         <h4 class="mb-0">ETL 同步管理</h4>
-        <small class="text-muted">当前 Sync 状态: <strong>@(ViewBag.SyncStatus ?? "未知")</strong></small>
+        <small class="text-muted">当前 Sync 状态: <strong id="syncStatus">@(ViewBag.SyncStatus ?? "未知")</strong></small>
     </div>
 </div>
 
@@ -40,6 +40,18 @@
     </div>
     <div class="col-md-3 col-sm-6 mb-2">
         <div class="card h-100">
+            <div class="card-header"><h6 class="mb-0">Images 图片</h6></div>
+            <div class="card-body">
+                <span class="badge" id="badge-Images">--</span>
+                <div class="small text-muted mt-2" id="desc-Images">--</div>
+                <form method="post" asp-action="Trigger" asp-route-phase="images" class="mt-2">
+                    <button type="submit" class="btn btn-outline-primary w-100 btn-trigger" data-phase="Images">触发 Images</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-2">
+        <div class="card h-100">
             <div class="card-header"><h6 class="mb-0">Load 加载</h6></div>
             <div class="card-body">
                 <span class="badge" id="badge-Load">--</span>
@@ -47,15 +59,6 @@
                 <form method="post" asp-action="Trigger" asp-route-phase="load" class="mt-2">
                     <button type="submit" class="btn btn-outline-primary w-100 btn-trigger" data-phase="Load">触发 Load</button>
                 </form>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6 mb-2">
-        <div class="card h-100">
-            <div class="card-header"><h6 class="mb-0">爬虫最近执行</h6></div>
-            <div class="card-body">
-                <span class="badge" id="badge-Crawler">--</span>
-                <div class="small text-muted mt-2" id="desc-Crawler">--</div>
             </div>
         </div>
     </div>
@@ -67,7 +70,7 @@
         <div class="card h-100">
             <div class="card-header"><h6 class="mb-0">完整流程</h6></div>
             <div class="card-body">
-                <p class="small text-muted mb-2">依次创建 抽取 → 转换 → 加载 任务。任一批次正在进行或排队时禁止重复触发（含定时调度）。</p>
+                <p class="small text-muted mb-2">依次创建 抽取 → 转换 → 图片 → 加载 任务。任一批次正在进行或排队时禁止重复触发（含定时调度）。</p>
                 <form method="post" asp-action="Trigger" asp-route-phase="run">
                     <button type="submit" class="btn btn-primary w-100 btn-trigger" data-phase="Full">触发全量 ETL</button>
                 </form>
@@ -79,11 +82,11 @@
             <div class="card-header"><h6 class="mb-0">ETL 调度说明</h6></div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>阶段</th><th>调度时间</th><th>说明</th></tr></thead>
+                    <thead><tr><th>阶段</th><th>调度时间（北京时间）</th><th>说明</th></tr></thead>
                     <tbody>
                         <tr><td>Extract</td><td>每日 12:00</td><td>从 db_raw 提取数据到 staging 表</td></tr>
                         <tr><td>Transform</td><td>每日 12:30</td><td>数据清洗、映射、评分</td></tr>
-                        <tr><td>Images</td><td>每日 13:00</td><td>异步下载图片</td></tr>
+                        <tr><td>Images</td><td>每日 13:00</td><td>异步下载商品图片</td></tr>
                         <tr><td>Load</td><td>每日 13:30</td><td>加载到 API 业务库</td></tr>
                         <tr><td>Retry</td><td>每日 14:30</td><td>重试失败记录</td></tr>
                         <tr><td>Stuck</td><td>每日 15:00</td><td>处理卡住记录</td></tr>
@@ -105,7 +108,10 @@
                         <option value="">全部阶段</option>
                         <option value="Extract">Extract</option>
                         <option value="Transform">Transform</option>
+                        <option value="Images">Images</option>
                         <option value="Load">Load</option>
+                        <option value="Retry">Retry</option>
+                        <option value="Stuck">Stuck</option>
                     </select>
                     <button id="refreshBtn" class="btn btn-sm btn-outline-secondary">刷新</button>
                 </div>
@@ -137,7 +143,6 @@
 
     function fmtTime(v) {
         if (!v) return "-";
-        // 后端存储为 UTC；若字符串缺少时区标记（naive 时间）则补 Z，确保按 UTC 解析后再转浏览器本地时区显示，避免直接展示 UTC
         const s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
         const d = new Date(s);
         if (isNaN(d)) return "-";
@@ -148,7 +153,6 @@
     }
 
     function statusBadge(text, kind) {
-        // kind: primary/success/warning/danger/secondary
         return `<span class="badge bg-${kind}">${text}</span>`;
     }
 
@@ -159,38 +163,15 @@
         const desc = document.getElementById("desc-" + cmd);
         if (!badge || !desc) return;
 
-        if (cmd === "Extract" || cmd === "Transform" || cmd === "Load") {
-            if (phase.IsActive) {
-                badge.className = "badge bg-warning";
-                badge.textContent = "进行中/排队中";
-                desc.textContent = "最近状态: " + (phase.LatestStatus || "-")
-                    + (phase.LatestStartedAt ? " at " + fmtTime(phase.LatestStartedAt) : "");
-            } else {
-                badge.className = "badge bg-secondary";
-                badge.textContent = "空闲";
-                desc.textContent = "最近状态: " + (phase.LatestStatus || "-")
-                    + (phase.LatestStartedAt ? " at " + fmtTime(phase.LatestStartedAt) : "");
-            }
-        }
-    }
-
-    function applyCrawler(crawler) {
-        const badge = document.getElementById("badge-Crawler");
-        const desc = document.getElementById("desc-Crawler");
-        if (!badge || !desc || !crawler) return;
-        if (crawler.HasStuckProcessing) {
-            badge.className = "badge bg-danger";
-            badge.textContent = "存在中断";
+        if (phase.IsActive) {
+            badge.className = "badge bg-warning";
+            badge.textContent = "进行中/排队中";
         } else {
             badge.className = "badge bg-secondary";
-            badge.textContent = "正常";
+            badge.textContent = "空闲";
         }
-        const total = Object.values(crawler.BearingStatusCounts).reduce((a, b) => a + b, 0)
-            + Object.values(crawler.MerchantStatusCounts).reduce((a, b) => a + b, 0)
-            + Object.values(crawler.MerchantBearingStatusCounts).reduce((a, b) => a + b, 0);
-        desc.innerHTML = "最近抓取: " + fmtTime(crawler.LastCrawlAt)
-            + "<br/>记录总数: " + total
-            + (crawler.HasStuckProcessing ? "<br/><span class='text-danger'>存在 processing 卡住记录</span>" : "");
+        desc.textContent = "最近: " + (phase.LatestStatus || "-")
+            + (phase.LatestStartedAt ? " " + fmtTime(phase.LatestStartedAt) : "");
     }
 
     // 触发按钮禁用：某阶段活跃则禁用对应按钮；完整流程在任一阶段活跃时禁用
@@ -215,7 +196,6 @@
     function renderSummary(summary) {
         if (!summary) return;
         (summary.Phases || []).forEach(applyPhase);
-        applyCrawler(summary.Crawler);
         applyButtons(summary);
     }
 
@@ -234,7 +214,7 @@
             else if (status === "success") kind = "success";
             else if (status === "failed") kind = "danger";
             else if (status === "pending") kind = "info";
-            const err = t.ErrorMessage ? (t.ErrorMessage.length > 40 ? t.ErrorMessage.substring(0, 40) + "…" : t.ErrorMessage) : "-";
+            const err = t.ErrorMessage ? (t.ErrorMessage.length > 40 ? t.ErrorMessage.substring(0, 40) + "..." : t.ErrorMessage) : "-";
             return `<tr>
                 <td>${t.CommandType || "-"}</td>
                 <td>${statusBadge(t.Status || "-", kind)}</td>
@@ -250,22 +230,27 @@
     }
 
     function unwrap(resp) {
-        // 后端统一 ApiResponse<T> 包装：{ success, code, data, message }
         return resp && resp.data !== undefined ? resp.data : resp;
     }
 
     async function loadSummary() {
         try {
             const r = await fetch("/api/proxy/etl/summary");
-            if (!r.ok) return;
+            if (!r.ok) {
+                document.getElementById("syncStatus").textContent = "离线 (HTTP " + r.status + ")";
+                return;
+            }
+            document.getElementById("syncStatus").textContent = "在线";
             const j = await r.json();
             renderSummary(unwrap(j));
-        } catch (e) { /* 忽略轮询异常，保留首屏数据 */ }
+        } catch (e) {
+            document.getElementById("syncStatus").textContent = "离线 (连接失败)";
+        }
     }
 
     async function loadTasks() {
         const phase = document.getElementById("filterPhase").value;
-        const url = "/api/proxy/etl/tasks?page=1&pageSize=10" + (phase ? ("&commandType=" + phase) : "");
+        const url = "/api/proxy/etl/tasks?page=1&pageSize=20" + (phase ? ("&commandType=" + phase) : "");
         try {
             const r = await fetch(url);
             if (!r.ok) return;

@@ -143,13 +143,20 @@
 
     function fmtTime(v) {
         if (!v) return "-";
-        // 始终按 UTC+8（北京时间）显示：后端存储 UTC，前端显式转换
-        var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
+        // 后端返回的时间可能带 +08 偏移（北京时间）或 Z（UTC）
+        // 策略：解析为 Date 后，先提取 UTC 毫秒，再统一加 8h 得北京时间
+        // 若原始值带 +08 偏移，JS Date 解析后 getTime() 已是正确 UTC 毫秒，+8h 得北京时间
+        // 若原始值带 Z（UTC），getTime() 也是正确 UTC 毫秒，+8h 得北京时间
+        // 若原始值无偏移（Unspecified），追加 Z 按 UTC 处理，+8h 得北京时间
+        var s = v;
+        if (typeof v === "string") {
+            // 无偏移信息时追加 Z（按 UTC 处理）
+            if (!/Z$|[+-]\d{2}:\d{2}$/.test(v)) s = v + "Z";
+        }
         var d = new Date(s);
         if (isNaN(d)) return "-";
-        // 手动加 8 小时偏移，避免 toLocaleString 依赖浏览器时区
-        var utcMs = d.getTime() + (8 * 60 * 60 * 1000);
-        var bd = new Date(utcMs);
+        // getTime() 返回 UTC 毫秒（无论原始偏移如何），加 8h = 北京时间
+        var bd = new Date(d.getTime() + 8 * 60 * 60 * 1000);
         var y = bd.getUTCFullYear();
         var m = String(bd.getUTCMonth() + 1).padStart(2, "0");
         var day = String(bd.getUTCDate()).padStart(2, "0");

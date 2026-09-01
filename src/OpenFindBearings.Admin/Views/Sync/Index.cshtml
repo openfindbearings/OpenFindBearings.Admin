@@ -141,19 +141,15 @@
     const initialSummary = @Html.Raw(initialSummaryJson ?? "null");
     const initialTasks = @Html.Raw(initialTasksJson ?? "null");
 
-    // 改动说明：从硬编码 +8h 改为 toLocaleString，按浏览器本地时区显示 UTC 时间
+    // 改动说明：Day.js tz.guess() 自动推断浏览器时区
+    var _djtz = dayjs.tz.guess();
     function fmtTime(v) {
         if (!v) return "-";
         var s = v;
         if (typeof v === "string") {
             if (!/Z$|[+-]\d{2}:\d{2}$/.test(v)) s = v + "Z";
         }
-        var d = new Date(s);
-        if (isNaN(d)) return "-";
-        return d.toLocaleString("zh-CN", {
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", hour12: false
-        });
+        return dayjs(s).tz(_djtz).format("YYYY/MM/DD HH:mm");
     }
 
     function statusBadge(text, kind) {

@@ -41,6 +41,11 @@ spec:
           value: "https://auth.abcsxl.com"
         - name: Identity__CallbackUrl
           value: "https://admin.515813.xyz/callback"
+        - name: Identity__ClientSecret
+          valueFrom:
+            secretKeyRef:
+              name: openfindbearings-admin-secrets
+              key: Identity__ClientSecret
         livenessProbe:
           httpGet:
             path: /health/live

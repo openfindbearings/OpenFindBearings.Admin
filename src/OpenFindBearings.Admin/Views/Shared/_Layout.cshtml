@@ -164,5 +164,28 @@
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    @* 改动说明：全局 UTC 时间转换，所有含 data-utc 属性的元素按浏览器本地时区显示 *@
+    <script>
+        (function () {
+            function fmtUtc(v) {
+                if (!v) return null;
+                var s = v;
+                if (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) s = v + "Z";
+                var d = new Date(s);
+                return isNaN(d) ? null : d;
+            }
+            document.addEventListener("DOMContentLoaded", function () {
+                document.querySelectorAll("[data-utc]").forEach(function (el) {
+                    var d = fmtUtc(el.getAttribute("data-utc"));
+                    if (d) {
+                        el.textContent = d.toLocaleString("zh-CN", {
+                            year: "numeric", month: "2-digit", day: "2-digit",
+                            hour: "2-digit", minute: "2-digit", hour12: false
+                        });
+                    }
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

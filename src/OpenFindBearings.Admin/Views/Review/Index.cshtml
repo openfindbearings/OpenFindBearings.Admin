@@ -80,7 +80,7 @@
                                         <span class="text-muted">-</span>
                                     }
                                 </td>
-                                <td class="text-muted small">@item.CreatedAtDisplay</td>
+                                <td class="text-muted small" data-utc="@item.CreatedAtUtc">@item.CreatedAtFallback</td>
                                 <td>
                                     <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id"
                                             data-entity-type="@item.EntityType">

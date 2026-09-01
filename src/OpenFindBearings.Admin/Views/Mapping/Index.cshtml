@@ -8,9 +8,8 @@
     var pageSize = ViewBag.PageSize as int? ?? 20;
     var totalPages = ViewBag.TotalPages as int? ?? 1;
     var error = ViewBag.Error as string;
-    // UTC+8 北京时间格式化
-    string BdTime(DateTime? dt, string fmt = "yyyy-MM-dd HH:mm") =>
-        dt.HasValue ? dt.Value.AddHours(8).ToString(fmt) : "-";
+    // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
+    string BdTimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
 }
 
 <div class="card">
@@ -69,7 +68,7 @@
                                     <span class="badge bg-secondary">禁用</span>
                                 }
                             </td>
-                            <td class="text-muted small">@BdTime(createdAt)</td>
+                            <td class="text-muted small" data-utc="@BdTimeRaw(createdAt)">@BdTimeRaw(createdAt)</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="showEditModal('@id','@standardCode','@standardName','@alias',@confidence,@(isActive?"true":"false"))"><i class="fas fa-edit"></i></button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteMapping('@id')"><i class="fas fa-trash"></i></button>

@@ -12,9 +12,8 @@
     var includeDeleted = (bool)(ViewBag.IncludeDeleted ?? false);
     var totalPages = totalCount > 0 && pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&includeDeleted={includeDeleted.ToString().ToLower()}";
-    // UTC+8 北京时间格式化
-    string BdTime(DateTimeOffset? dt, string fmt = "MM-dd HH:mm") =>
-        dt.HasValue ? dt.Value.AddHours(8).ToString(fmt) : "从未";
+    // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
+    string BdTimeRaw(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "从未";
 }
 
 <div class="card">
@@ -74,7 +73,7 @@
                                 }
                             </td>
                             <td>@(item.Roles.Any() ? string.Join(", ", item.Roles) : "-")</td>
-                            <td>@BdTime(item.LastLoginAt)</td>
+                            <td data-utc="@BdTimeRaw(item.LastLoginAt)">@BdTimeRaw(item.LastLoginAt)</td>
                             <td>
                                 @if (!item.IsActive)
                                 {

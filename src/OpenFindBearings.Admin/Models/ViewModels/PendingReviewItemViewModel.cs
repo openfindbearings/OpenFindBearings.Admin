@@ -24,7 +24,9 @@ public class PendingReviewItemViewModel
 
     public int? ConfidenceDisplay => Confidence;
 
-    public string CreatedAtDisplay => CreatedAt == DateTime.MinValue ? "-" : CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    // 改动说明：输出 UTC ISO 8601 字符串，由前端 data-utc JS 按浏览器时区显示
+    public string CreatedAtUtc => CreatedAt == DateTime.MinValue ? "" : CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ");
+    public string CreatedAtFallback => CreatedAt == DateTime.MinValue ? "-" : CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ");
 }
 
 public class PendingReviewListViewModel

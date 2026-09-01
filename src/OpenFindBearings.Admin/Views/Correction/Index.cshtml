@@ -7,9 +7,8 @@
     var currentStatus = (string?)ViewBag.CurrentStatus ?? "pending";
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     string PageUrl(int p) => $"?status={currentStatus}&page={p}";
-    // UTC+8 北京时间格式化：服务端时区不确定，显式转换保证一致
-    string BdTime(DateTime? dt, string fmt = "yyyy-MM-dd HH:mm") =>
-        dt.HasValue ? dt.Value.AddHours(8).ToString(fmt) : "-";
+    // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
+    string BdTimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
 }
 
 <div class="page-header">
@@ -66,7 +65,7 @@
                                 <td>@item.OriginalValue</td>
                                 <td>@item.SuggestedValue</td>
                                 <td>@(item.SubmittedBy ?? "-")</td>
-                                <td class="text-muted small">@BdTime(item.SubmittedAt)</td>
+                                <td class="text-muted small" data-utc="@BdTimeRaw(item.SubmittedAt)">@BdTimeRaw(item.SubmittedAt)</td>
                             </tr>
                         }
                     </tbody>

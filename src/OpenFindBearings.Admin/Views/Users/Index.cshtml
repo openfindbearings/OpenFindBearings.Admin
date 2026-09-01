@@ -12,6 +12,9 @@
     var includeDeleted = (bool)(ViewBag.IncludeDeleted ?? false);
     var totalPages = totalCount > 0 && pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&includeDeleted={includeDeleted.ToString().ToLower()}";
+    // UTC+8 北京时间格式化
+    string BdTime(DateTimeOffset? dt, string fmt = "MM-dd HH:mm") =>
+        dt.HasValue ? dt.Value.AddHours(8).ToString(fmt) : "从未";
 }
 
 <div class="card">
@@ -71,7 +74,7 @@
                                 }
                             </td>
                             <td>@(item.Roles.Any() ? string.Join(", ", item.Roles) : "-")</td>
-                            <td>@(item.LastLoginAt?.ToLocalTime().ToString("MM-dd HH:mm") ?? "从未")</td>
+                            <td>@BdTime(item.LastLoginAt)</td>
                             <td>
                                 @if (!item.IsActive)
                                 {

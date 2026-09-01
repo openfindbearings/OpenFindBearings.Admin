@@ -7,6 +7,9 @@
     var currentStatus = (string?)ViewBag.CurrentStatus ?? "pending";
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     string PageUrl(int p) => $"?status={currentStatus}&page={p}";
+    // UTC+8 北京时间格式化：服务端时区不确定，显式转换保证一致
+    string BdTime(DateTime? dt, string fmt = "yyyy-MM-dd HH:mm") =>
+        dt.HasValue ? dt.Value.AddHours(8).ToString(fmt) : "-";
 }
 
 <div class="page-header">
@@ -63,7 +66,7 @@
                                 <td>@item.OriginalValue</td>
                                 <td>@item.SuggestedValue</td>
                                 <td>@(item.SubmittedBy ?? "-")</td>
-                                <td class="text-muted small">@(item.SubmittedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td class="text-muted small">@BdTime(item.SubmittedAt)</td>
                             </tr>
                         }
                     </tbody>

@@ -98,17 +98,13 @@
 
 @section Scripts {
 <script>
-    // 改动说明：从硬编码 +8h 改为 toLocaleString，按浏览器本地时区显示 UTC 时间
+    // 改动说明：Day.js tz.guess() 自动推断浏览器时区
+    var _djtz = dayjs.tz.guess();
     function fmtUtc(el) {
         var v = el.getAttribute("data-raw");
         if (!v) { el.textContent = "-"; return; }
         var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
-        var d = new Date(s);
-        if (isNaN(d)) { el.textContent = v; return; }
-        el.textContent = d.toLocaleString("zh-CN", {
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", hour12: false
-        });
+        el.textContent = dayjs(s).tz(_djtz).format("YYYY/MM/DD HH:mm");
     }
     fmtUtc(document.getElementById("createdAt"));
     fmtUtc(document.getElementById("updatedAt"));

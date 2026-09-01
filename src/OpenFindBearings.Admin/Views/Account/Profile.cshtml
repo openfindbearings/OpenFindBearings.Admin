@@ -58,9 +58,9 @@
                             else
                             { <span class="badge bg-danger">已禁用</span> }
                         </td></tr>
-                        <tr><td>创建时间</td><td id="createdAt" data-raw="@Model.CreatedAt"></td></tr>
-                        <tr><td>更新时间</td><td id="updatedAt" data-raw="@Model.UpdatedAt">@(Model.UpdatedAt ?? "-")</td></tr>
-                        <tr><td>最后登录</td><td id="lastLoginAt" data-raw="@Model.LastLoginAt">@(Model.LastLoginAt ?? "-")</td></tr>
+                        <tr><td>创建时间</td><td id="createdAt" data-raw="@Model.CreatedAt">-</td></tr>
+                        <tr><td>更新时间</td><td id="updatedAt" data-raw="@Model.UpdatedAt">-</td></tr>
+                        <tr><td>最后登录</td><td id="lastLoginAt" data-raw="@Model.LastLoginAt">-</td></tr>
                         <tr><td>角色</td><td>
                             @if (Model.Roles.Count > 0)
                             {
@@ -98,21 +98,17 @@
 
 @section Scripts {
 <script>
+    // 改动说明：从硬编码 +8h 改为 toLocaleString，按浏览器本地时区显示 UTC 时间
     function fmtUtc(el) {
         var v = el.getAttribute("data-raw");
         if (!v) { el.textContent = "-"; return; }
         var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
         var d = new Date(s);
         if (isNaN(d)) { el.textContent = v; return; }
-        // 手动加 8 小时偏移，按 UTC+8（北京时间）显示
-        var utcMs = d.getTime() + (8 * 60 * 60 * 1000);
-        var bd = new Date(utcMs);
-        var y = bd.getUTCFullYear();
-        var m = String(bd.getUTCMonth() + 1).padStart(2, "0");
-        var day = String(bd.getUTCDate()).padStart(2, "0");
-        var h = String(bd.getUTCHours()).padStart(2, "0");
-        var min = String(bd.getUTCMinutes()).padStart(2, "0");
-        el.textContent = y + "/" + m + "/" + day + " " + h + ":" + min;
+        el.textContent = d.toLocaleString("zh-CN", {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hour12: false
+        });
     }
     fmtUtc(document.getElementById("createdAt"));
     fmtUtc(document.getElementById("updatedAt"));

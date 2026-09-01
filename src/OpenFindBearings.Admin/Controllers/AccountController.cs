@@ -263,7 +263,23 @@ namespace OpenFindBearings.Admin.Controllers
                 {
                     accessToken = newAccessToken;
                     model.AccessToken = accessToken.Length > 50 ? accessToken[..50] + "..." : accessToken;
-                    model.ExpiresAt = ParseJwtPayload(accessToken).GetValueOrDefault("exp", "");
+                    // 重新解析新 token 的 JWT payload，更新基本信息字段
+                    var newPayload = ParseJwtPayload(accessToken);
+                    model.Id = newPayload.GetValueOrDefault("sub", "");
+                    model.UserName = newPayload.GetValueOrDefault("preferred_username", "");
+                    model.Email = newPayload.GetValueOrDefault("email", "");
+                    model.EmailVerified = newPayload.GetValueOrDefault("email_verified") == "True";
+                    model.PhoneNumber = newPayload.GetValueOrDefault("phone_number", "");
+                    model.PhoneNumberVerified = newPayload.GetValueOrDefault("phone_number_verified") == "True";
+                    model.Name = newPayload.GetValueOrDefault("name", "");
+                    model.GivenName = newPayload.GetValueOrDefault("given_name", "");
+                    model.FamilyName = newPayload.GetValueOrDefault("family_name", "");
+                    model.Nickname = newPayload.GetValueOrDefault("nickname", "");
+                    model.Gender = newPayload.GetValueOrDefault("gender", "");
+                    model.Birthdate = newPayload.GetValueOrDefault("birthdate", "");
+                    model.Locale = newPayload.GetValueOrDefault("locale", "");
+                    model.ZoneInfo = newPayload.GetValueOrDefault("zoneinfo", "");
+                    model.ExpiresAt = newPayload.GetValueOrDefault("exp", "");
                     identityData = await FetchIdentityProfileAsync(accessToken);
                 }
             }
@@ -388,7 +404,8 @@ namespace OpenFindBearings.Admin.Controllers
                 {
                     ["grant_type"] = "refresh_token",
                     ["refresh_token"] = refreshToken,
-                    ["client_id"] = clientId
+                    ["client_id"] = clientId,
+                    ["client_secret"] = clientSecret
                 };
 
                 // 附加 device_id（Identity 校验刷新时设备绑定）

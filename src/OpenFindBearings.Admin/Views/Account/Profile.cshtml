@@ -3,6 +3,8 @@
 
 @{ 
     var identityAuth = Config["Identity:Authority"] ?? "https://localhost:7201";
+    var currentHost = Context.Request.Host.Value;
+    var callbackUrl = $"https://{currentHost}/";
 }
 
 <div class="content-header">
@@ -86,7 +88,7 @@
 
         <div class="card mt-3">
             <div class="card-body text-center">
-                <a href="@($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString("https://localhost:7167/")}&realm=openfindbearings")" class="btn btn-outline-primary">
+                <a href="@($"{identityAuth}/profile/change-password?returnUrl={Uri.EscapeDataString(callbackUrl)}&realm=openfindbearings")" class="btn btn-outline-primary">
                     <i class="fas fa-key"></i> 修改密码
                 </a>
             </div>
@@ -102,10 +104,15 @@
         var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
         var d = new Date(s);
         if (isNaN(d)) { el.textContent = v; return; }
-        el.textContent = d.toLocaleString(undefined, {
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit"
-        });
+        // 手动加 8 小时偏移，按 UTC+8（北京时间）显示
+        var utcMs = d.getTime() + (8 * 60 * 60 * 1000);
+        var bd = new Date(utcMs);
+        var y = bd.getUTCFullYear();
+        var m = String(bd.getUTCMonth() + 1).padStart(2, "0");
+        var day = String(bd.getUTCDate()).padStart(2, "0");
+        var h = String(bd.getUTCHours()).padStart(2, "0");
+        var min = String(bd.getUTCMinutes()).padStart(2, "0");
+        el.textContent = y + "/" + m + "/" + day + " " + h + ":" + min;
     }
     fmtUtc(document.getElementById("createdAt"));
     fmtUtc(document.getElementById("updatedAt"));

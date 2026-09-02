@@ -45,12 +45,17 @@
 
 @section Scripts {
 <script>
-    // 改动说明：Day.js tz.guess() 自动推断浏览器时区
-    var _djtz = dayjs.tz.guess();
+    // 改动说明：使用浏览器原生 Intl.DateTimeFormat 进行 UTC→本地时区转换，不依赖外部 CDN
+    var _browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var _dateFmt = new Intl.DateTimeFormat("zh-CN", {
+        timeZone: _browserTz,
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hour12: false
+    });
     function fmtTime(v) {
         if (!v) return "-";
         var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
-        return dayjs(s).tz(_djtz).format("YYYY/MM/DD HH:mm");
+        return _dateFmt.format(new Date(s));
     }
 
     // 全局缓存 summary 数据，供数据源表使用

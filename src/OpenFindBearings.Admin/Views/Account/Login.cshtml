@@ -98,6 +98,29 @@
             border-bottom: none;
         }
         .badge { font-size: 11px; padding: 3px 8px; }
+
+        /* 移动端适配：窄屏纵向堆叠，登录卡在上、服务状态在下，避免两栏溢出/挤压 */
+        @@media (max-width: 768px) {
+            body {
+                align-items: flex-start;
+                padding: 24px 0;
+            }
+            .login-container {
+                flex-direction: column;
+                gap: 16px;
+                width: 92%;
+                max-width: 420px;
+            }
+            .login-card {
+                padding: 32px 20px;
+                min-width: 0;
+            }
+            .status-card {
+                flex: 1 1 auto; /* 覆盖桌面端 flex:0 0 340px，纵向时该值会变高度撑坏 */
+            }
+            .login-logo { font-size: 40px; }
+            .login-title { font-size: 20px; }
+        }
     </style>
 </head>
 <body>

@@ -50,17 +50,25 @@ namespace OpenFindBearings.Admin.Controllers
         {
             var authority = _configuration["Identity:Authority"] ?? "https://localhost:7201";
             var clientId = _configuration["Identity:ClientId"] ?? "admin_client";
-            var scope = _configuration["Identity:Scope"] ?? "openid profile email roles api:admin";
+            // 改动说明：追加 offline_access —— OpenIddict 授权码流程只有带该 scope 才签发 refresh_token，
+            // 缺失导致 cookie 无 refresh_token、access 过期后无法续期→全站 401。
+            var scope = _configuration["Identity:Scope"] ?? "openid profile email roles api:admin offline_access";
 
-            // 生成设备标识并存入 HttpOnly cookie（用于刷新令牌时设备绑定）
-            var deviceId = Guid.NewGuid().ToString("N");
-            HttpContext.Response.Cookies.Append("device_id", deviceId, new CookieOptions
+            // 设备标识：用于刷新令牌的设备绑定。
+            // 改动说明：原实现每次登录都新建并覆盖 device_id cookie——若已有有效会话（旧 refresh 绑定旧 device_id），
+            // 覆盖后旧 refresh 与新 device_id 不匹配 → 刷新失败。改为：已存在则复用，仅首次生成，
+            // 使同一浏览器的 device_id 稳定、refresh 绑定一致（等价移动端"一台设备一条链"）。
+            if (!HttpContext.Request.Cookies.TryGetValue("device_id", out var deviceId) || string.IsNullOrEmpty(deviceId))
             {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddDays(30)
-            });
+                deviceId = Guid.NewGuid().ToString("N");
+                HttpContext.Response.Cookies.Append("device_id", deviceId, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddDays(30)
+                });
+            }
 
             var authorizationUrl = $"{authority}/connect/authorize" +
                 $"?response_type=code" +
@@ -191,6 +199,13 @@ namespace OpenFindBearings.Admin.Controllers
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
+            // 改动说明：登出清除该会话的进程级令牌缓存。缓存现按 device_id 键（每浏览器独立），
+            // 故用 device_id cookie 值失效；同时兜底按 userId 清（旧数据/无 device_id 场景）。
+            OpenFindBearings.Admin.Services.AdminTokenService.Invalidate(
+                HttpContext.Request.Cookies["device_id"]);
+            OpenFindBearings.Admin.Services.AdminTokenService.Invalidate(
+                HttpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? HttpContext.User.FindFirst("sub")?.Value);
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             // 标准 OIDC RP-Initiated Logout：使用 post_logout_redirect_uri 参数
@@ -255,6 +270,7 @@ namespace OpenFindBearings.Admin.Controllers
 
             // 2. 调用 Identity API 获取元数据（创建时间、最后登录等），失败时自动刷新 token 重试
             var identityData = await FetchIdentityProfileAsync(accessToken);
+
             if (identityData == null)
             {
                 // 尝试刷新 token；返回新 access_token（同一请求内 HttpContext.User 不会更新）
@@ -400,12 +416,14 @@ namespace OpenFindBearings.Admin.Controllers
                 var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}"));
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
 
+                // 改动说明：与 AdminTokenService 对齐——OpenIddict 拒 Basic 头+表单 client_secret 双凭证(ID2087)。
+                // 已用 Basic(admin_client:secret) 认证，表单只留 client_id + realm（realm 供 Identity 租户解析）。
                 var form = new Dictionary<string, string>
                 {
                     ["grant_type"] = "refresh_token",
                     ["refresh_token"] = refreshToken,
                     ["client_id"] = clientId,
-                    ["client_secret"] = clientSecret
+                    ["realm"] = _configuration["Identity:Realm"] ?? "openfindbearings"
                 };
 
                 // 附加 device_id（Identity 校验刷新时设备绑定）

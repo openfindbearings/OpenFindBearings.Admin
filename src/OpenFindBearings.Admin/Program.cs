@@ -58,6 +58,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 // 各 Controller 按需添加 [Authorize] 或 [AllowAnonymous]
 builder.Services.AddHttpContextAccessor();
 
+// Admin 令牌服务：按 exp 预刷新并回写 cookie，供 BearerTokenHandler 取用新鲜访问令牌
+builder.Services.AddScoped<AdminTokenService>();
 builder.Services.AddScoped<BearerTokenHandler>();
 
 builder.Services.AddHealthChecks();

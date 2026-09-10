@@ -80,7 +80,7 @@
                 <table class="table table-borderless">
                     <tbody>
                         <tr><td style="width:120px">Access Token</td><td><code>@Model.AccessToken</code></td></tr>
-                        <tr><td>过期时间</td><td>@Model.ExpiresAt</td></tr>
+                        <tr><td>过期时间</td><td id="expiresAt" data-raw="@Model.ExpiresAt">-</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -98,16 +98,27 @@
 
 @section Scripts {
 <script>
-    // 改动说明：Day.js tz.guess() 自动推断浏览器时区
-    var _djtz = dayjs.tz.guess();
+    // 改动说明：原实现用 dayjs，但 _Layout 已移除 dayjs CDN（统一改原生 Intl），此处 dayjs 未定义会抛
+    // ReferenceError 使整段脚本中断、三格停留 "-"（数据其实已在 data-raw 里）。改用原生 Date + toLocaleString，
+    // 按浏览器时区渲染；无时区后缀的裸串补 Z 再解析（带 +00:00/Z 的原样解析）。
     function fmtUtc(el) {
+        if (!el) return;
         var v = el.getAttribute("data-raw");
         if (!v) { el.textContent = "-"; return; }
-        var s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) ? v + "Z" : v;
-        el.textContent = dayjs(s).tz(_djtz).format("YYYY/MM/DD HH:mm");
+        // 改动说明：cookie 的 expires_at 用 .NET "O" 格式含 7 位小数秒、/api/account/me 含 6 位，
+        // V8 的 new Date() 对 >3 位小数秒判为 Invalid Date → 会走 isNaN 把裸串显示出来。解析前截断到 3 位。
+        var s = v;
+        if (typeof s === "string") {
+            s = s.replace(/(\.\d{3})\d+/, "$1");
+            s = (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(s)) ? s + "Z" : s;
+        }
+        var d = new Date(s);
+        if (isNaN(d.getTime())) { el.textContent = v; return; }
+        el.textContent = d.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
     }
     fmtUtc(document.getElementById("createdAt"));
     fmtUtc(document.getElementById("updatedAt"));
     fmtUtc(document.getElementById("lastLoginAt"));
+    fmtUtc(document.getElementById("expiresAt")); // 改动说明：Token 过期时间也统一转本地时区显示
 </script>
 }

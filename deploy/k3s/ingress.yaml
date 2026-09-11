@@ -10,6 +10,9 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     acme.cert-manager.io/http01-edit-in-place: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # 登录 callback 成功时写入的多段 chunked auth cookie 响应头总大小超过 nginx 默认缓冲，
+    # 导致 "upstream sent too big header" → 502。调大 proxy-buffer-size 以兼容大 Set-Cookie 响应头。
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
 spec:
   ingressClassName: nginx
   tls:

@@ -12,7 +12,7 @@
 
 <div class="page-header">
     <h4><i class="fas fa-user-check"></i> 入驻申请审批</h4>
-    <p class="text-muted">商家入驻申请审批，认证通过后商家可正常经营</p>
+    <p class="text-muted">入驻审核通过使商户生效可被检索；认证（提交营业执照）用于提升商户资质等级，二者相互独立</p>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -22,7 +22,10 @@
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-        <a class="nav-link @(currentStatus == "pending" ? "active" : "")" href="@Url.Action("Index", new { status = "pending", search, page = 1 })">待认证</a>
+        <a class="nav-link @(currentStatus == "pending" ? "active" : "")" href="@Url.Action("Index", new { status = "pending", search, page = 1 })">待审核</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(currentStatus == "active" ? "active" : "")" href="@Url.Action("Index", new { status = "active", search, page = 1 })">已生效</a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(currentStatus == "suspended" ? "active" : "")" href="@Url.Action("Index", new { status = "suspended", search, page = 1 })">已拒绝</a>
@@ -65,7 +68,11 @@
                                 <td>
                                     @if (item.Status == "Active")
                                     {
-                                        <span class="badge bg-success">已认证</span>
+                                        <span class="badge bg-success">已生效</span>
+                                        @if (item.IsVerified)
+                                        {
+                                            <span class="badge bg-primary ms-1">已认证</span>
+                                        }
                                     }
                                     else if (item.Status == "Suspended")
                                     {
@@ -73,18 +80,18 @@
                                     }
                                     else
                                     {
-                                        <span class="badge bg-warning text-dark">待认证</span>
+                                        <span class="badge bg-warning text-dark">待审核</span>
                                     }
                                 </td>
                                 <td>
-                                    @if (item.Status != "Active")
+                                    @if (item.Status == "Pending")
                                     {
-                                        <button class="btn btn-sm btn-success btn-verify" data-id="@item.Id"><i class="fas fa-check"></i> 认证</button>
+                                        <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id"><i class="fas fa-check-double"></i> 审核通过</button>
                                         <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id"><i class="fas fa-times"></i> 拒绝</button>
                                     }
-                                    else
+                                    else if (item.Status == "Active" && !item.IsVerified)
                                     {
-                                        <span class="text-muted small">已认证</span>
+                                        <button class="btn btn-sm btn-outline-success btn-verify" data-id="@item.Id"><i class="fas fa-check"></i> 认证</button>
                                     }
                                     <button class="btn btn-sm btn-outline-info btn-sync-data" data-id="@item.Id" data-name="@item.Name">同步数据</button>
                                 </td>
@@ -206,9 +213,26 @@
     <script>
         let rejectMerchantId = null;
 
+        $('.btn-approve').on('click', function () {
+            const id = $(this).data('id');
+            if (!confirm('确认审核通过该入驻申请？商户将生效并可在 C 端被检索。')) return;
+            $.post('@Url.Action("Approve")', { id })
+                .done(function (res) {
+                    if (res.success) {
+                        showToast('success', res.message || '已审核通过');
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        showToast('danger', res.message || '操作失败');
+                    }
+                })
+                .fail(function () {
+                    showToast('danger', '服务异常');
+                });
+        });
+
         $('.btn-verify').on('click', function () {
             const id = $(this).data('id');
-            if (!confirm('确认认证该商家？')) return;
+            if (!confirm('确认认证该商家？（认证提升资质等级，不影响生效状态）')) return;
             $.post('@Url.Action("Verify")', { id })
                 .done(function (res) {
                     if (res.success) {

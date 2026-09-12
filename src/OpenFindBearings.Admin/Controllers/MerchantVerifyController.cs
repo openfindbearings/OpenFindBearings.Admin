@@ -69,6 +69,31 @@ public class MerchantVerifyController : Controller
     }
 
     [HttpPost]
+    public async Task<IActionResult> Approve(Guid id)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsync($"{ApiBase()}/api/admin/merchants/{id}/approve", null);
+            var json = await resp.Content.ReadAsStringAsync();
+
+            if (resp.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("入驻审核通过: {Id}", id);
+                return Json(new { success = true, message = "已审核通过，商户已生效" });
+            }
+
+            _logger.LogWarning("入驻审核通过失败: {Id}, {StatusCode}, {Response}", id, resp.StatusCode, json);
+            return Json(new { success = false, message = "操作失败" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "入驻审核通过异常: {Id}", id);
+            return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    [HttpPost]
     public async Task<IActionResult> Verify(Guid id)
     {
         var client = _factory.CreateClient("ApiClient");

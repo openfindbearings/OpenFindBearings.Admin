@@ -21,5 +21,10 @@ public record MerchantItemDto(
     [property: JsonPropertyName("grade")] string Grade,
     [property: JsonPropertyName("followerCount")] int FollowerCount,
     [property: JsonPropertyName("productCount")] int ProductCount,
-    [property: JsonPropertyName("logoUrl")] string? LogoUrl
+    [property: JsonPropertyName("logoUrl")] string? LogoUrl,
+    // 改动说明：对齐 API MerchantDto 新增的审批字段（渠道/提交时间/拒绝原因），
+    //   列表展示"渠道、提交时间"两列并作为抽屉空值提示依据
+    [property: JsonPropertyName("applicationMode")] string? ApplicationMode = null,
+    [property: JsonPropertyName("submittedAt")] DateTime? SubmittedAt = null,
+    [property: JsonPropertyName("rejectReason")] string? RejectReason = null
 );

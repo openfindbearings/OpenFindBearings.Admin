@@ -8,11 +8,21 @@
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     var search = (string?)ViewBag.Search ?? "";
     var error = (string?)ViewBag.Error;
+
+    // 改动说明：入驻渠道码转中文（对齐 API ApplicationMode 枚举）
+    static string ModeLabel(string? mode) => mode switch
+    {
+        "Self" => "自助新建",
+        "Claim" => "认领",
+        "Nomination" => "提名",
+        "None" or null or "" => "-",
+        _ => mode
+    };
 }
 
 <div class="page-header">
     <h4><i class="fas fa-user-check"></i> 入驻申请审批</h4>
-    <p class="text-muted">入驻审核通过使商户生效可被检索；认证（提交营业执照）用于提升商户资质等级，二者相互独立</p>
+    <p class="text-muted">入驻审核通过使商户生效可被检索；认证（提交营业执照）用于提升商户资质等级，二者相互独立。点击行可打开详情抽屉核对全部申请资料</p>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -48,8 +58,10 @@
                         <th>名称</th>
                         <th>公司全称</th>
                         <th>类型</th>
+                        <th>渠道</th>
                         <th>联系人</th>
                         <th>手机</th>
+                        <th>提交时间</th>
                         <th>状态</th>
                         <th style="width:240px">操作</th>
                     </tr>
@@ -59,12 +71,21 @@
                     {
                         @foreach (var item in items)
                         {
-                            <tr>
+                            <tr class="merchant-row" data-id="@item.Id" data-name="@item.Name" style="cursor:pointer">
                                 <td>@item.Name</td>
-                                <td>@(item.CompanyName ?? "-")</td>
+                                <td>
+                                    @(item.CompanyName ?? "-")
+                                    @* 改动说明：待审核且企业名称为空时标黄提示（审核依据不足，建议驳回补全） *@
+                                    @if (item.Status == "Pending" && string.IsNullOrWhiteSpace(item.CompanyName))
+                                    {
+                                        <i class="fas fa-exclamation-triangle text-warning ms-1" title="缺营业执照企业名称，建议驳回补全"></i>
+                                    }
+                                </td>
                                 <td>@item.Type</td>
+                                <td>@ModeLabel(item.ApplicationMode)</td>
                                 <td>@(item.ContactPerson ?? "-")</td>
                                 <td>@(item.Mobile ?? item.Phone ?? "-")</td>
+                                <td>@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                 <td>
                                     @if (item.Status == "Active")
                                     {
@@ -78,9 +99,13 @@
                                     {
                                         <span class="badge bg-secondary">已拒绝</span>
                                     }
-                                    else
+                                    else if (item.Status == "Pending")
                                     {
                                         <span class="badge bg-warning text-dark">待审核</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">@item.Status</span>
                                     }
                                 </td>
                                 <td>
@@ -93,14 +118,14 @@
                                     {
                                         <button class="btn btn-sm btn-outline-success btn-verify" data-id="@item.Id"><i class="fas fa-check"></i> 认证</button>
                                     }
-                                    <button class="btn btn-sm btn-outline-info btn-sync-data" data-id="@item.Id" data-name="@item.Name">同步数据</button>
+                                    <button class="btn btn-sm btn-outline-primary btn-detail" data-id="@item.Id"><i class="fas fa-id-card"></i> 详情</button>
                                 </td>
                             </tr>
                         }
                     }
                     else
                     {
-                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无商家数据</td></tr>
+                        <tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无商家数据</td></tr>
                     }
                 </tbody>
             </table>
@@ -145,60 +170,89 @@
     }
 </div>
 
-@* --- 同步数据弹出框 --- *@
-<div class="modal fade" id="syncDataModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title">历史同步数据 - <span id="syncDataMerchantName"></span></h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+@* --- 详情抽屉：申请资料全量 + 爬虫历史数据比对（替代原独立"同步数据"弹窗，主流审批"先看全资料再决策"） --- *@
+<div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" style="width:620px">
+    <div class="offcanvas-header">
+        <h6 class="offcanvas-title">申请详情 - <span id="drawerName"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="drawerLoading" class="text-center text-muted py-5">加载中...</div>
+        <div id="drawerContent" class="d-none">
+            <h6 class="text-muted small mb-2">申请资料</h6>
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th style="width:130px">商家名称</th><td id="dName">-</td></tr>
+                    <tr><th>企业名称</th><td id="dCompanyName">-</td></tr>
+                    <tr><th>统一社会信用代码</th><td id="dCreditCode">-</td></tr>
+                    <tr><th>商家类型</th><td id="dType">-</td></tr>
+                    <tr><th>入驻渠道</th><td id="dMode">-</td></tr>
+                    <tr><th>提交时间</th><td id="dSubmittedAt">-</td></tr>
+                    <tr><th>联系人</th><td id="dContact">-</td></tr>
+                    <tr><th>联系电话</th><td id="dPhone">-</td></tr>
+                    <tr><th>地址</th><td id="dAddress">-</td></tr>
+                    <tr><th>简介</th><td id="dDesc">-</td></tr>
+                    <tr><th>状态</th><td id="dStatus">-</td></tr>
+                    <tr><th>拒绝原因</th><td id="dReject">-</td></tr>
+                    <tr><th>Logo</th><td id="dLogo">-</td></tr>
+                </tbody>
+            </table>
+            <div id="drawerWarn" class="alert alert-warning py-2 small d-none">
+                缺营业执照企业名称：审核依据不足，建议驳回并要求补全后重新提交。
             </div>
-            <div class="modal-body p-0">
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom small text-muted">
-                    <span>共 <span id="syncDataTotalCount">0</span> 条</span>
-                    <label class="d-flex align-items-center gap-1">
-                        <input type="checkbox" id="syncDataShowAll" />
-                        显示全部（含非在售）
-                    </label>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>型号</th>
-                                <th>曾用代号</th>
-                                <th>类型</th>
-                                <th>尺寸</th>
-                                <th>品牌</th>
-                                <th>来源</th>
-                                <th>状态</th>
-                            </tr>
-                        </thead>
-                        <tbody id="syncDataBody">
-                            <tr><td colspan="7" class="text-center text-muted py-4">加载中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+
+            <h6 class="text-muted small mt-4 mb-2">爬虫历史数据比对</h6>
+            <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
+                <span>共 <span id="drawerSyncTotal">0</span> 条</span>
+                <label class="d-flex align-items-center gap-1">
+                    <input type="checkbox" id="drawerShowAll" />
+                    显示全部（含非在售）
+                </label>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>型号</th>
+                            <th>曾用代号</th>
+                            <th>类型</th>
+                            <th>尺寸</th>
+                            <th>品牌</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drawerSyncBody">
+                        <tr><td colspan="6" class="text-center text-muted py-3">加载中...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-@* --- 拒绝弹出框 --- *@
+@* --- 拒绝弹出框：预设原因分类 + 补充说明（改动说明：原自由文本升级为结构化，随状态回传申请人） --- *@
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">拒绝认证</h6>
+                <h6 class="modal-title">拒绝入驻申请</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">拒绝原因</label>
-                    <textarea class="form-control" id="rejectReason" rows="3" placeholder="请填写拒绝原因"></textarea>
+                    <label class="form-label">拒绝原因分类 <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" id="rejectCategory">
+                        <option value="">请选择...</option>
+                        <option value="资料不完整">资料不完整</option>
+                        <option value="营业执照信息不符">营业执照信息不符</option>
+                        <option value="疑似重复入驻">疑似重复入驻</option>
+                        <option value="涉嫌违规经营">涉嫌违规经营</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">补充说明 <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="rejectReason" rows="3" placeholder="向申请人说明的具体情况（必填）"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
@@ -211,7 +265,14 @@
 
 @section Scripts {
     <script>
+        // 改动说明：项目为 Bootstrap 5.3，组件 API 一律用 bootstrap.Xxx.getOrCreateInstance
+        //   （原 $('#m').modal('show') 是 BS4 jQuery 插件写法，在 BS5 下静默失效）
         let rejectMerchantId = null;
+
+        function toast(type, msg) {
+            if (typeof showToast === 'function') { showToast(type, msg); return; }
+            alert(msg);
+        }
 
         $('.btn-approve').on('click', function () {
             const id = $(this).data('id');
@@ -219,15 +280,15 @@
             $.post('@Url.Action("Approve")', { id })
                 .done(function (res) {
                     if (res.success) {
-                        showToast('success', res.message || '已审核通过');
+                        toast('success', res.message || '已审核通过');
                         setTimeout(() => location.reload(), 800);
                     } else {
-                        showToast('danger', res.message || '操作失败');
+                        // 改动说明：并发冲突（另一管理员已处理）提示后自动刷新列表，其余失败仅提示
+                        toast(res.conflict ? 'warning' : 'danger', res.message || '操作失败');
+                        if (res.conflict) setTimeout(() => location.reload(), 1200);
                     }
                 })
-                .fail(function () {
-                    showToast('danger', '服务异常');
-                });
+                .fail(function () { toast('danger', '服务异常'); });
         });
 
         $('.btn-verify').on('click', function () {
@@ -236,88 +297,127 @@
             $.post('@Url.Action("Verify")', { id })
                 .done(function (res) {
                     if (res.success) {
-                        showToast('success', res.message || '已认证');
+                        toast('success', res.message || '已认证');
                         setTimeout(() => location.reload(), 800);
                     } else {
-                        showToast('danger', res.message || '操作失败');
+                        toast('danger', res.message || '操作失败');
                     }
                 })
-                .fail(function () {
-                    showToast('danger', '服务异常');
-                });
+                .fail(function () { toast('danger', '服务异常'); });
         });
 
-        $('.btn-reject').on('click', function () {
+        $('.btn-reject').on('click', function (e) {
+            e.stopPropagation();
             rejectMerchantId = $(this).data('id');
+            $('#rejectCategory').val('');
             $('#rejectReason').val('');
-            $('#rejectModal').modal('show');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).show();
         });
 
         $('#rejectConfirmBtn').on('click', function () {
             if (!rejectMerchantId) return;
-            const reason = $('#rejectReason').val().trim();
-            if (!reason) {
-                showToast('warning', '请填写拒绝原因');
-                return;
-            }
+            const category = $('#rejectCategory').val();
+            const note = $('#rejectReason').val().trim();
+            if (!category) { toast('warning', '请选择拒绝原因分类'); return; }
+            if (!note) { toast('warning', '请填写补充说明'); return; }
+            // 改动说明：结构化提交"分类：说明"，Taro 端驳回原因与站内信正文直接展示该格式
+            const reason = category + '：' + note;
             $.post('@Url.Action("Reject")', { id: rejectMerchantId, reason })
                 .done(function (res) {
-                    $('#rejectModal').modal('hide');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).hide();
                     if (res.success) {
-                        showToast('success', res.message || '已拒绝');
+                        toast('success', res.message || '已拒绝');
                         setTimeout(() => location.reload(), 800);
                     } else {
-                        showToast('danger', res.message || '操作失败');
+                        toast(res.conflict ? 'warning' : 'danger', res.message || '操作失败');
+                        if (res.conflict) setTimeout(() => location.reload(), 1200);
                     }
                 })
                 .fail(function () {
-                    $('#rejectModal').modal('hide');
-                    showToast('danger', '服务异常');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectModal')).hide();
+                    toast('danger', '服务异常');
                 });
         });
 
-        function loadSyncData(id) {
-            const showAll = document.getElementById('syncDataShowAll').checked;
-            var url = '@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', id) + '?dataSource=Crawler&pageSize=9999';
+        // ============ 详情抽屉 ============
+        let drawerMerchantId = null;
+
+        /** 抽屉内爬虫历史数据表（原独立"同步数据"弹窗并入抽屉，作为认领场景的资料比对） */
+        function loadDrawerSyncData() {
+            if (!drawerMerchantId) return;
+            const showAll = document.getElementById('drawerShowAll').checked;
+            let url = '@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', drawerMerchantId) + '?dataSource=Crawler&pageSize=9999';
             if (!showAll) url += '&onlyOnSale=true';
             fetch(url)
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
-                    var totalCount = d && d.data ? d.data.totalCount : 0;
-                    var items = d && d.data ? d.data.items || [] : d.items || d || [];
+                    const totalCount = d && d.data ? d.data.totalCount : 0;
+                    let items = d && d.data ? d.data.items || [] : (d.items || []);
                     if (!Array.isArray(items)) items = [];
-                    $('#syncDataTotalCount').text(totalCount);
+                    $('#drawerSyncTotal').text(totalCount);
                     if (items.length === 0) {
-                        $('#syncDataBody').html('<tr><td colspan="7" class="text-center text-muted py-4">无同步数据</td></tr>');
+                        $('#drawerSyncBody').html('<tr><td colspan="6" class="text-center text-muted py-3">无爬虫历史数据（自助新建商户属正常）</td></tr>');
                         return;
                     }
-                    var h = '';
+                    let h = '';
                     items.forEach(function (r) {
-                        var statusText = r.isOnSale ? '在售' : '下架';
-                        h += '<tr><td>' + (r.bearingPartNumber || '-') + '</td><td>' + (r.bearingOldNumber || '-') + '</td><td>' + (r.bearingTypeName || r.bearingType || '-') + '</td><td>' + (r.dimensions || '-') + '</td><td>' + (r.brandName || r.brand || '-') + '</td><td>爬虫</td><td>' + statusText + '</td></tr>';
+                        const statusText = r.isOnSale ? '在售' : '下架';
+                        h += '<tr><td>' + (r.bearingPartNumber || '-') + '</td><td>' + (r.bearingOldNumber || '-') + '</td><td>' + (r.bearingTypeName || '-') + '</td><td>' + (r.dimensions || '-') + '</td><td>' + (r.brandName || '-') + '</td><td>' + statusText + '</td></tr>';
                     });
-                    $('#syncDataBody').html(h);
+                    $('#drawerSyncBody').html(h);
                 })
                 .catch(function () {
-                    $('#syncDataBody').html('<tr><td colspan="7" class="text-center text-danger py-4">加载失败</td></tr>');
+                    $('#drawerSyncBody').html('<tr><td colspan="6" class="text-center text-danger py-3">加载失败</td></tr>');
                 });
         }
 
-        var syncDataMerchantId = null;
+        function esc(s) { return $('<i>').text(s == null ? '' : String(s)).html(); }
 
-        $('.btn-sync-data').on('click', function () {
-            syncDataMerchantId = $(this).data('id');
-            const name = $(this).data('name');
-            $('#syncDataMerchantName').text(name);
-            $('#syncDataTotalCount').text('0');
-            document.getElementById('syncDataShowAll').checked = false;
-            $('#syncDataBody').html('<tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>');
-            $('#syncDataModal').modal('show');
-            loadSyncData(syncDataMerchantId);
+        function openDrawer(id, name) {
+            drawerMerchantId = id;
+            $('#drawerName').text(name || '');
+            $('#drawerLoading').removeClass('d-none');
+            $('#drawerContent').addClass('d-none');
+            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('detailDrawer')).show();
+            fetch('@Url.Action("Detail", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', id))
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    const d = res && res.data ? res.data : null;
+                    if (!d) { $('#drawerLoading').text('加载失败'); return; }
+                    $('#drawerLoading').addClass('d-none');
+                    $('#drawerContent').removeClass('d-none');
+                    const modeMap = { Self: '自助新建', Claim: '认领', Nomination: '提名', None: '-' };
+                    const statusMap = { Pending: '待审核', Active: '已生效', Suspended: '已拒绝', Draft: '草稿' };
+                    $('#dName').text(d.name || '-');
+                    $('#dCompanyName').text(d.companyName || '-');
+                    $('#dCreditCode').text(d.unifiedSocialCreditCode || '-');
+                    $('#dType').text(d.type || '-');
+                    $('#dMode').text(modeMap[d.applicationMode] || d.applicationMode || '-');
+                    $('#dSubmittedAt').text(d.submittedAt ? new Date(d.submittedAt).toLocaleString('zh-CN') : '-');
+                    $('#dContact').text(d.contactPerson || '-');
+                    $('#dPhone').text(d.mobile || d.phone || '-');
+                    $('#dAddress').text(d.address || '-');
+                    $('#dDesc').text(d.description || '-');
+                    $('#dStatus').text((statusMap[d.status] || d.status || '-') + (d.isVerified ? ' · 已认证' : ''));
+                    $('#dReject').text(d.rejectReason || '-');
+                    $('#dLogo').html(d.logoUrl ? '<img src="' + esc(d.logoUrl) + '" style="max-height:60px;max-width:160px">' : '-');
+                    document.getElementById('drawerWarn').classList.toggle('d-none', !!d.companyName);
+                    loadDrawerSyncData();
+                })
+                .catch(function () { $('#drawerLoading').text('加载失败'); });
+        }
+
+        $('.btn-detail').on('click', function (e) {
+            e.stopPropagation();
+            const $tr = $(this).closest('tr');
+            openDrawer($tr.data('id'), $tr.data('name'));
         });
 
-        document.getElementById('syncDataShowAll').addEventListener('change', function () {
-            if (syncDataMerchantId) loadSyncData(syncDataMerchantId);
+        // 改动说明：整行点击也开抽屉（主流后台列表惯例），操作按钮已 stopPropagation 不冲突
+        $('.merchant-row').on('click', function () {
+            openDrawer($(this).data('id'), $(this).data('name'));
         });
+
+        document.getElementById('drawerShowAll').addEventListener('change', loadDrawerSyncData);
     </script>
 }

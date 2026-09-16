@@ -83,8 +83,13 @@ public class MerchantVerifyController : Controller
                 return Json(new { success = true, message = "已审核通过，商户已生效" });
             }
 
+            // 改动说明：并发审批冲突透传——API 对"申请已被处理"返回 409 ProblemDetails，
+            //   Admin 前端据此提示"该申请已被处理"并刷新列表，而非笼统"操作失败"
+            if ((int)resp.StatusCode == 409)
+                return Json(new { success = false, conflict = true, message = ExtractProblemDetail(json) ?? "该申请已被其他管理员处理，请刷新" });
+
             _logger.LogWarning("入驻审核通过失败: {Id}, {StatusCode}, {Response}", id, resp.StatusCode, json);
-            return Json(new { success = false, message = "操作失败" });
+            return Json(new { success = false, message = ExtractProblemDetail(json) ?? "操作失败" });
         }
         catch (Exception ex)
         {
@@ -135,14 +140,57 @@ public class MerchantVerifyController : Controller
                 return Json(new { success = true, message = "已拒绝" });
             }
 
+            // 改动说明：与 Approve 对称，409 冲突透传给前端提示并刷新
+            if ((int)resp.StatusCode == 409)
+                return Json(new { success = false, conflict = true, message = ExtractProblemDetail(json) ?? "该申请已被其他管理员处理，请刷新" });
+
             _logger.LogWarning("商家拒绝失败: {Id}, {StatusCode}, {Response}", id, resp.StatusCode, json);
-            return Json(new { success = false, message = "操作失败" });
+            return Json(new { success = false, message = ExtractProblemDetail(json) ?? "操作失败" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "商家拒绝异常: {Id}", id);
             return Json(new { success = false, message = "服务异常" });
         }
+    }
+
+    /// <summary>
+    /// 商户详情代理：透传 API GET /api/admin/merchants/{id}（含入驻渠道/提交时间/拒绝原因/信用代码等审批抽屉字段）
+    /// 改动说明：主流审批后台"先看全资料再决策"，抽屉数据源
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Detail(Guid id)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.GetAsync($"{ApiBase()}/api/admin/merchants/{id}");
+            var json = await resp.Content.ReadAsStringAsync();
+
+            if (resp.IsSuccessStatusCode)
+                return Content(json, "application/json");
+
+            _logger.LogWarning("获取商户详情失败: {Id}, {StatusCode}", id, resp.StatusCode);
+            return Json(new { success = false, message = "获取详情失败" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取商户详情异常: {Id}", id);
+            return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    /// <summary>
+    /// 从 API 的 ProblemDetails JSON 中提取 detail 文案（解析失败返回 null 走兜底文案）
+    /// </summary>
+    private static string? ExtractProblemDetail(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("detail", out var d) ? d.GetString() : null;
+        }
+        catch { return null; }
     }
 
     [HttpGet]

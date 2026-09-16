@@ -44,16 +44,17 @@
             <div class="icon"><i class="fas fa-pen"></i></div>
         </div>
     </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-secondary">
-            <div class="inner"><h3 id="licensePendingCount">-</h3><p>营业执照审核</p></div>
-            <div class="icon"><i class="fas fa-file-alt"></i></div>
-        </div>
-    </div>
+    @* 改动说明：应运营要求调整审核卡片顺序——入驻申请审批前置于营业执照审核（入驻生效是主链路，认证是后置增值） *@
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
             <div class="inner"><h3 id="merchantApplicationPendingCount">-</h3><p>入驻申请审批</p></div>
             <div class="icon"><i class="fas fa-user-check"></i></div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-6">
+        <div class="small-box bg-secondary">
+            <div class="inner"><h3 id="licensePendingCount">-</h3><p>营业执照审核</p></div>
+            <div class="icon"><i class="fas fa-file-alt"></i></div>
         </div>
     </div>
 </div>

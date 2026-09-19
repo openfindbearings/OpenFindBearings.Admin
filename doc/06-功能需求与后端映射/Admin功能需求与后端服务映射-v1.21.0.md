@@ -1,10 +1,17 @@
-# Admin 功能需求与后端服务映射 v1.20.0
+# Admin 功能需求与后端服务映射 v1.21.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.20.0 → v1.21.0 更新内容
+
+1. **证照材料审核（对齐 API《06 v2.7.0》4.7）**：`LicenseController`/`Views/License` 泛化改名为 `DocumentController`/`Views/Document`，页面从"营业执照审核"升级为"证照材料审核"——**定位收窄为入驻后的材料变更队列**（换证/补授权书/厂房照），随入驻申请提交的材料已改在入驻审批抽屉内级联审结。列表新增"材料类型"徽章列与原件"查看"链接（点开 API 主机直出文件）；**拒绝动作升级为必填理由**（表单 prompt → POST body `reason`，商户端可见；旧实现拒绝无原因）。
+2. **通过不再自动认证**：`Approve` 动作与文案同步 API 语义解耦——认证改由入驻申请审批页"认证"按钮触发，API 按"必备材料全部已通过"矩阵口径校验（缺项 400 文案透传给审核人）。
+3. **入驻审批抽屉新增"申请证照材料"区**：`MerchantVerifyController.Detail` 服务端合并 `GET /api/admin/merchants/{id}/documents` 进 `data.documents`，抽屉渲染类型/状态徽章 + 缩略图 + 驳回意见（材料请求失败降级不阻断审批）。
+4. **菜单/看板/审计映射更名**：侧边栏与 dashboard 卡片"营业执照审核"→"证照材料审核"（统计字段 `pendingLicenses`→`pendingDocuments`，元素 id 同步）；`AuditLogItemDto` 动作映射补 `Approve/RejectDocument`（旧 `Approve/RejectLicense` 保留兼容历史行）、区域映射 `documents`=材料。
 
 ### v1.19.0 → v1.20.0 更新内容
 

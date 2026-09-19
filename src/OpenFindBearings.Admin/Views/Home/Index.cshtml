@@ -44,7 +44,7 @@
             <div class="icon"><i class="fas fa-pen"></i></div>
         </div>
     </div>
-    @* 改动说明：应运营要求调整审核卡片顺序——入驻申请审批前置于营业执照审核（入驻生效是主链路，认证是后置增值） *@
+    @* 改动说明：应运营要求调整审核卡片顺序——入驻申请审批前置于证照材料审核（入驻生效是主链路，材料变更是后置队列） *@
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
             <div class="inner"><h3 id="merchantApplicationPendingCount">-</h3><p>入驻申请审批</p></div>
@@ -53,7 +53,7 @@
     </div>
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
-            <div class="inner"><h3 id="licensePendingCount">-</h3><p>营业执照审核</p></div>
+            <div class="inner"><h3 id="documentPendingCount">-</h3><p>证照材料审核</p></div>
             <div class="icon"><i class="fas fa-file-alt"></i></div>
         </div>
     </div>
@@ -109,7 +109,7 @@
 
             el=document.getElementById('syncPendingCount');if(el)el.textContent=(sp.brandCount||0)+(sp.typeCount||0)+(sp.bearingCount||0)+(sp.merchantCount||0);
             el=document.getElementById('correctionPendingCount');if(el)el.textContent=c.pendingCount??'-';
-            el=document.getElementById('licensePendingCount');if(el)el.textContent=(data.pending||{}).pendingLicenses??'-';
+            el=document.getElementById('documentPendingCount');if(el)el.textContent=(data.pending||{}).pendingDocuments??'-';
             el=document.getElementById('merchantApplicationPendingCount');if(el)el.textContent=m.pendingApplicationCount??'-';
 
             try {
@@ -153,7 +153,7 @@
         .catch(function(e){
             console.error('DashboardStats 渲染异常', e);
             ['bearingCount','brandCount','typeCount','merchantCount',
-             'syncPendingCount','correctionPendingCount','licensePendingCount','merchantApplicationPendingCount'].forEach(function(id){
+             'syncPendingCount','correctionPendingCount','documentPendingCount','merchantApplicationPendingCount'].forEach(function(id){
                 var el=document.getElementById(id);if(el)el.textContent='N/A';
             });
         });

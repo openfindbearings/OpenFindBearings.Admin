@@ -39,16 +39,16 @@ public record AuditLogItemDto(
         "RejectMerchant" => "认证驳回",
         "ApproveCorrection" => "纠错通过",
         "RejectCorrection" => "纠错驳回",
-        "ApproveLicense" => "执照通过",
-        "RejectLicense" => "执照驳回",
+        "ApproveLicense" or "ApproveDocument" => "材料通过",
+        "RejectLicense" or "RejectDocument" => "材料驳回",
         _ => Action
     };
 
     public string ActionBadgeClass => Action switch
     {
-        "Create" or "RunEtl" or "StartExtract" or "StartTransform" or "StartLoad" or "ImportInventory" or "ApproveAudit" or "VerifyMerchant" or "ApproveCorrection" or "ApproveLicense" => "bg-success",
+        "Create" or "RunEtl" or "StartExtract" or "StartTransform" or "StartLoad" or "ImportInventory" or "ApproveAudit" or "VerifyMerchant" or "ApproveCorrection" or "ApproveLicense" or "ApproveDocument" => "bg-success",
         "Update" => "bg-primary",
-        "Delete" or "RejectAudit" or "RejectMerchant" or "RejectCorrection" or "RejectLicense" => "bg-danger",
+        "Delete" or "RejectAudit" or "RejectMerchant" or "RejectCorrection" or "RejectLicense" or "RejectDocument" => "bg-danger",
         "Login" => "bg-info text-dark",
         "LoginFailed" => "bg-warning text-dark",
         _ => "bg-secondary"
@@ -81,7 +81,8 @@ public record AuditLogItemDto(
         "etl" => "ETL",
         "merchants" => "商家",
         "corrections" => "纠错",
-        "licenses" => "执照",
+        "licenses" => "执照(历史)",
+        "documents" => "材料",
         "brands" => "品牌",
         "bearingtypes" => "轴承类型",
         "bearings" => "轴承",

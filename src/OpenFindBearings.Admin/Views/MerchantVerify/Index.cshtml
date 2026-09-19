@@ -1,3 +1,4 @@
+@inject IConfiguration Config
 @{
     ViewData["Title"] = "入驻申请审批";
     var items = ViewBag.Items as IEnumerable<MerchantItemDto> ?? [];
@@ -201,6 +202,11 @@
                 缺营业执照企业名称：审核依据不足，建议驳回并要求补全后重新提交。
             </div>
 
+            @* v2.7.0 新增：随单证照材料区——审核人看材料再决策；审批通过后由 API 级联置为已通过 *@
+            <h6 class="text-muted small mt-4 mb-2">申请证照材料</h6>
+            <div id="dDocs" class="row g-2"></div>
+            <div id="dDocsEmpty" class="text-muted small d-none">该申请未随附材料（历史通道数据），可要求驳回补全。</div>
+
             <h6 class="text-muted small mt-4 mb-2">爬虫历史数据比对</h6>
             <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
                 <span>共 <span id="drawerSyncTotal">0</span> 条</span>
@@ -268,6 +274,35 @@
         // 改动说明：项目为 Bootstrap 5.3，组件 API 一律用 bootstrap.Xxx.getOrCreateInstance
         //   （原 $('#m').modal('show') 是 BS4 jQuery 插件写法，在 BS5 下静默失效）
         let rejectMerchantId = null;
+
+        // v2.7.0：材料文件经 API 主机直出（uploads 卷），拼 API 基址成可点开的绝对链接
+        const DOC_BASE = ('@(Config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183")').replace(/\/+$/, '');
+
+        /** 渲染抽屉"申请证照材料"卡片区（类型徽章+缩略图+状态+驳回意见） */
+        function renderDocs(docs) {
+            const $box = $('#dDocs');
+            $box.empty();
+            if (!docs || !docs.length) {
+                $('#dDocsEmpty').removeClass('d-none');
+                return;
+            }
+            $('#dDocsEmpty').addClass('d-none');
+            const docStatus = { Pending: ['待审核', 'bg-warning text-dark'], Approved: ['已通过', 'bg-success'], Rejected: ['已拒绝', 'bg-danger'] };
+            docs.forEach(function (it) {
+                const st = docStatus[it.status] || [it.status || '-', 'bg-secondary'];
+                const url = DOC_BASE + (it.fileUrl || '');
+                $box.append(
+                    '<div class="col-6"><div class="border rounded p-2 h-100">' +
+                    '<div class="d-flex justify-content-between mb-1">' +
+                    '<span class="badge bg-info text-dark">' + esc(it.typeName || '材料') + '</span>' +
+                    '<span class="badge ' + st[1] + '">' + esc(st[0]) + '</span></div>' +
+                    '<a href="' + esc(url) + '" target="_blank" rel="noopener">' +
+                    '<img src="' + esc(url) + '" style="max-height:150px;max-width:100%" onerror="this.style.display=\'none\'">' +
+                    '</a>' +
+                    (it.reviewComment ? '<div class="small text-danger mt-1">' + esc(it.reviewComment) + '</div>' : '') +
+                    '</div></div>');
+            });
+        }
 
         function toast(type, msg) {
             if (typeof showToast === 'function') { showToast(type, msg); return; }
@@ -402,6 +437,7 @@
                     $('#dReject').text(d.rejectReason || '-');
                     $('#dLogo').html(d.logoUrl ? '<img src="' + esc(d.logoUrl) + '" style="max-height:60px;max-width:160px">' : '-');
                     document.getElementById('drawerWarn').classList.toggle('d-none', !!d.companyName);
+                    renderDocs(d.documents); // v2.7.0 抽屉材料区（Detail 已服务端合并）
                     loadDrawerSyncData();
                 })
                 .catch(function () { $('#drawerLoading').text('加载失败'); });

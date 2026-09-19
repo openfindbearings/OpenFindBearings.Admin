@@ -132,7 +132,7 @@ public class HomeController : Controller
             merchants = new { totalCount = "N/A", verifiedCount = 0, pendingApplicationCount = 0, todayRegistered = 0, typeDistribution = Array.Empty<object>() },
             users = new { totalCount = 0, adminCount = 0, merchantStaffCount = 0, individualCount = 0, todayRegistered = 0, activeToday = 0 },
             corrections = new { totalCount = 0, pendingCount = "N/A", approvedCount = 0, rejectedCount = 0, todaySubmitted = 0 },
-            pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingLicenses = "N/A" }
+            pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingDocuments = "N/A" }
         }
     });
 

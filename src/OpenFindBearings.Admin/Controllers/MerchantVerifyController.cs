@@ -1,10 +1,14 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Controllers;
 
+/// <summary>
+/// 入驻申请审批控制器：商户申请列表 + 通过/拒绝/认证代理 + 申请详情抽屉数据源（v2.7.0 含证照材料清单）
+/// </summary>
 [Authorize]
 public class MerchantVerifyController : Controller
 {
@@ -155,8 +159,9 @@ public class MerchantVerifyController : Controller
     }
 
     /// <summary>
-    /// 商户详情代理：透传 API GET /api/admin/merchants/{id}（含入驻渠道/提交时间/拒绝原因/信用代码等审批抽屉字段）
-    /// 改动说明：主流审批后台"先看全资料再决策"，抽屉数据源
+    /// 商户详情代理：透传 API GET /api/admin/merchants/{id}（含入驻渠道/提交时间/拒绝原因/信用代码等审批抽屉字段）。
+    /// 改动说明：主流审批后台"先看全资料再决策"，抽屉数据源；
+    ///   v2.7.0 起再拉 GET /api/admin/merchants/{id}/documents 并把材料数组合并进 data.documents，前端一次请求拿全
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Detail(Guid id)
@@ -168,7 +173,7 @@ public class MerchantVerifyController : Controller
             var json = await resp.Content.ReadAsStringAsync();
 
             if (resp.IsSuccessStatusCode)
-                return Content(json, "application/json");
+                return Content(await MergeDocuments(json, id, client), "application/json");
 
             _logger.LogWarning("获取商户详情失败: {Id}, {StatusCode}", id, resp.StatusCode);
             return Json(new { success = false, message = "获取详情失败" });
@@ -177,6 +182,39 @@ public class MerchantVerifyController : Controller
         {
             _logger.LogError(ex, "获取商户详情异常: {Id}", id);
             return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    /// <summary>
+    /// 把商户材料列表并入详情 JSON 的 data.documents（v2.7.0 抽屉材料区数据源）；
+    /// 材料请求失败时降级返回原详情 JSON（审批不被材料加载阻断）
+    /// </summary>
+    private async Task<string> MergeDocuments(string detailJson, Guid id, HttpClient client)
+    {
+        try
+        {
+            var docsResp = await client.GetAsync($"{ApiBase()}/api/admin/merchants/{id}/documents");
+            if (!docsResp.IsSuccessStatusCode)
+                return detailJson;
+
+            using var docsDoc = JsonDocument.Parse(await docsResp.Content.ReadAsStringAsync());
+            if (!docsDoc.RootElement.TryGetProperty("data", out var docsData)
+                || docsData.ValueKind != JsonValueKind.Array)
+                return detailJson;
+
+            using var detailDoc = JsonDocument.Parse(detailJson);
+            if (detailDoc.RootElement.ValueKind != JsonValueKind.Object
+                || detailDoc.RootElement.TryGetProperty("data", out var dataNode) == false
+                || dataNode.ValueKind != JsonValueKind.Object)
+                return detailJson;
+
+            var root = JsonObject.Create(detailDoc.RootElement);
+            root!["data"]!["documents"] = JsonNode.Parse(docsData.GetRawText());
+            return root.ToJsonString();
+        }
+        catch
+        {
+            return detailJson;
         }
     }
 

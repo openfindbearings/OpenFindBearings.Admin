@@ -1,19 +1,22 @@
+@inject IConfiguration Configuration
 @{
-    ViewData["Title"] = "营业执照审核";
-    var items = ViewBag.Items as IEnumerable<LicenseItemDto> ?? Enumerable.Empty<LicenseItemDto>();
+    ViewData["Title"] = "证照材料审核";
+    var items = ViewBag.Items as IEnumerable<DocumentItemDto> ?? Enumerable.Empty<DocumentItemDto>();
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
     var pageSize = (int)(ViewBag.PageSize ?? 20);
-    var currentStatus = (string?)ViewBag.CurrentStatus ?? "pending";
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-    string PageUrl(int p) => $"?status={currentStatus}&page={p}";
+    string PageUrl(int p) => $"?page={p}";
+    // 材料文件经 API 主机直出（媒体卷同一存储），拼接 API 基址成绝对链接
+    var apiBase = (Configuration["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183").TrimEnd('/');
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
+    string TypeBadge(int t) => t switch { 1 => "bg-info text-dark", 2 => "bg-primary", 3 => "bg-secondary", _ => "bg-light text-dark" };
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-file-alt"></i> 营业执照审核</h4>
-    <p class="text-muted">商家入驻上传的营业执照审核，通过后商家完成认证</p>
+    <h4><i class="fas fa-folder-open"></i> 证照材料审核</h4>
+    <p class="text-muted">入驻后的材料变更队列（换证/补授权书/厂房照）。随入驻申请提交的材料请在"入驻申请审批"抽屉内审结。</p>
 </div>
 
 @if (TempData["Success"] != null)
@@ -35,36 +38,25 @@
     <div class="alert alert-danger">@ViewBag.Error</div>
 }
 
-<ul class="nav nav-tabs mb-3">
-    <li class="nav-item">
-        <a class="nav-link @(currentStatus == "pending" ? "active" : "")" asp-action="Index" asp-route-status="pending">待审核</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(currentStatus == "approved" ? "active" : "")" asp-action="Index" asp-route-status="approved">已通过</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link @(currentStatus == "rejected" ? "active" : "")" asp-action="Index" asp-route-status="rejected">已拒绝</a>
-    </li>
-</ul>
-
 <div class="card">
     <div class="card-body p-0">
         @if (!items.Any())
         {
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-check-circle fa-3x mb-3"></i>
-                <p>暂无营业执照记录</p>
+                <p>暂无待审核的证照材料</p>
             </div>
         }
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
                             <th>商家</th>
-                            <th>执照号</th>
-                            <th>状态</th>
+                            <th style="width:110px">材料类型</th>
+                            <th style="width:110px">材料文件</th>
+                            <th>提交人</th>
                             <th style="width:140px">提交时间</th>
                             <th style="width:170px">操作</th>
                         </tr>
@@ -74,32 +66,19 @@
                         {
                             <tr>
                                 <td>@item.MerchantName</td>
-                                <td>@item.LicenseNumber</td>
+                                <td><span class="badge @TypeBadge(item.Type)">@item.TypeName</span></td>
                                 <td>
-                                    @if (item.Status == "approved")
-                                    {
-                                        <span class="badge bg-success">已通过</span>
-                                    }
-                                    else if (item.Status == "rejected")
-                                    {
-                                        <span class="badge bg-danger">已拒绝</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-warning text-dark">待审核</span>
-                                    }
+                                    <a href="@apiBase@item.FileUrl" target="_blank" rel="noopener">查看原件</a>
                                 </td>
+                                <td>@item.SubmitterName</td>
                                 <td class="text-muted small" data-utc="@BdTimeRaw(item.SubmittedAt)">@BdTimeRaw(item.SubmittedAt)</td>
                                 <td>
-                                    @if (item.Status == "pending")
-                                    {
-                                        <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline">
-                                            <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> 通过</button>
-                                        </form>
-                                        <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline">
-                                            <button class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i> 拒绝</button>
-                                        </form>
-                                    }
+                                    <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> 通过</button>
+                                    </form>
+                                    <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline js-reject-form">
+                                        <button class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i> 拒绝</button>
+                                    </form>
                                 </td>
                             </tr>
                         }
@@ -146,3 +125,23 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // 改动说明：拒绝动作升级为必填理由（旧版拒绝无原因，商户端无从知晓）
+        document.querySelectorAll('.js-reject-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                var reason = window.prompt('拒绝该材料的理由（将回传给商户）：');
+                if (reason === null || reason.trim() === '') {
+                    e.preventDefault(); // 取消或空理由不允许提交
+                    return;
+                }
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'reason';
+                input.value = reason.trim();
+                form.appendChild(input);
+            });
+        });
+    </script>
+}

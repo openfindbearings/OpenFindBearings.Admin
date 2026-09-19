@@ -63,9 +63,9 @@
                     <ul class="sub-menu" id="sub-review">
                         <li><a asp-controller="Review" asp-action="Index" class="nav-link" data-page="review"><i class="fas fa-circle"></i><span>同步数据审核</span></a></li>
                         <li><a asp-controller="Correction" asp-action="Index" class="nav-link" data-page="correction"><i class="fas fa-circle"></i><span>信息纠错审核</span></a></li>
-                    @* 改动说明：应运营要求，入驻申请审批前置到营业执照审核之前（主链路优先） *@
+                    @* 改动说明：应运营要求，入驻申请审批前置到证照材料审核之前（主链路优先）；v2.7.0 执照审核泛化为证照材料队列 *@
                     <li><a asp-controller="MerchantVerify" asp-action="Index" class="nav-link" data-page="merchant-verify"><i class="fas fa-circle"></i><span>入驻申请审批</span></a></li>
-                    <li><a asp-controller="License" asp-action="Index" class="nav-link" data-page="license"><i class="fas fa-circle"></i><span>营业执照审核</span></a></li>
+                    <li><a asp-controller="Document" asp-action="Index" class="nav-link" data-page="document"><i class="fas fa-circle"></i><span>证照材料审核</span></a></li>
                     </ul>
                 </li>
                 <li class="has-sub">

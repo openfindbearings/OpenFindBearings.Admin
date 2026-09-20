@@ -105,6 +105,11 @@
                                         {
                                             <span class="badge bg-primary ms-1">已认证</span>
                                         }
+                                        else if (item.VerifyRequested)
+                                        {
+                                            @* v1.22.0：商户已主动申请认证的优先处理信号 *@
+                                            <span class="badge bg-warning text-dark ms-1">申请认证</span>
+                                        }
                                     }
                                     else if (item.Status == "Suspended")
                                     {
@@ -525,7 +530,7 @@
                     $('#dPhone').text(d.mobile || d.phone || '-');
                     $('#dAddress').text(d.address || '-');
                     $('#dDesc').text(d.description || '-');
-                    $('#dStatus').text((statusMap[normKey(d.status)] || d.status || '-') + (d.isVerified ? ' · 已认证' : ''));
+                    $('#dStatus').text((statusMap[normKey(d.status)] || d.status || '-') + (d.isVerified ? ' · 已认证' : (d.verifyRequested ? ' · 已申请认证' : '')));
                     $('#dReject').text(d.rejectReason || '-');
                     // 改动说明（v1.21.1）：Logo 同样走公网媒体基址（相对键直拼在 Admin 域下 404）
                     $('#dLogo').html(d.logoUrl ? '<img src="' + esc(DOC_BASE + d.logoUrl) + '" style="max-height:60px;max-width:160px">' : '-');

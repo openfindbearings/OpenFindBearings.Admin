@@ -26,5 +26,7 @@ public record MerchantItemDto(
     //   列表展示"渠道、提交时间"两列并作为抽屉空值提示依据
     [property: JsonPropertyName("applicationMode")] string? ApplicationMode = null,
     [property: JsonPropertyName("submittedAt")] DateTime? SubmittedAt = null,
-    [property: JsonPropertyName("rejectReason")] string? RejectReason = null
+    [property: JsonPropertyName("rejectReason")] string? RejectReason = null,
+    // 改动说明（v1.22.0）：对齐 API v2.9.0 申请认证标记，列表/抽屉显"已申请认证"徽标
+    [property: JsonPropertyName("verifyRequested")] bool VerifyRequested = false
 );

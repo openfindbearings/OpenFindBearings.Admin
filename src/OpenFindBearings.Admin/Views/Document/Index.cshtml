@@ -84,7 +84,8 @@
                                 <td>@item.SubmitterName</td>
                                 <td class="text-muted small" data-utc="@BdTimeRaw(item.SubmittedAt)">@BdTimeRaw(item.SubmittedAt)</td>
                                 <td>
-                                    <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline">
+                                    @* v1.22.0：补确认框与全站审批口径统一（原直提易误点） *@
+                                    <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline" data-confirm="确认通过该条证照材料？" data-confirm-title="通过材料">
                                         <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> 通过</button>
                                     </form>
                                     <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline js-reject-form">

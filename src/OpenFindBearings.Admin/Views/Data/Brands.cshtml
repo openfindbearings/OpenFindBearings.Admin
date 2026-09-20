@@ -1,4 +1,4 @@
-﻿@model BrandListViewModel
+@model BrandListViewModel
 @{
     ViewData["Title"] = "品牌列表";
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}";

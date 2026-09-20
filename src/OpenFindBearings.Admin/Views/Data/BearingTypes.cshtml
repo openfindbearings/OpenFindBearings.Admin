@@ -1,4 +1,4 @@
-﻿@model TypeListViewModel
+@model TypeListViewModel
 @{
     ViewData["Title"] = "类型列表";
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}";

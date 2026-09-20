@@ -206,6 +206,16 @@
             <h6 class="text-muted small mt-4 mb-2">申请证照材料</h6>
             <div id="dDocs" class="row g-2"></div>
             <div id="dDocsEmpty" class="text-muted small d-none">该申请未随附材料（历史通道数据），可要求驳回补全。</div>
+@* v1.21.1 材料 lightbox：抽屉缩略图点击放大 *@
+<div class="modal fade" id="docViewer" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-body p-0 text-center">
+                <img id="docViewerImg" class="img-fluid rounded shadow" style="max-height:80vh" alt="">
+            </div>
+        </div>
+    </div>
+</div>
 
             <h6 class="text-muted small mt-4 mb-2">爬虫历史数据比对</h6>
             <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
@@ -275,10 +285,11 @@
         //   （原 $('#m').modal('show') 是 BS4 jQuery 插件写法，在 BS5 下静默失效）
         let rejectMerchantId = null;
 
-        // v2.7.0：材料文件经 API 主机直出（uploads 卷），拼 API 基址成可点开的绝对链接
-        const DOC_BASE = ('@(Config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183")').replace(/\/+$/, '');
+        // v1.21.1：材料/Logo 文件由媒体服务反代 MinIO 直出，拼【公网】媒体基址——
+        //   原拼 API 集群内 svc 地址浏览器不可达，图片 onerror 隐藏后卡片呈现"不可点"
+        const DOC_BASE = ('@(Config["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz/media")').replace(/\/+$/, '');
 
-        /** 渲染抽屉"申请证照材料"卡片区（类型徽章+缩略图+状态+驳回意见） */
+        /** 渲染抽屉"申请证照材料"卡片区（v1.21.1 重构：缩略图主导 + 点击 lightbox 放大，PDF 显图标） */
         function renderDocs(docs) {
             const $box = $('#dDocs');
             $box.empty();
@@ -291,18 +302,26 @@
             docs.forEach(function (it) {
                 const st = docStatus[it.status] || [it.status || '-', 'bg-secondary'];
                 const url = DOC_BASE + (it.fileUrl || '');
+                const isPdf = /\.pdf$/i.test(it.fileUrl || '');
+                const preview = isPdf
+                    ? '<div class="d-flex align-items-center justify-content-center" style="height:110px"><i class="fas fa-file-pdf fa-3x text-danger"></i></div>'
+                    : '<img src="' + esc(url) + '" alt="" style="height:110px;width:100%;object-fit:cover;border-radius:4px" onerror="this.outerHTML=\'<div class=&quot;text-muted small d-flex align-items-center justify-content-center&quot; style=&quot;height:110px&quot;>图片加载失败</div>\'">';
                 $box.append(
                     '<div class="col-6"><div class="border rounded p-2 h-100">' +
                     '<div class="d-flex justify-content-between mb-1">' +
                     '<span class="badge bg-info text-dark">' + esc(it.typeName || '材料') + '</span>' +
                     '<span class="badge ' + st[1] + '">' + esc(st[0]) + '</span></div>' +
-                    '<a href="' + esc(url) + '" target="_blank" rel="noopener">' +
-                    '<img src="' + esc(url) + '" style="max-height:150px;max-width:100%" onerror="this.style.display=\'none\'">' +
-                    '</a>' +
+                    '<a href="javascript:void(0)" class="doc-viewer-link" data-url="' + esc(url) + '">' + preview + '</a>' +
                     (it.reviewComment ? '<div class="small text-danger mt-1">' + esc(it.reviewComment) + '</div>' : '') +
                     '</div></div>');
             });
         }
+
+        // 材料 lightbox：点缩略图弹大图（modal 层级高于 offcanvas，可叠加）
+        $(document).on('click', '.doc-viewer-link', function () {
+            $('#docViewerImg').attr('src', $(this).data('url'));
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('docViewer')).show();
+        });
 
         function toast(type, msg) {
             if (typeof showToast === 'function') { showToast(type, msg); return; }
@@ -421,21 +440,25 @@
                     if (!d) { $('#drawerLoading').text('加载失败'); return; }
                     $('#drawerLoading').addClass('d-none');
                     $('#drawerContent').removeClass('d-none');
-                    const modeMap = { Self: '自助新建', Claim: '认领', Nomination: '提名', None: '-' };
+                    const modeMap = { self: '自助新建', claim: '认领', nomination: '提名', none: '-' };
                     const statusMap = { Pending: '待审核', Active: '已生效', Suspended: '已拒绝', Draft: '草稿' };
+                    // 改动说明（v1.21.1）：status/mode 大小写归一再查表（API 侧 mode 输出小写、status 输出 PascalCase，
+                    //   原表只匹配一种导致抽屉"状态 -"）
+                    const normKey = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : ''; };
                     $('#dName').text(d.name || '-');
                     $('#dCompanyName').text(d.companyName || '-');
                     $('#dCreditCode').text(d.unifiedSocialCreditCode || '-');
                     $('#dType').text(d.type || '-');
-                    $('#dMode').text(modeMap[d.applicationMode] || d.applicationMode || '-');
+                    $('#dMode').text(modeMap[normKey(d.applicationMode)] || d.applicationMode || '-');
                     $('#dSubmittedAt').text(d.submittedAt ? new Date(d.submittedAt).toLocaleString('zh-CN') : '-');
                     $('#dContact').text(d.contactPerson || '-');
                     $('#dPhone').text(d.mobile || d.phone || '-');
                     $('#dAddress').text(d.address || '-');
                     $('#dDesc').text(d.description || '-');
-                    $('#dStatus').text((statusMap[d.status] || d.status || '-') + (d.isVerified ? ' · 已认证' : ''));
+                    $('#dStatus').text((statusMap[normKey(d.status)] || d.status || '-') + (d.isVerified ? ' · 已认证' : ''));
                     $('#dReject').text(d.rejectReason || '-');
-                    $('#dLogo').html(d.logoUrl ? '<img src="' + esc(d.logoUrl) + '" style="max-height:60px;max-width:160px">' : '-');
+                    // 改动说明（v1.21.1）：Logo 同样走公网媒体基址（相对键直拼在 Admin 域下 404）
+                    $('#dLogo').html(d.logoUrl ? '<img src="' + esc(DOC_BASE + d.logoUrl) + '" style="max-height:60px;max-width:160px">' : '-');
                     document.getElementById('drawerWarn').classList.toggle('d-none', !!d.companyName);
                     renderDocs(d.documents); // v2.7.0 抽屉材料区（Detail 已服务端合并）
                     loadDrawerSyncData();

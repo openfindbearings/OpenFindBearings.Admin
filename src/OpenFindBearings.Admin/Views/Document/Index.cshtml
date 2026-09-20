@@ -7,8 +7,9 @@
     var pageSize = (int)(ViewBag.PageSize ?? 20);
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     string PageUrl(int p) => $"?page={p}";
-    // 材料文件经 API 主机直出（媒体卷同一存储），拼接 API 基址成绝对链接
-    var apiBase = (Configuration["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183").TrimEnd('/');
+    // 改动说明（v1.21.1）：材料文件由媒体服务反代 MinIO 直出，必须拼【公网】媒体基址——
+    //   原拼 ApiUrls:OpenFindBearingsApi（K8s 内为集群内 svc 地址）浏览器不可达，"查看原件"点了报错
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz/media").TrimEnd('/');
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
     string TypeBadge(int t) => t switch { 1 => "bg-info text-dark", 2 => "bg-primary", 3 => "bg-secondary", _ => "bg-light text-dark" };
@@ -68,7 +69,17 @@
                                 <td>@item.MerchantName</td>
                                 <td><span class="badge @TypeBadge(item.Type)">@item.TypeName</span></td>
                                 <td>
-                                    <a href="@apiBase@item.FileUrl" target="_blank" rel="noopener">查看原件</a>
+                                    <a href="@mediaBase@item.FileUrl" target="_blank" rel="noopener" class="d-flex align-items-center gap-2 text-decoration-none">
+                                        @if (item.FileUrl.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <i class="fas fa-file-pdf fa-lg text-danger"></i>
+                                        }
+                                        else
+                                        {
+                                            <img src="@mediaBase@item.FileUrl" alt="" style="width:48px;height:36px;object-fit:cover;border-radius:4px;border:1px solid rgba(255,255,255,.15)">
+                                        }
+                                        <span>查看原件</span>
+                                    </a>
                                 </td>
                                 <td>@item.SubmitterName</td>
                                 <td class="text-muted small" data-utc="@BdTimeRaw(item.SubmittedAt)">@BdTimeRaw(item.SubmittedAt)</td>

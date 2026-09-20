@@ -13,6 +13,14 @@
    - `showPrompt(opts) → Promise<string|null>`：带 textarea 的必填理由框，替换证照材料队列原生 `window.prompt`；
    - `showToast(type, msg)`：右上角 3 秒自动消失轻提示，替换全部裸 `alert`（含 `danger` 别名兼容 BS 命名）。
 2. **自绘而非 BS modal 的原因**：BS modal 与 offcanvas 各有焦点陷阱，抽屉之上叠加时互相抢焦点导致 `data-bs-dismiss` 失灵；自绘层（z-index 3100/3200）在任意页面层级行为一致。表单类 BS modal（在售商家/在售商品/拒绝弹窗，均在普通页面使用不与抽屉叠加）维持现状。
+3. **审批链全量审查修复**（同批，dotnet build 不检查内嵌 JS，本次起配套 node --check 语法门禁）：
+   - dialogs.js `closeDialog` 的 `onOk()` 漏传参数——所有 showConfirm/showPrompt 点确认恒 resolve false（"点审核通过没反应"根因之一），改 `onOk(ok === true)`；
+   - `btn-approve`/`btn-verify` 补 `e.stopPropagation()`——原漏加导致点按钮连带整行点击误开抽屉（"弹出侧边详情"即此现象）；
+   - **抽屉底栏操作区**（`#drawerActions`）：Pending 显"审核通过/拒绝"、Active 未认证显"认证"，看完成员就地决策（原操作按钮只在行内、被 620px 抽屉盖住）；审批动作抽公共函数 `approveMerchant/verifyMerchant/openRejectDialog`，行按钮与底栏共用，成功后自动收抽屉刷新；
+   - 从抽屉发起拒绝时先关抽屉再弹 rejectModal（BS modal 叠 offcanvas 会复现焦点陷阱，延时 320ms 等滑出动画结束）；
+   - lightbox `openDocViewer` 的 `attr('src','')` 改 `removeAttr`（空串在部分浏览器触发当前页重新加载）；
+   - 抽屉重开时加载占位复位"加载中..."（原失败文案残留）；
+   - 证照材料队列"通过"补 `data-confirm` 确认（原直提易误点），与全站审批口径统一。
 
 ### v1.21.0 → v1.21.1 更新内容
 

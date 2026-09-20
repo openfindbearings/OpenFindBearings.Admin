@@ -64,7 +64,7 @@
         d.$mask.hide();
         const resolve = dialogResolve, onOk = window.__ofbOnOk;
         dialogResolve = null; window.__ofbOnOk = null;
-        if (resolve) resolve(ok ? onOk() : onOk(false));
+        if (resolve) resolve(onOk(ok === true));
     }
 
     $(function () {

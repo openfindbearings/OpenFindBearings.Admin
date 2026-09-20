@@ -206,19 +206,6 @@
             <h6 class="text-muted small mt-4 mb-2">申请证照材料</h6>
             <div id="dDocs" class="row g-2"></div>
             <div id="dDocsEmpty" class="text-muted small d-none">该申请未随附材料（历史通道数据），可要求驳回补全。</div>
-@* v1.21.1 材料 lightbox：抽屉缩略图点击放大 *@
-<div class="modal fade" id="docViewer" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content bg-transparent border-0">
-            <div class="modal-header border-0 position-absolute top-0 end-0">
-                <button type="button" class="btn btn-light btn-sm rounded-circle shadow" data-bs-dismiss="modal" aria-label="关闭"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body p-0 text-center">
-                <img id="docViewerImg" class="img-fluid rounded shadow" style="max-height:80vh" alt="">
-            </div>
-        </div>
-    </div>
-</div>
 
             <h6 class="text-muted small mt-4 mb-2">爬虫历史数据比对</h6>
             <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
@@ -277,6 +264,22 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-sm btn-danger" id="rejectConfirmBtn">确认拒绝</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* v1.21.1 材料 lightbox：抽屉缩略图点击放大。
+   改动说明：必须挂在 offcanvas 之外——抽屉的 transform 会为 fixed 定位创建
+   containing block，嵌套其内的 modal 会错位且关闭按钮点不到 *@
+<div class="modal fade" id="docViewer" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-header border-0 position-absolute top-0 end-0">
+                <button type="button" class="btn btn-light btn-sm rounded-circle shadow" data-bs-dismiss="modal" aria-label="关闭"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="docViewerImg" class="img-fluid rounded shadow" style="max-height:80vh" alt="">
             </div>
         </div>
     </div>

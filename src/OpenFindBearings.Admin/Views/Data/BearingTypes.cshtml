@@ -1,4 +1,4 @@
-@model TypeListViewModel
+﻿@model TypeListViewModel
 @{
     ViewData["Title"] = "类型列表";
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}";
@@ -38,16 +38,16 @@
                                 <button class="btn btn-sm btn-outline-primary" onclick='openEditType(@Html.Raw(Json.Serialize(item)))'>编辑</button>
                                 @if (Model.IncludeDeleted)
                                 {
-                                    <form method="post" asp-action="RestoreBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该类型吗？')">
+                                    <form method="post" asp-action="RestoreBearingType" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要恢复该类型吗？">
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
-                                    <form method="post" asp-action="HardDeleteBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该类型吗？')">
+                                    <form method="post" asp-action="HardDeleteBearingType" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该类型吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
                                 }
                                 else
                                 {
-                                    <form method="post" asp-action="DeleteBearingType" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该类型吗？')">
+                                    <form method="post" asp-action="DeleteBearingType" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该类型吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>
                                 }

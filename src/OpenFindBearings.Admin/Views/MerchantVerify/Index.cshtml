@@ -10,6 +10,16 @@
     var search = (string?)ViewBag.Search ?? "";
     var error = (string?)ViewBag.Error;
 
+    // 改动说明：商家类型枚举名转中文（v1.21.1，运营要求列表/抽屉不再露英文枚举）
+    string MerchantTypeName(string t) => t switch
+    {
+        "Manufacturer" => "生产厂家",
+        "AuthorizedDealer" => "授权经销商",
+        "Distributor" => "分销商",
+        "Trader" => "贸易商",
+        _ => t
+    };
+
     // 改动说明：入驻渠道码转中文（对齐 API ApplicationMode 枚举）
     static string ModeLabel(string? mode) => mode switch
     {
@@ -82,7 +92,7 @@
                                         <i class="fas fa-exclamation-triangle text-warning ms-1" title="缺营业执照企业名称，建议驳回补全"></i>
                                     }
                                 </td>
-                                <td>@item.Type</td>
+                                <td>@MerchantTypeName(item.Type)</td>
                                 <td>@ModeLabel(item.ApplicationMode)</td>
                                 <td>@(item.ContactPerson ?? "-")</td>
                                 <td>@(item.Mobile ?? item.Phone ?? "-")</td>
@@ -269,20 +279,13 @@
     </div>
 </div>
 
-@* v1.21.1 材料 lightbox：抽屉缩略图点击放大。
-   改动说明：必须挂在 offcanvas 之外——抽屉的 transform 会为 fixed 定位创建
-   containing block，嵌套其内的 modal 会错位且关闭按钮点不到 *@
-<div class="modal fade" id="docViewer" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content bg-transparent border-0">
-            <div class="modal-header border-0 position-absolute top-0 end-0">
-                <button type="button" class="btn btn-light btn-sm rounded-circle shadow" data-bs-dismiss="modal" aria-label="关闭"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body p-0 text-center">
-                <img id="docViewerImg" class="img-fluid rounded shadow" style="max-height:80vh" alt="">
-            </div>
-        </div>
-    </div>
+@* v1.21.1 材料 lightbox：自绘全屏遮罩。
+   改动说明：不用 BS modal——它与 offcanvas 各有焦点陷阱，抽屉上叠加时互相抢焦点，
+   data-bs-dismiss 失灵关不掉；自绘层纯显隐，点空白/✕/ESC 均可关，PDF 用 iframe 内嵌预览 *@
+<div id="docViewer" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.86);cursor:zoom-out">
+    <img id="docViewerImg" alt="" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:92vw;max-height:86vh;border-radius:6px;box-shadow:0 0 24px rgba(0,0,0,.5);cursor:default">
+    <iframe id="docViewerFrame" title="材料预览" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,92vw);height:86vh;border:0;border-radius:6px;background:#fff"></iframe>
+    <button type="button" id="docViewerClose" aria-label="关闭" style="position:absolute;top:16px;right:20px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#212529;font-size:22px;line-height:1;cursor:pointer">&times;</button>
 </div>
 
 @section Scripts {
@@ -323,20 +326,35 @@
             });
         }
 
-        // 材料 lightbox：点缩略图弹大图（modal 层级高于 offcanvas，可叠加）
-        $(document).on('click', '.doc-viewer-link', function () {
-            $('#docViewerImg').attr('src', $(this).data('url'));
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('docViewer')).show();
+        // 材料 lightbox 显隐（v1.21.1 自绘遮罩：BS modal 与 offcanvas 焦点陷阱冲突关不掉；
+        //   点空白/✕ 关闭，ESC 关闭并阻断冒泡防抽屉连带的抢焦行为，PDF 走 iframe 内嵌）
+        function openDocViewer(url) {
+            const isPdf = /\.pdf$/i.test(url);
+            $('#docViewerImg').toggle(!isPdf).attr('src', isPdf ? '' : url);
+            $('#docViewerFrame').toggle(isPdf).attr('src', isPdf ? url : '');
+            $('#docViewer').show();
+        }
+        function closeDocViewer() {
+            $('#docViewer').hide();
+            $('#docViewerImg').removeAttr('src');
+            $('#docViewerFrame').removeAttr('src');
+        }
+        $(document).on('click', '.doc-viewer-link', function () { openDocViewer($(this).data('url')); });
+        $('#docViewer').on('click', function (e) {
+            if (e.target === this || e.target.id === 'docViewerClose') closeDocViewer();
+        });
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $('#docViewer').is(':visible')) { e.stopImmediatePropagation(); closeDocViewer(); }
         });
 
-        function toast(type, msg) {
-            if (typeof showToast === 'function') { showToast(type, msg); return; }
-            alert(msg);
-        }
+        // 改动说明（v1.22.0）：showToast 已由 dialogs.js 全局提供，去掉 alert 兜底；danger 为 BS 别名
+        function toast(type, msg) { showToast(type === 'danger' ? 'error' : type, msg); }
 
         $('.btn-approve').on('click', function () {
             const id = $(this).data('id');
-            if (!confirm('确认审核通过该入驻申请？商户将生效并可在 C 端被检索。')) return;
+            // 改动说明（v1.22.0）：原生 confirm 换统一 showConfirm（Promise 异步）
+            showConfirm({ message: '确认审核通过该入驻申请？商户将生效并可在 C 端被检索。', okText: '审核通过' }).then(function (ok) {
+            if (!ok) return;
             $.post('@Url.Action("Approve")', { id })
                 .done(function (res) {
                     if (res.success) {
@@ -349,11 +367,13 @@
                     }
                 })
                 .fail(function () { toast('danger', '服务异常'); });
+            });
         });
 
         $('.btn-verify').on('click', function () {
             const id = $(this).data('id');
-            if (!confirm('确认认证该商家？（认证提升资质等级，不影响生效状态）')) return;
+            showConfirm({ message: '确认认证该商家？（认证提升资质等级，不影响生效状态）', okText: '认证' }).then(function (ok) {
+            if (!ok) return;
             $.post('@Url.Action("Verify")', { id })
                 .done(function (res) {
                     if (res.success) {
@@ -364,6 +384,7 @@
                     }
                 })
                 .fail(function () { toast('danger', '服务异常'); });
+            });
         });
 
         $('.btn-reject').on('click', function (e) {
@@ -454,7 +475,8 @@
                     $('#dName').text(d.name || '-');
                     $('#dCompanyName').text(d.companyName || '-');
                     $('#dCreditCode').text(d.unifiedSocialCreditCode || '-');
-                    $('#dType').text(d.type || '-');
+                    const typeMap = { Manufacturer: '生产厂家', AuthorizedDealer: '授权经销商', Distributor: '分销商', Trader: '贸易商' };
+                    $('#dType').text(typeMap[d.type] || d.type || '-');
                     $('#dMode').text(modeMap[normKey(d.applicationMode)] || d.applicationMode || '-');
                     $('#dSubmittedAt').text(d.submittedAt ? new Date(d.submittedAt).toLocaleString('zh-CN') : '-');
                     $('#dContact').text(d.contactPerson || '-');

@@ -1,4 +1,4 @@
-@model MerchantListViewModel
+﻿@model MerchantListViewModel
 @using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "商家列表";
@@ -60,16 +60,16 @@
                                 <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name">在售商品</button>
                                 @if (Model.IncludeDeleted)
                                 {
-                                    <form method="post" asp-action="RestoreMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该商家吗？')">
+                                    <form method="post" asp-action="RestoreMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要恢复该商家吗？">
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
-                                    <form method="post" asp-action="HardDeleteMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该商家吗？')">
+                                    <form method="post" asp-action="HardDeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
                                 }
                                 else
                                 {
-                                    <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该商家吗？')">
+                                    <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>
                                 }
@@ -312,7 +312,7 @@ document.querySelectorAll('.btn-on-sale').forEach(function(btn){
 });
 // 价格列头点击切换排序（受 Price.NumericForSorting 配置控制）
 document.getElementById('onSalePriceHeader').addEventListener('click',function(){
-    if(!window.PRICE_CONFIG.numericForSorting){alert('价格排序已关闭，请在系统配置中开启 Price.NumericForSorting');return;}
+    if(!window.PRICE_CONFIG.numericForSorting){showToast('warning', '价格排序已关闭，请在系统配置中开启 Price.NumericForSorting');return;}
     if(_onSaleSort==='price'){_onSaleSortOrder=_onSaleSortOrder==='asc'?'desc':'asc';}
     else{_onSaleSort='price';_onSaleSortOrder='asc';}
     loadOnSalePage(_onSaleMerchantId, 1);
@@ -387,7 +387,7 @@ document.getElementById('importExcelForm').addEventListener('submit', function(e
     var btn = document.getElementById('importExcelBtn');
     var resultDiv = document.getElementById('importResult');
     var resultAlert = document.getElementById('importResultAlert');
-    if (!fileInput.files.length) { alert('请选择文件'); return; }
+    if (!fileInput.files.length) { showToast('warning', '请选择文件'); return; }
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导入中...';
     var formData = new FormData();

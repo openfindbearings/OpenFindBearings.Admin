@@ -1,4 +1,4 @@
-@model PendingReviewListViewModel
+﻿@model PendingReviewListViewModel
 @{
     ViewData["Title"] = "同步数据审核";
     string PageUrl(int p) => $"?type={Model.CurrentFilter}&page={p}";
@@ -192,7 +192,7 @@
                         $('#reviewFormTitle').text('实体类型：' + (entityType || '') + '，修改后点击审核通过，系统将按编辑后的数据入库');
                         $('#reviewModal').modal('show');
                     } else {
-                        alert(res.message || '获取详情失败');
+                        showToast('error', res.message || '获取详情失败');
                     }
                 })
                 .always(function () {
@@ -269,10 +269,10 @@
                         $(this).remove();
                     });
                 } else {
-                    alert(res.message || '操作失败');
+                    showToast('error', res.message || '操作失败');
                 }
             }).fail(function () {
-                alert('请求失败');
+                showToast('error', '请求失败');
             }).always(function () {
                 btn.prop('disabled', false).html('<i class="fas fa-check"></i> 审核通过');
             });
@@ -284,7 +284,9 @@
             var reason = btn.data('reason') || '管理员拒绝';
             var row = btn.closest('tr');
 
-            if (!confirm('确定拒绝此条审核记录吗？')) return;
+            // 改动说明（v1.22.0）：原生 confirm 换统一 showConfirm，确认后继续原拒绝流程
+            showConfirm({ message: '确定拒绝此条审核记录吗？', danger: true, okText: '拒绝' }).then(function (confirmed) {
+            if (!confirmed) return;
 
             btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
@@ -293,14 +295,15 @@
                     if (res.success) {
                         row.addClass('table-danger').fadeOut(800, function () { row.remove(); });
                     } else {
-                        alert(res.message || '操作失败');
+                        showToast('error', res.message || '操作失败');
                         btn.prop('disabled', false).html('<i class="fas fa-times"></i> 拒绝');
                     }
                 })
                 .fail(function () {
-                    alert('请求失败');
+                    showToast('error', '请求失败');
                     btn.prop('disabled', false).html('<i class="fas fa-times"></i> 拒绝');
                 });
+            });
         });
     </script>
 }

@@ -1,4 +1,4 @@
-@using OpenFindBearings.Admin.Models.DTOs
+﻿@using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "用户管理";
     // 改动说明：ViewBag 改用 ?? 兜底。原实现在 API 调用失败时 Page/PageSize/TotalCount 全为 null，
@@ -77,10 +77,10 @@
                             <td>
                                 @if (!item.IsActive)
                                 {
-                                    <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确认恢复该用户？')">
+                                    <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" data-confirm="确认恢复该用户？">
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
-                                    <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该用户吗？')">
+                                    <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该用户吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
                                 }

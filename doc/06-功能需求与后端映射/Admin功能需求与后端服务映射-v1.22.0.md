@@ -1,10 +1,18 @@
-# Admin 功能需求与后端服务映射 v1.21.1
+# Admin 功能需求与后端服务映射 v1.22.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.21.1 → v1.22.0 更新内容
+
+1. **弹窗体系统一（新增 `wwwroot/js/dialogs.js`，`_Layout` 全局挂载）**：全站 31 处原生 `confirm/alert/prompt`（散落 11 个视图）清零，统一为自绘覆盖层三件套——
+   - `showConfirm(opts) → Promise<boolean>`：白卡确认框（危险操作红按钮），列表删除/恢复/硬删（`form[data-confirm]` + `data-confirm-danger` 属性委托拦截提交）、审批通过、认证、映射删除、审核拒绝等 18 处接入；
+   - `showPrompt(opts) → Promise<string|null>`：带 textarea 的必填理由框，替换证照材料队列原生 `window.prompt`；
+   - `showToast(type, msg)`：右上角 3 秒自动消失轻提示，替换全部裸 `alert`（含 `danger` 别名兼容 BS 命名）。
+2. **自绘而非 BS modal 的原因**：BS modal 与 offcanvas 各有焦点陷阱，抽屉之上叠加时互相抢焦点导致 `data-bs-dismiss` 失灵；自绘层（z-index 3100/3200）在任意页面层级行为一致。表单类 BS modal（在售商家/在售商品/拒绝弹窗，均在普通页面使用不与抽屉叠加）维持现状。
 
 ### v1.21.0 → v1.21.1 更新内容
 

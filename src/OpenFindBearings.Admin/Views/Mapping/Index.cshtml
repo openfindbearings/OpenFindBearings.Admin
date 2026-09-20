@@ -1,4 +1,4 @@
-@using System.Text.Json
+﻿@using System.Text.Json
 @{
     ViewData["Title"] = "映射管理";
     var type = ViewBag.MappingType as string ?? "brand";
@@ -218,7 +218,7 @@
             bootstrap.Modal.getInstance(document.getElementById('createModal')).hide();
             location.reload();
         } else {
-            alert(result.message || '创建失败');
+            showToast('error', result.message || '创建失败');
         }
     });
 
@@ -248,22 +248,25 @@
             bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
             location.reload();
         } else {
-            alert(result.message || '更新失败');
+            showToast('error', result.message || '更新失败');
         }
     });
 
+    // 改动说明（v1.22.0）：原生 confirm 换统一 showConfirm（Promise 异步确认后再删）
     function deleteMapping(id) {
-        if (!confirm('确认删除此映射？')) return;
-        const params = new URLSearchParams();
-        params.set('type', mappingType);
-        params.set('id', id);
-        fetch('@Url.Action("Delete")', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: params
-        }).then(r => r.json()).then(result => {
-            if (result.success) location.reload();
-            else alert(result.message || '删除失败');
+        showConfirm({ message: '确认删除此映射？', danger: true, okText: '删除' }).then(function (ok) {
+            if (!ok) return;
+            const params = new URLSearchParams();
+            params.set('type', mappingType);
+            params.set('id', id);
+            fetch('@Url.Action("Delete")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            }).then(r => r.json()).then(result => {
+                if (result.success) location.reload();
+                else showToast('error', result.message || '删除失败');
+            });
         });
     }
 </script>

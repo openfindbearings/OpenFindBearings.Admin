@@ -1,4 +1,4 @@
-@model BearingListViewModel
+﻿@model BearingListViewModel
 @{
     ViewData["Title"] = "轴承列表";
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}";
@@ -41,16 +41,16 @@
                                 <button class="btn btn-sm btn-outline-secondary btn-merchants" data-id="@item.Id" data-name="@item.PartNumber">在售商家</button>
                                 @if (Model.IncludeDeleted)
                                 {
-                                    <form method="post" asp-action="RestoreBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要恢复该轴承吗？')">
+                                    <form method="post" asp-action="RestoreBearing" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要恢复该轴承吗？">
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
-                                    <form method="post" asp-action="HardDeleteBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('此操作不可恢复，确定要彻底删除该轴承吗？')">
+                                    <form method="post" asp-action="HardDeleteBearing" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该轴承吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
                                 }
                                 else
                                 {
-                                    <form method="post" asp-action="DeleteBearing" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('确定要删除该轴承吗？')">
+                                    <form method="post" asp-action="DeleteBearing" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该轴承吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>
                                 }

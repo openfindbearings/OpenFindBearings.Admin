@@ -139,19 +139,23 @@
 
 @section Scripts {
     <script>
-        // 改动说明：拒绝动作升级为必填理由（旧版拒绝无原因，商户端无从知晓）
+        // 改动说明：拒绝动作升级为必填理由（旧版拒绝无原因，商户端无从知晓）；
+        //   v1.22.0 原生 prompt 换统一 showPrompt（异步），确认后注入隐藏域再放行提交一次
         document.querySelectorAll('.js-reject-form').forEach(function (form) {
             form.addEventListener('submit', function (e) {
-                var reason = window.prompt('拒绝该材料的理由（将回传给商户）：');
-                if (reason === null || reason.trim() === '') {
-                    e.preventDefault(); // 取消或空理由不允许提交
-                    return;
-                }
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'reason';
-                input.value = reason.trim();
-                form.appendChild(input);
+                if (form.dataset.ofbConfirmed) { delete form.dataset.ofbConfirmed; return; }
+                e.preventDefault();
+                showPrompt({ title: '拒绝材料', message: '拒绝该材料的理由（将回传给商户）：', required: true, okText: '确认拒绝', danger: true })
+                    .then(function (reason) {
+                        if (reason === null) return;
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'reason';
+                        input.value = reason;
+                        form.appendChild(input);
+                        form.dataset.ofbConfirmed = '1';
+                        form.requestSubmit();
+                    });
             });
         });
     </script>

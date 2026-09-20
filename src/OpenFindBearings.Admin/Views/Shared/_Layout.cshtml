@@ -164,6 +164,8 @@
     <script src="~/lib/jquery/jquery.min.js"></script>
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @* v1.22.0：全站统一弹窗体系（showConfirm/showPrompt/showToast + data-confirm 委托） *@
+    <script src="~/js/dialogs.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     @* 改动说明：全局 UTC→本地时间转换，使用浏览器原生 Intl.DateTimeFormat，不依赖任何 CDN *@
     <script>

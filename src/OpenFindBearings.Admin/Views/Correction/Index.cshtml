@@ -48,24 +48,47 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th>目标表</th>
+                            <th>目标</th>
                             <th>字段</th>
-                            <th>原始值</th>
-                            <th>建议值</th>
+                            <th>纠错对比（原值 → 应改为）</th>
+                            <th>理由</th>
                             <th>提交人</th>
                             <th style="width:140px">时间</th>
+                            @if (currentStatus == "pending")
+                            {
+                                <th style="width:150px">操作</th>
+                            }
+                            else
+                            {
+                                <th style="width:160px">审核意见</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in items)
                         {
                             <tr>
-                                <td>@item.TargetTable</td>
-                                <td>@item.FieldName</td>
-                                <td>@item.OriginalValue</td>
-                                <td>@item.SuggestedValue</td>
-                                <td>@(item.SubmittedBy ?? "-")</td>
+                                <td><span class="badge bg-secondary">@item.TargetType</span> @item.TargetDisplay</td>
+                                <td>@item.FieldDisplayName</td>
+                                <td>
+                                    <span class="text-muted text-decoration-line-through">@(string.IsNullOrWhiteSpace(item.OriginalValue) ? "（空）" : item.OriginalValue)</span>
+                                    <i class="fas fa-arrow-right mx-1 text-muted"></i>
+                                    <span class="text-success fw-bold">@item.SuggestedValue</span>
+                                </td>
+                                <td class="small text-muted">@(string.IsNullOrWhiteSpace(item.Reason) ? "-" : item.Reason)</td>
+                                <td>@(string.IsNullOrWhiteSpace(item.SubmitterName) ? "-" : item.SubmitterName)</td>
                                 <td class="text-muted small" data-utc="@BdTimeRaw(item.SubmittedAt)">@BdTimeRaw(item.SubmittedAt)</td>
+                                @if (currentStatus == "pending")
+                                {
+                                    <td>
+                                        <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id">采纳</button>
+                                        <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id">驳回</button>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="small">@(string.IsNullOrWhiteSpace(item.ReviewComment) ? "-" : item.ReviewComment)</td>
+                                }
                             </tr>
                         }
                     </tbody>
@@ -111,3 +134,38 @@
         }
     </div>
 </div>
+@section Scripts {
+<script>
+    // 纠错审批操作（v1.23.0）：采纳=showConfirm 确认+POST Approve；驳回=showPrompt 必填原因+POST Reject。
+    // 409 冲突（他人已处理）提示后自动刷新列表，与入驻审批交互对齐；弹窗统一走 dialogs.js（Promise 风格）
+    $(function () {
+        $('.btn-approve').on('click', function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            showConfirm({ title: '采纳纠错', message: '采纳后将自动更新该条信息并通知提交人，确认？' }).then(function (ok) {
+                if (!ok) return;
+                $.post('@Url.Action("Approve")', { id: id })
+                    .done(function (r) {
+                        if (r.success) { showToast('success', r.message); setTimeout(function () { location.reload(); }, 800); }
+                        else { showToast(r.conflict ? 'warning' : 'error', r.message); if (r.conflict) setTimeout(function () { location.reload(); }, 1200); }
+                    })
+                    .fail(function () { showToast('error', '请求失败'); });
+            });
+        });
+
+        $('.btn-reject').on('click', function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            showPrompt({ title: '驳回纠错', message: '请填写驳回原因（将通过站内信通知提交人）', required: true }).then(function (reason) {
+                if (!reason) return;
+                $.post('@Url.Action("Reject")', { id: id, comment: reason })
+                    .done(function (r) {
+                        if (r.success) { showToast('success', r.message); setTimeout(function () { location.reload(); }, 800); }
+                        else { showToast(r.conflict ? 'warning' : 'error', r.message); if (r.conflict) setTimeout(function () { location.reload(); }, 1200); }
+                    })
+                    .fail(function () { showToast('error', '请求失败'); });
+            });
+        });
+    });
+</script>
+}

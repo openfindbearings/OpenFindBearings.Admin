@@ -32,7 +32,7 @@ public class PermissionController : Controller
     {
         "dashboard.view" => "仪表盘",
         "bearing.view" or "bearing.create" or "bearing.edit" or "bearing.delete" => "轴承管理",
-        "merchant.view" or "merchant.manage" or "merchant.verify" => "商家管理",
+        "merchant.view" or "merchant.manage" or "merchant.verify" or "merchant.detach" => "商家管理",
         "correction.review" => "审核管理",
         "etl.manage" => "任务管理",
         "role.manage" or "user.manage" => "认证管理",
@@ -50,7 +50,7 @@ public class PermissionController : Controller
         "bearing.edit" => "编辑轴承",
         "bearing.delete" => "删除轴承",
         "merchant.view" => "查看商家",
-        "merchant.manage" => "管理商家",
+        "merchant.manage" => "管理商家",                "merchant.detach" => "解除商户归属",
         "merchant.verify" => "认证审核",
         "correction.review" => "纠错审核",
         "etl.manage" => "任务管理",

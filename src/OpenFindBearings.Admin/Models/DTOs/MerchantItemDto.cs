@@ -28,5 +28,8 @@ public record MerchantItemDto(
     [property: JsonPropertyName("submittedAt")] DateTime? SubmittedAt = null,
     [property: JsonPropertyName("rejectReason")] string? RejectReason = null,
     // 改动说明（v1.22.0）：对齐 API v2.9.0 申请认证标记，列表/抽屉显"已申请认证"徽标
-    [property: JsonPropertyName("verifyRequested")] bool VerifyRequested = false
+    [property: JsonPropertyName("verifyRequested")] bool VerifyRequested = false,
+    // 改动说明（v1.24.1）：对齐 API v1.31.0 DataSource 字段——解除归属按钮可用性判定
+    // （None+Manual=提名已有可解除，None+Crawler=公海不可；与 DetachMerchant 守卫同口径）
+    [property: JsonPropertyName("dataSource")] string? DataSource = null
 );

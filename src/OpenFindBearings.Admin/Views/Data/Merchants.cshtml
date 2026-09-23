@@ -69,10 +69,23 @@
                                 }
                                 else
                                 {
-                                    @* v1.24.0 解除归属：认领商户清场回公海（可再认领、随爬取自然更新）；自建商户会被 API 拒绝并透传原因 *@
-                                    <form method="post" asp-action="DetachMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定解除该商户归属？商品/证照/成员将清空，商户退回公开信息池（仅认领商户可解除，自建商户请用删除）。" data-confirm-danger>
-                                        <button class="btn btn-sm btn-outline-warning">解除归属</button>
-                                    </form>
+                                    @* v1.24.1 解除归属可用性判定（与 API DetachMerchant 守卫严格同口径）：
+                                       仅生效 + 认领（Claim）或提名已有（None+Manual）商户可解除；
+                                       自建/提名新建应走删除，公海未认领无归属可解 *@
+                                    var canDetach = string.Equals(item.Status, "Active", StringComparison.OrdinalIgnoreCase)
+                                        && (item.ApplicationMode == "Claim"
+                                            || (item.ApplicationMode == "None" && item.DataSource == "Manual"));
+                                    @if (canDetach)
+                                    {
+                                        <form method="post" asp-action="DetachMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定解除该商户归属？商品/证照/成员将清空，商户退回公开信息池（仅认领商户可解除，自建商户请用删除）。" data-confirm-danger>
+                                            <button class="btn btn-sm btn-outline-warning">解除归属</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-warning" disabled
+                                                title="仅生效状态的认领/提名已有商户可解除归属：自建商户请用删除，公海未认领商户无归属可解">解除归属</button>
+                                    }
                                     <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>

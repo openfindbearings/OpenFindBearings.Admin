@@ -69,6 +69,10 @@
                                 }
                                 else
                                 {
+                                    @* v1.24.0 解除归属：认领商户清场回公海（可再认领、随爬取自然更新）；自建商户会被 API 拒绝并透传原因 *@
+                                    <form method="post" asp-action="DetachMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定解除该商户归属？商品/证照/成员将清空，商户退回公开信息池（仅认领商户可解除，自建商户请用删除）。" data-confirm-danger>
+                                        <button class="btn btn-sm btn-outline-warning">解除归属</button>
+                                    </form>
                                     <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>

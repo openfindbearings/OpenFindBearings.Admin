@@ -419,6 +419,35 @@ public class DataController : Controller
         return RedirectToAction("Merchants");
     }
 
+    /// <summary>
+    /// 解除商户归属（v1.24.0），POST /api/admin/merchants/{id}/detach——
+    /// 认领商户清场回公海（可再认领、随爬取自然更新）；自建商户会被 API 拒绝（应走删除）。
+    /// 上游 400 文案透传 TempData（如"自助创建或提名新建的商户无公海数据可退回"）
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> DetachMerchant(Guid id)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        var resp = await client.PostAsync($"{ApiBase()}/api/admin/merchants/{id}/detach", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            TempData["Success"] = "已解除该商户归属并退回公开信息池";
+        }
+        else
+        {
+            string detail = string.Empty;
+            try
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(body);
+                detail = doc.RootElement.TryGetProperty("detail", out var d) ? d.GetString() ?? "" : body;
+            }
+            catch { }
+            TempData["Error"] = string.IsNullOrEmpty(detail) ? $"解除失败: {resp.StatusCode}" : $"解除失败：{detail}";
+        }
+        return RedirectToAction("Merchants");
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetMerchantBearings(Guid id, bool onlyOnSale = true, int page = 1, int pageSize = 20, string? sortBy = null, string? sortOrder = null)
     {

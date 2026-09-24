@@ -1,73 +1,131 @@
+using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenFindBearings.Admin.Data;
-using OpenFindBearings.Admin.Models.Constants;
-using OpenFindBearings.Admin.Models.Entities;
 using OpenFindBearings.Admin.Models.ViewModels;
+using System.Text.Json;
 
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 角色管理控制器（Admin 本地 RBAC，db_admin 数据库）
+/// 角色管理控制器（v1.25.0 改代理 API RBAC）。
+/// 改动说明：原实现读写 Admin 本地 db_admin 的 AdminRolePermissions 僵尸表（改了零效果）；
+/// 现全部代理 API /api/admin/roles*（业务权限 API 一家管原则），视图契约保持不变。
 /// </summary>
 [Authorize]
+[PanelPermission("role.manage")]
 public class RoleController : Controller
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IHttpClientFactory _factory;
+    private readonly IConfiguration _config;
+    private readonly ILogger<RoleController> _logger;
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public RoleController(ApplicationDbContext db)
+    /// <summary>
+    /// 构造：注入 HTTP 工厂与配置
+    /// </summary>
+    public RoleController(IHttpClientFactory factory, IConfiguration config, ILogger<RoleController> logger)
     {
-        _db = db;
+        _factory = factory;
+        _config = config;
+        _logger = logger;
+    }
+
+    private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+
+    private HttpClient Api() => _factory.CreateClient("ApiClient");
+
+    /// <summary>
+    /// 解包 API 响应 data 节点（ApiResponse 包装：success/message/data）
+    /// </summary>
+    private static JsonElement? DataOf(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("data", out var d) ? d.Clone() : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
-    /// 角色列表
+    /// 角色列表（代理 API 分页角色，取全量一页）
     /// </summary>
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        var roles = _db.AdminRolePermissions
-            .GroupBy(r => r.RoleName)
-            .Select(g => new RoleViewModel
+        var resp = await Api().GetAsync($"{ApiBase()}/api/admin/roles?page=1&pageSize=100");
+        var roles = new List<RoleViewModel>();
+        if (resp.IsSuccessStatusCode)
+        {
+            var data = DataOf(await resp.Content.ReadAsStringAsync());
+            if (data?.TryGetProperty("items", out var items) == true)
             {
-                RoleName = g.Key,
-                PermissionCount = g.Count(p => p.Granted)
-            })
-            .OrderBy(r => r.RoleName)
-            .ToList();
+                roles = items.EnumerateArray().Select(x => new RoleViewModel
+                {
+                    RoleName = x.GetProperty("name").GetString() ?? "",
+                    PermissionCount = x.TryGetProperty("permissions", out var p) && p.ValueKind == JsonValueKind.Array ? p.GetArrayLength() : 0
+                }).ToList();
+            }
+        }
+        else
+        {
+            TempData["Error"] = $"角色列表加载失败: {resp.StatusCode}";
+        }
+
         ViewBag.Items = roles;
         return View();
     }
 
     /// <summary>
-    /// 角色权限详情
+    /// 角色权限详情（权限点目录只读清单 + 该角色已授权勾选）
     /// </summary>
-    public IActionResult Permissions(string roleName)
+    public async Task<IActionResult> Permissions(string roleName)
     {
         if (string.IsNullOrEmpty(roleName))
             return RedirectToAction("Index");
 
-        var permissions = _db.AdminRolePermissions
-            .Where(p => p.RoleName == roleName)
-            .ToList();
-
         ViewBag.RoleName = roleName;
 
-        var allPermissions = PermissionKeys.All
-            .Select(k => new PermissionItemViewModel
+        // 角色名 → ID（API 权限分配以 ID 为键）
+        var roleId = await ResolveRoleIdAsync(roleName);
+        var granted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (roleId.HasValue)
+        {
+            var resp = await Api().GetAsync($"{ApiBase()}/api/admin/roles/{roleId}/permissions");
+            if (resp.IsSuccessStatusCode)
             {
-                Key = k,
-                Granted = permissions.Any(x => x.PermissionKey == k && x.Granted)
-            })
-            .ToList();
+                var data = DataOf(await resp.Content.ReadAsStringAsync());
+                if (data?.ValueKind == JsonValueKind.Array)
+                    granted = data.Value.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+        }
 
-        return View(allPermissions);
+        // 权限点目录（只读清单来源=API 权限表，界面不再允许新增权限点）
+        var catalog = new List<PermissionItemViewModel>();
+        var catResp = await Api().GetAsync($"{ApiBase()}/api/admin/permissions?page=1&pageSize=200");
+        if (catResp.IsSuccessStatusCode)
+        {
+            var data = DataOf(await catResp.Content.ReadAsStringAsync());
+            if (data?.TryGetProperty("items", out var items) == true)
+            {
+                catalog = items.EnumerateArray().Select(x => new PermissionItemViewModel
+                {
+                    Key = x.GetProperty("name").GetString() ?? "",
+                    Granted = granted.Contains(x.GetProperty("name").GetString() ?? "")
+                }).ToList();
+            }
+        }
+
+        return View(catalog);
     }
 
     /// <summary>
-    /// 创建角色
+    /// 创建角色（代理 API；权限后续在详情页勾选）
     /// </summary>
     [HttpPost]
-    public IActionResult Create(string roleName)
+    public async Task<IActionResult> Create(string roleName)
     {
         if (string.IsNullOrWhiteSpace(roleName))
         {
@@ -75,77 +133,95 @@ public class RoleController : Controller
             return RedirectToAction("Index");
         }
 
-        roleName = roleName.Trim();
-        if (_db.AdminRolePermissions.Any(r => r.RoleName == roleName))
-        {
-            TempData["Error"] = $"角色 '{roleName}' 已存在";
-            return RedirectToAction("Index");
-        }
+        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles", new { name = roleName.Trim(), description = (string?)null });
+        if (resp.IsSuccessStatusCode)
+            TempData["Success"] = $"角色 '{roleName}' 创建成功";
+        else
+            TempData["Error"] = await ErrorTextAsync(resp, "创建失败");
 
-        var now = DateTime.UtcNow;
-        var permissions = PermissionKeys.All
-            .Select(k => new AdminRolePermission
-            {
-                Id = Guid.NewGuid(),
-                RoleName = roleName,
-                PermissionKey = k,
-                Granted = false,
-                CreatedAt = now
-            })
-            .ToList();
-
-        _db.AdminRolePermissions.AddRange(permissions);
-        _db.SaveChanges();
-
-        TempData["Success"] = $"角色 '{roleName}' 创建成功";
-        return RedirectToAction("Permissions", new { roleName });
+        return RedirectToAction("Permissions", new { roleName = roleName.Trim() });
     }
 
     /// <summary>
-    /// 删除角色
+    /// 删除角色（代理 API；系统角色由 API 守卫拒绝并透传原因）
     /// </summary>
     [HttpPost]
-    public IActionResult Delete(string roleName)
+    public async Task<IActionResult> Delete(string roleName)
     {
         if (string.IsNullOrEmpty(roleName))
             return RedirectToAction("Index");
 
-        var permissions = _db.AdminRolePermissions.Where(r => r.RoleName == roleName).ToList();
-        _db.AdminRolePermissions.RemoveRange(permissions);
-        _db.SaveChanges();
+        var roleId = await ResolveRoleIdAsync(roleName);
+        if (!roleId.HasValue)
+        {
+            TempData["Error"] = $"角色 '{roleName}' 不存在";
+            return RedirectToAction("Index");
+        }
 
-        TempData["Success"] = $"角色 '{roleName}' 已删除";
+        var resp = await Api().DeleteAsync($"{ApiBase()}/api/admin/roles/{roleId}");
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] =
+            resp.IsSuccessStatusCode ? $"角色 '{roleName}' 已删除" : await ErrorTextAsync(resp, "删除失败");
         return RedirectToAction("Index");
     }
 
     /// <summary>
-    /// 保存角色权限
+    /// 保存角色权限（整表覆盖语义：勾选清单整体提交，API 侧替换式分配）
     /// </summary>
     [HttpPost]
-    public IActionResult SavePermissions(string roleName, List<string> grantedPermissions)
+    public async Task<IActionResult> SavePermissions(string roleName, List<string> grantedPermissions)
     {
         if (string.IsNullOrEmpty(roleName))
             return RedirectToAction("Index");
 
-        var existing = _db.AdminRolePermissions.Where(r => r.RoleName == roleName).ToList();
-        _db.AdminRolePermissions.RemoveRange(existing);
+        var roleId = await ResolveRoleIdAsync(roleName);
+        if (!roleId.HasValue)
+        {
+            TempData["Error"] = $"角色 '{roleName}' 不存在";
+            return RedirectToAction("Index");
+        }
 
-        var now = DateTime.UtcNow;
-        var allPerms = PermissionKeys.All
-            .Select(k => new AdminRolePermission
-            {
-                Id = Guid.NewGuid(),
-                RoleName = roleName,
-                PermissionKey = k,
-                Granted = grantedPermissions.Contains(k),
-                CreatedAt = now
-            })
-            .ToList();
-
-        _db.AdminRolePermissions.AddRange(allPerms);
-        _db.SaveChanges();
-
-        TempData["Success"] = $"角色 '{roleName}' 权限已更新";
+        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles/{roleId}/permissions",
+            new { permissionNames = grantedPermissions ?? new List<string>() });
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] =
+            resp.IsSuccessStatusCode ? "权限已保存" : await ErrorTextAsync(resp, "保存失败");
         return RedirectToAction("Permissions", new { roleName });
+    }
+
+    /// <summary>
+    /// 角色名解析为 API 角色 ID（/roles/all 全量清单匹配）
+    /// </summary>
+    private async Task<Guid?> ResolveRoleIdAsync(string roleName)
+    {
+        var resp = await Api().GetAsync($"{ApiBase()}/api/admin/roles/all");
+        if (!resp.IsSuccessStatusCode) return null;
+        var data = DataOf(await resp.Content.ReadAsStringAsync());
+        if (data?.ValueKind != JsonValueKind.Array) return null;
+        foreach (var x in data.Value.EnumerateArray())
+        {
+            if (string.Equals(x.GetProperty("name").GetString(), roleName, StringComparison.OrdinalIgnoreCase))
+                return x.GetProperty("id").GetGuid();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 提取 API 错误文案（Problem/detail 或 message 字段），失败回退状态码
+    /// </summary>
+    private async Task<string> ErrorTextAsync(HttpResponseMessage resp, string fallback)
+    {
+        try
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("message", out var m) && !string.IsNullOrEmpty(m.GetString()))
+                return $"{fallback}：{m.GetString()}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "解析 API 错误响应失败");
+        }
+
+        return $"{fallback}: {resp.StatusCode}";
     }
 }

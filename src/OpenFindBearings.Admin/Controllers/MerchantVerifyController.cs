@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
@@ -10,6 +11,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 入驻申请审批控制器：商户申请列表 + 通过/拒绝/认证代理 + 申请详情抽屉数据源（v2.7.0 含证照材料清单）
 /// </summary>
 [Authorize]
+[PanelPermission("merchant.verify")]
 public class MerchantVerifyController : Controller
 {
     private readonly IHttpClientFactory _factory;

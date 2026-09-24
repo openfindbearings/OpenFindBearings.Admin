@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +7,7 @@ using OpenFindBearings.Admin.Models.ViewModels;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
+[PanelPermission("sync.review")]
 public class ReviewController : Controller
 {
     private readonly IHttpClientFactory _factory;

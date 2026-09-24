@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 随入驻申请提交的材料在"入驻申请审批"抽屉内级联审，不进本队列。
 /// </summary>
 [Authorize]
+[PanelPermission("merchant.verify")]
 public class DocumentController : Controller
 {
     private readonly IHttpClientFactory _factory;

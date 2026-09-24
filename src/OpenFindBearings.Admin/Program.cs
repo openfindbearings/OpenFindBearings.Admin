@@ -1,10 +1,14 @@
+using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenFindBearings.Admin.Authorization;
 using OpenFindBearings.Admin.Data;
 using OpenFindBearings.Admin.Services;
 
@@ -23,6 +27,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // 认证配置：Cookie + JWT Bearer
+builder.Services.AddAuthorization();
+// 改动说明（v1.25.0）：面板权限体系接线——动态策略提供器（Panel:xxx 按需生成）+ claim 处理器；
+//   权限数据源=登录时从 API RBAC 拉取写入 cookie 的 permission 多值 claim
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PanelPolicyProvider>();
+builder.Services.AddSingleton<IAuthorizationHandler, PanelPermissionHandler>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -30,6 +39,62 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.LogoutPath = "/Account/Logout";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = true;
+        // 改动说明（v1.25.0）：权限 claim 30 分钟复核（ASP.NET SecurityStamp 同款模式）——
+        //   登录时写入的 permission/panel_role claim 到期后重拉 API /api/me/permissions：
+        //   面板角色被收回即 RejectPrincipal 踢出；否则替换 claim 续期，防权限变更残留。
+        //   API 不可达时放行（避免 API 抖动导致后台集体掉线），下轮复核重试
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            if (!context.Properties.IssuedUtc.HasValue
+                || DateTime.UtcNow - context.Properties.IssuedUtc.Value.UtcDateTime < TimeSpan.FromMinutes(30))
+                return;
+
+            var tokenService = context.HttpContext.RequestServices.GetRequiredService<AdminTokenService>();
+            var token = await tokenService.GetFreshAccessTokenAsync(context.HttpContext, false);
+            if (string.IsNullOrEmpty(token))
+            {
+                context.RejectPrincipal();
+                return;
+            }
+
+            var cfg = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+            var apiBase = cfg["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"{apiBase}/api/me/permissions");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var resp = await context.HttpContext.RequestServices
+                .GetRequiredService<IHttpClientFactory>().CreateClient().SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return;
+
+            var json = await resp.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var roles = new List<string>();
+            var perms = new List<string>();
+            if (doc.RootElement.TryGetProperty("data", out var dataEl))
+            {
+                if (dataEl.TryGetProperty("roles", out var rEl) && rEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    roles = rEl.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
+                if (dataEl.TryGetProperty("permissions", out var pEl) && pEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    perms = pEl.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
+            }
+
+            var panelRoles = new[] { "Admin", "Operator", "Auditor" };
+            if (!roles.Any(x => panelRoles.Contains(x)))
+            {
+                context.RejectPrincipal();
+                return;
+            }
+
+            // 重建 identity：基础 claim（sub/name/token）保留，权限类 claim 与复核时间戳整体替换
+            var oldIdentity = context.Principal!.Identity as ClaimsIdentity;
+            var newClaims = oldIdentity!.Claims
+                .Where(c => c.Type is not ("permission" or "panel_role" or "permissions_fetched_at"))
+                .ToList();
+            newClaims.AddRange(roles.Select(r => new Claim("panel_role", r)));
+            newClaims.AddRange(perms.Select(p => new Claim("permission", p)));
+            newClaims.Add(new Claim("permissions_fetched_at", DateTime.UtcNow.ToString("O")));
+            context.ReplacePrincipal(new ClaimsPrincipal(new ClaimsIdentity(newClaims, CookieAuthenticationDefaults.AuthenticationScheme)));
+            context.ShouldRenew = true;
+        };
     })
     .AddJwtBearer(options =>
     {
@@ -99,12 +164,11 @@ builder.Services.AddSingleton<PriceConfigService>();
 
 var app = builder.Build();
 
-// 启动时确保数据库存在并初始化种子数据
+// 启动时确保数据库存在（v1.25.0 起本地 RBAC 种子废弃，权限唯一事实源=API）
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
-    SeedData.Initialize(db);
 }
 
 if (!app.Environment.IsDevelopment())

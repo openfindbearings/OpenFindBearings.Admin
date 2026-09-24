@@ -162,6 +162,46 @@ namespace OpenFindBearings.Admin.Controllers
                 if (payload.TryGetValue("tenant_id", out var tenantId) && !string.IsNullOrEmpty(tenantId))
                     claims.Add(new Claim("tenant_id", tenantId));
 
+                // 改动说明（v1.25.0）：后台登录门禁与权限 claim 注入——
+                //   角色/权限以 API RBAC 表为唯一事实源（业务权限 API 一家管原则），token 角色不作数；
+                //   与面板角色 {Admin,Operator,Auditor} 交集为空即拒登（app 个人用户/商户成员进不来）；
+                //   通过后权限清单写 cookie 多值 claim，供菜单渲染与 Controller Policy 消费，
+                //   配合 Cookie 事件 30 分钟复核防权限收回后残留
+                var apiBase = _configuration["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+                using var permRequest = new HttpRequestMessage(HttpMethod.Get, $"{apiBase}/api/me/permissions");
+                permRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                var permResponse = await client.SendAsync(permRequest);
+                var myRoles = new List<string>();
+                var myPermissions = new List<string>();
+                if (permResponse.IsSuccessStatusCode)
+                {
+                    var permJson = await permResponse.Content.ReadAsStringAsync();
+                    using var permDoc = System.Text.Json.JsonDocument.Parse(permJson);
+                    if (permDoc.RootElement.TryGetProperty("data", out var dataEl))
+                    {
+                        if (dataEl.TryGetProperty("roles", out var rolesEl) && rolesEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            myRoles = rolesEl.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
+                        if (dataEl.TryGetProperty("permissions", out var permsEl) && permsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                            myPermissions = permsEl.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("登录门禁：API 权限清单获取失败 {StatusCode}，按无权限拒登", permResponse.StatusCode);
+                }
+
+                var panelRoles = new[] { "Admin", "Operator", "Auditor" };
+                if (!myRoles.Any(r => panelRoles.Contains(r)))
+                {
+                    _logger.LogWarning("登录门禁：用户无后台面板角色，拒登");
+                    TempData["Error"] = "该账号无后台权限，请联系管理员授予面板角色";
+                    return RedirectToAction(nameof(Login));
+                }
+
+                foreach (var r in myRoles) claims.Add(new Claim("panel_role", r));
+                foreach (var p in myPermissions) claims.Add(new Claim("permission", p));
+                claims.Add(new Claim("permissions_fetched_at", DateTime.UtcNow.ToString("O")));
+
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var principal = new ClaimsPrincipal(identity);
 

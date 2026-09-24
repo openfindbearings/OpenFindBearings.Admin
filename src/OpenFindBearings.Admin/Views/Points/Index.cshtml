@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "积分任务";
+    var items = ViewBag.Items as List<OpenFindBearings.Admin.Models.DTOs.PointRuleDto> ?? new();
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-coins me-1"></i> 积分赚分规则</h6>
+        <small class="text-muted">分值/上限/阶梯/启停修改后实时生效，无需发版；合规红线：积分不可充值、不可提现、不可转让</small>
+    </div>
+    <form method="post" asp-action="SaveRules">
+        @Html.AntiForgeryToken()
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>动作</th>
+                        <th>类型标识</th>
+                        <th style="width:90px">分值</th>
+                        <th style="width:100px">每日上限</th>
+                        <th style="width:150px">连续阶梯</th>
+                        <th style="width:80px">状态</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+                        <tr>
+                            <input type="hidden" name="items[@i].Id" value="@item.Id" />
+                            <td><strong>@item.DisplayName</strong></td>
+                            <td><code class="small">@item.GrantType</code></td>
+                            <td><input type="number" name="items[@i].Amount" value="@item.Amount" min="0" class="form-control form-control-sm" style="width:80px" /></td>
+                            <td><input type="number" name="items[@i].DailyLimit" value="@item.DailyLimit" min="0" class="form-control form-control-sm" style="width:90px" title="0 表示不限" /></td>
+                            <td><input type="text" name="items[@i].LadderJson" value="@item.LadderJson" class="form-control form-control-sm" style="width:140px" placeholder="如 [2,3,4,5,5]" /></td>
+                            @* 复选框标准模式：隐藏 false 垫底，未勾选也能提交 false（否则 unchecked 不发送=无法停用） *@
+                            <td>
+                                <input type="hidden" name="items[@i].IsEnabled" value="false" />
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" name="items[@i].IsEnabled" value="true" class="form-check-input" @(item.IsEnabled ? "checked" : "") />
+                                </div>
+                            </td>
+                            <td><small class="text-muted">@(item.Description ?? "-")</small></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <small class="text-muted">每日上限=当日该动作累计发放封顶（0 不限）；连续阶梯为 JSON 数组按连续天数取档、超出取末档（仅签到类动作生效）；留空阶梯=固定分值。</small>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>保存全部</button>
+        </div>
+    </form>
+</div>

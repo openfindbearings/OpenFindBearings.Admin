@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 数据管理控制器
 /// </summary>
 [Authorize]
+[PanelPermission("bearing.view")]
 public class DataController : Controller
 {
     private readonly IHttpClientFactory _factory;

@@ -9,8 +9,6 @@ public class ApplicationDbContext : DbContext
         : base(options) { }
 
     public DbSet<AdminAuditLog> AdminAuditLogs { get; set; } = default!;
-    public DbSet<AdminUserRole> AdminUserRoles { get; set; } = default!;
-    public DbSet<AdminRolePermission> AdminRolePermissions { get; set; } = default!;
     public DbSet<AdminConfig> AdminConfigs { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,29 +32,6 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.Action);
             e.HasIndex(x => x.UserId);
-        });
-
-        modelBuilder.Entity<AdminUserRole>(e =>
-        {
-            e.ToTable("admin_user_roles");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.UserId).HasColumnName("user_id");
-            e.Property(x => x.RoleName).HasColumnName("role_name").HasMaxLength(64);
-            e.Property(x => x.AssignedAt).HasColumnName("assigned_at");
-            e.HasIndex(x => new { x.UserId, x.RoleName }).IsUnique();
-        });
-
-        modelBuilder.Entity<AdminRolePermission>(e =>
-        {
-            e.ToTable("admin_role_permissions");
-            e.HasKey(x => x.Id);
-            e.Property(x => x.Id).HasColumnName("id");
-            e.Property(x => x.RoleName).HasColumnName("role_name").HasMaxLength(64);
-            e.Property(x => x.PermissionKey).HasColumnName("permission_key").HasMaxLength(64);
-            e.Property(x => x.Granted).HasColumnName("granted");
-            e.Property(x => x.CreatedAt).HasColumnName("created_at");
-            e.HasIndex(x => new { x.RoleName, x.PermissionKey }).IsUnique();
         });
 
         modelBuilder.Entity<AdminConfig>(e =>

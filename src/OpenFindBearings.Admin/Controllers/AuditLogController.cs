@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
@@ -5,6 +6,7 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
+[PanelPermission("audit.view")]
 public class AuditLogController : Controller
 {
     private readonly IHttpClientFactory _factory;

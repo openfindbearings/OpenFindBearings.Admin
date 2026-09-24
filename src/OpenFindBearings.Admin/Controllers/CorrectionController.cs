@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 信息纠错审核，调用 API 纠错端点
 /// </summary>
 [Authorize]
+[PanelPermission("correction.review")]
 public class CorrectionController : Controller
 {
     private readonly IHttpClientFactory _factory;

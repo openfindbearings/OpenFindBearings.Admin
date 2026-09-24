@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
@@ -10,6 +11,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 系统配置管理控制器，代理 API /api/admin/config 端点
 /// </summary>
 [Authorize]
+[PanelPermission("system.view")]
 public class ConfigController : Controller
 {
     private readonly IHttpClientFactory _factory;

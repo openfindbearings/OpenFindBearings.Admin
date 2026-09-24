@@ -90,6 +90,8 @@
                                         <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")">@(item.IsEnabled ? "禁用" : "启用")</button>
                                     </form>
                                     <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName">重置密码</button>
+                                    @* v1.25.0 平台角色分配入口（API RBAC，与 Identity 角色列分离） *@
+                                    <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName">平台角色</button>
                                 }
                             </td>
                         </tr>
@@ -211,11 +213,73 @@
     </div>
 </div>
 
+<!-- 平台角色弹窗（v1.25.0）：角色目录与勾选态来自 API RBAC，保存走差量分配/移除 -->
+<div class="modal fade" id="platformRolesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">平台角色 - <span id="prName"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="prHint" class="text-muted small mb-2"></div>
+                <div id="prList" class="list-group"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="prSave">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
     document.getElementById('resetPwdModal').addEventListener('show.bs.modal', function(e) {
         document.getElementById('resetPwdId').value = e.relatedTarget.dataset.id;
         document.getElementById('resetPwdName').textContent = e.relatedTarget.dataset.name;
+    });
+
+    // 平台角色弹窗：打开时拉取现有角色+目录，保存走差量
+    let prUserId = '';
+    document.getElementById('platformRolesModal').addEventListener('show.bs.modal', function(e) {
+        prUserId = e.relatedTarget.dataset.id;
+        document.getElementById('prName').textContent = e.relatedTarget.dataset.name;
+        document.getElementById('prList').innerHTML = '<div class="text-muted small">加载中…</div>';
+        document.getElementById('prHint').textContent = '';
+        fetch('@Url.Action("PlatformRoles")?id=' + encodeURIComponent(prUserId))
+            .then(r => r.json())
+            .then(d => {
+                if (d.notProvisioned) {
+                    document.getElementById('prHint').textContent = '该用户尚未登录过业务系统，需其登录一次后才能分配平台角色';
+                }
+                const held = new Set(d.roles || []);
+                document.getElementById('prList').innerHTML = (d.catalog || []).map(r =>
+                    '<label class="list-group-item d-flex align-items-center gap-2">' +
+                    '<input type="checkbox" class="form-check-input" value="' + r.name + '"' + (held.has(r.name) ? ' checked' : '') +
+                    (r.name === 'Admin' ? ' data-admin="1"' : '') + ' />' +
+                    '<span>' + r.name + (r.description ? ' <span class="text-muted small">' + r.description + '</span>' : '') + '</span></label>'
+                ).join('') || '<div class="text-muted small">无可用角色</div>';
+            })
+            .catch(() => { document.getElementById('prList').innerHTML = '<div class="text-danger small">加载失败</div>'; });
+    });
+    document.getElementById('prSave').addEventListener('click', function() {
+        const roles = Array.from(document.querySelectorAll('#prList input:checked')).map(i => i.value);
+        const params = new URLSearchParams({ id: prUserId });
+        roles.forEach(r => params.append('roles', r));
+        fetch('@Url.Action("SavePlatformRoles")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+            body: params.toString()
+        }).then(r => r.json()).then(d => {
+            if (d.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('platformRolesModal')).hide();
+                if (window.showToast) showToast('success', d.message); else alert(d.message);
+                setTimeout(() => location.reload(), 600);
+            } else {
+                if (window.showToast) showToast('error', d.message); else alert(d.message);
+            }
+        });
     });
 </script>
 }

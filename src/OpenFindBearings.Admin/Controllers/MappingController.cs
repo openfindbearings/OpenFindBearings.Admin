@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
@@ -7,6 +8,7 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
+[PanelPermission("sync.review")]
 public class MappingController : Controller
 {
     private readonly IHttpClientFactory _factory;

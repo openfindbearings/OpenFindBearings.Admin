@@ -1,3 +1,4 @@
+using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models;
@@ -7,6 +8,7 @@ using System.Diagnostics;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
+[PanelPermission("dashboard.view")]
 public class HomeController : Controller
 {
     private readonly ServiceHealthService _health;

@@ -72,7 +72,7 @@ public class PermissionController : Controller
     {
         "dashboard.view" => "仪表盘",
         "bearing.view" or "bearing.create" or "bearing.edit" or "bearing.delete" => "轴承管理",
-        "merchant.view" or "merchant.manage" or "merchant.verify" or "merchant.detach" => "商家管理",
+        "merchant.view" or "merchant.manage" or "merchant.verify" or "merchant.detach" or "sourcing.view" or "sourcing.manage" => "商家管理",
         "correction.review" or "correction.submit" or "sync.review" => "审核管理",
         "role.manage" or "user.manage" => "认证管理",
         "system.view" or "system.manage" => "系统配置",
@@ -91,6 +91,8 @@ public class PermissionController : Controller
         "merchant.view" => "查看商家",
         "merchant.manage" => "管理商家",
         "merchant.detach" => "解除商户归属",
+                    "sourcing.view" => "查看寻货",
+                    "sourcing.manage" => "寻货治理（下架）",
         "merchant.verify" => "认证审核",
         "correction.review" => "纠错审核",
         "correction.submit" => "提交纠错",

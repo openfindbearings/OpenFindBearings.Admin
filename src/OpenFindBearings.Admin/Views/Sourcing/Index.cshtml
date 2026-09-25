@@ -1,0 +1,145 @@
+@{
+    ViewData["Title"] = "寻货管理";
+    var items = ViewBag.Items as List<OpenFindBearings.Admin.Controllers.SourcingAdminItemDto> ?? [];
+    int? curStatus = ViewBag.Status;
+    string curSearch = ViewBag.Search ?? "";
+    int page = ViewBag.Page ?? 1;
+    int pageSize = ViewBag.PageSize ?? 20;
+    int total = ViewBag.TotalCount ?? 0;
+    var statusNames = new Dictionary<int, string> { [1] = "进行中", [2] = "已选定", [3] = "已过期", [4] = "已取消", [5] = "已下架" };
+    var statusBadge = new Dictionary<int, string> { [1] = "badge bg-success", [2] = "badge bg-primary", [3] = "badge bg-secondary", [4] = "badge bg-secondary", [5] = "badge bg-danger" };
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-compass me-1"></i> 寻货治理</h6>
+        <small class="text-muted">先发后审：违规单下架后软删除并站内信通知发布人</small>
+    </div>
+    <div class="card-body pb-0">
+        <form method="get" class="row g-2 mb-3">
+            <div class="col-auto">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">全部状态</option>
+                    @foreach (var kv in statusNames)
+                    {
+                        <option value="@kv.Key" selected="@(curStatus == kv.Key)">@kv.Value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <input type="text" name="search" value="@curSearch" class="form-control form-control-sm" placeholder="型号关键词" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-primary">查询</button>
+            </div>
+        </form>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>型号</th>
+                        <th>品牌/数量/地区</th>
+                        <th>状态</th>
+                        <th>应答</th>
+                        <th>发布人</th>
+                        <th>发布时间</th>
+                        <th style="width:150px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items)
+                    {
+                        <tr>
+                            <td><strong>寻 @item.PartNumber</strong></td>
+                            <td><small>@string.Join(" / ", new[] { item.Brand, item.Quantity, item.Region }.Where(s => !string.IsNullOrWhiteSpace(s)))</small></td>
+                            <td><span class="@statusBadge.GetValueOrDefault(item.Status, "badge bg-secondary")">@(statusNames.GetValueOrDefault(item.Status, "未知"))</span></td>
+                            <td>@item.ResponseCount</td>
+                            <td>@item.PublisherName</td>
+                            <td><small data-utc="@item.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")"></small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showDetail('@item.Id')">详情</button>
+                                @if (item.Status == 1 || item.Status == 3)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" onclick="takeDown('@item.Id', '@Html.Raw(item.PartNumber.Replace("'", "\\'"))')">下架</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (items.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">暂无寻货数据</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (total > pageSize)
+        {
+            <nav class="mt-3">
+                <ul class="pagination pagination-sm">
+                    @for (var p = 1; p <= (total + pageSize - 1) / pageSize; p++)
+                    {
+                        <li class="page-item @(p == page ? "active" : "")">
+                            <a class="page-link" href="?status=@curStatus&search=@Uri.EscapeDataString(curSearch)&page=@p">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="sourcingDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">寻货详情</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body" id="sourcingDetailBody">加载中…</div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 详情弹窗：拉 Admin Detail JSON（需求全文+全部应答+发布人联系方式）
+    async function showDetail(id) {
+        const body = document.getElementById('sourcingDetailBody');
+        body.textContent = '加载中…';
+        const modal = new bootstrap.Modal(document.getElementById('sourcingDetailModal'));
+        modal.show();
+        try {
+            const resp = await fetch(`/Sourcing/Detail?id=${id}`);
+            const r = await resp.json();
+            if (!r.success) { body.textContent = r.message || '加载失败'; return; }
+            const d = r.data;
+            const esc = (s) => (s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'));
+            const statusMap = { 1: '进行中', 2: '已选定', 3: '已过期', 4: '已取消', 5: '已下架' };
+            const respStatus = { 1: '待处理', 2: '已选定', 3: '未选中' };
+            let html = `<h6>寻 ${esc(d.partNumber)} <span class="badge bg-secondary">${statusMap[d.status] || d.status}</span></h6>
+                <table class="table table-sm"><tbody>
+                <tr><td style="width:110px">品牌/数量/交期/地区</td><td>${[esc(d.brand), esc(d.quantity), esc(d.expectedDelivery), esc(d.region)].filter(Boolean).join(' / ') || '—'}</td></tr>
+                <tr><td>补充说明</td><td>${esc(d.description) || '—'}</td></tr>
+                <tr><td>发布人</td><td>${esc(d.publisherName)}（${esc(d.publisherMobile) || '未留手机号'}）</td></tr>
+                <tr><td>发布/过期</td><td>${d.createdAt ? new Date(d.createdAt).toLocaleString('zh-CN') : ''} · ${d.expiryAt ? new Date(d.expiryAt).toLocaleString('zh-CN') : ''}</td></tr>
+                </tbody></table><h6>应答（${(d.responses || []).length}）</h6>`;
+            if ((d.responses || []).length === 0) html += '<p class="text-muted">尚无应答</p>';
+            for (const x of d.responses || []) {
+                html += `<div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between"><strong>${esc(x.merchantName)} ${x.isVerified ? '<span class="badge bg-warning text-dark">已认证</span>' : ''}</strong>
+                    <span class="text-muted small">${respStatus[x.status] || x.status} · ${x.createdAt ? new Date(x.createdAt).toLocaleString('zh-CN') : ''}</span></div>
+                    <div class="small">${[x.price != null ? '¥' + x.price + '/只' : '', x.stock ? '库存 ' + x.stock : '', x.leadTime ? '交期 ' + x.leadTime : ''].filter(Boolean).join(' · ') || '仅留言'}</div>
+                    <div>${esc(x.remark)}</div></div>`;
+            }
+            body.innerHTML = html;
+        } catch { body.textContent = '加载失败'; }
+    }
+
+    // 下架：统一对话框输入原因（dialogs.js showPrompt），$.post 表单编码（对齐项目既有模式）后刷新
+    async function takeDown(id, partNumber) {
+        const reason = await showPrompt({ title: `下架寻货「${partNumber}」`, placeholder: '下架原因（将通知发布人）', confirmText: '确认下架' });
+        if (reason === null || reason === undefined) return;
+        $.post('@Url.Action("TakeDown")', { id, reason: reason || '' }, function (r) {
+            showToast(r.message || (r.success ? '已下架' : '操作失败'), r.success ? 'success' : 'danger');
+            if (r.success) setTimeout(() => location.reload(), 600);
+        });
+    }
+</script>
+}

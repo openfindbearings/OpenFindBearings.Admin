@@ -16,6 +16,8 @@
   --text-primary: #212529;
   --text-secondary: #6c757d;
   --text-muted: #888;
+  /* 改动说明（v1.31.0）：仪表盘待办数字条件红——浅色主题用 Bootstrap 红 */
+  --stat-alert: #dc3545;
   --border-color: #dee2e6;
   --border-light: #e9ecef;
   --table-th-color: #6c757d;
@@ -39,6 +41,8 @@ body.dark-theme {
   --text-primary: #e1e5eb;
   --text-secondary: #98a2b0;
   --text-muted: #7b8794;
+  /* 深色主题下 #dc3545 在灰底上发暗不可读，换亮红（待办警报语义） */
+  --stat-alert: #ff6b6b;
   --border-color: #3d4450;
   --border-light: #3d4450;
   --table-th-color: #98a2b0;
@@ -303,3 +307,7 @@ body.dark-theme .card-body .table td { color: var(--text-primary); }
   text-align: center;
 }
 body.dark-theme .main-footer { background: var(--bg-card); }
+
+
+/* 仪表盘待办卡数字：仅当值>0 由 JS 挂 .todo-alert 显红，0 安静用主题默认色 */
+.stat-todo.todo-alert { color: var(--stat-alert); }

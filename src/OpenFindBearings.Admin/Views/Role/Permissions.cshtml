@@ -1,3 +1,4 @@
+@model IEnumerable<OpenFindBearings.Admin.Models.ViewModels.PermissionItemViewModel>
 @using OpenFindBearings.Admin.Models.ViewModels
 @{ ViewData["Title"] = "权限配置 - " + ViewBag.RoleName; }
 
@@ -9,9 +10,15 @@
     <div class="card-body">
         <form method="post" asp-action="SavePermissions" asp-route-roleName="@ViewBag.RoleName">
             <div class="row">
+                @* 改动说明（v1.29.1）：原读 ViewBag.Items 而控制器 return View(catalog) 强类型 Model，
+                   两者不通导致权限清单恒空；改用 Model 并补空态提示 *@
                 @{
-                    var permissions = ViewBag.Items as IEnumerable<PermissionItemViewModel> ?? Enumerable.Empty<PermissionItemViewModel>();
+                    var permissions = Model ?? Enumerable.Empty<PermissionItemViewModel>();
                     var permGroups = permissions.GroupBy(p => GetGroup(p.Key));
+                }
+                @if (!permGroups.Any())
+                {
+                    <div class="col-12"><p class="text-muted mb-0">权限目录加载失败或为空（检查 API 连通性与 role.manage 权限）</p></div>
                 }
                 @foreach (var group in permGroups)
                 {

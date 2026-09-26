@@ -41,7 +41,7 @@
                                 @if (item.RoleName != "Admin")
                                 {
                                     <form method="post" asp-action="Delete" asp-route-roleName="@item.RoleName" class="d-inline" data-confirm="确认删除角色 @item.RoleName？" data-confirm-danger>
-                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="删除"><i class="fas fa-trash"></i><span class="d-none d-sm-inline">删除</span></button>
                                     </form>
                                 }
                             </td>
@@ -67,7 +67,9 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    @* 改动说明（v1.29.0）：标识/显示名分离——Name 限英文（鉴权键），DisplayName 可中文（人读） *@
+                    @* 改动说明（v1.29.0）：标识/显示名分离——Name 限英文（鉴权键），DisplayName 可中文（人读）；
+   v1.31.1 补描述输入框——API CreateRole/UpdateRole 一直支持 description，UI 从未给出入口（半死链），
+   该字段现被分配角色弹窗第三列灰字消费 *@
                     <div class="mb-3">
                         <label class="form-label">角色标识 <span class="text-danger">*</span></label>
                         <input type="text" name="roleName" class="form-control" required pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="如 SupportAgent（英文，用于系统比对）" />
@@ -77,6 +79,11 @@
                         <label class="form-label">显示名称</label>
                         <input type="text" name="displayName" class="form-control" maxlength="50" placeholder="如 客服专员（可中文，界面展示用）" />
                         <div class="form-text">留空则界面显示英文标识</div>
+</div>
+<div class="mb-3">
+<label class="form-label">描述</label>
+<input type="text" name="description" class="form-control" maxlength="200" placeholder="如：负责日常数据维护" />
+<div class="form-text">用于分配角色弹窗等界面的辅助说明，可留空</div>
                     </div>
                 </div>
                 <div class="modal-footer">

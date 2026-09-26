@@ -165,7 +165,7 @@ public class UsersController : Controller
     {
         if (roles == null || roles.Count == 0)
         {
-            TempData["Error"] = "后台用户必须至少分配一个平台角色（普通用户请在 app 端自助注册）";
+            TempData["Error"] = "后台用户必须至少分配一个平台角色（注册用户请在 app 端自助注册）";
             return RedirectToAction("Index", new { tab, status });
         }
 

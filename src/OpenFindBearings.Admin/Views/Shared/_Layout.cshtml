@@ -17,8 +17,11 @@
         User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
 }
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-bs-theme="light">
 <head>
+    @* 改动说明（v1.31.1）：BS5.3 原生 data-bs-theme 暗色模式 + 内联引导脚本——
+       在 CSS 加载前定主题属性，根治 alert/list-group/dropdown 等全族组件白底并防白闪 *@
+    <script>if ((localStorage.getItem('theme') || 'light') === 'dark') { document.documentElement.setAttribute('data-bs-theme', 'dark'); }</script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @siteName</title>

@@ -36,8 +36,8 @@
                     <th>用户</th>
                     <th>操作</th>
                     <th>请求</th>
-                    <th>资源</th>
-                    <th>IP</th>
+                    <th class="d-none d-md-table-cell">资源</th>
+                    <th class="d-none d-md-table-cell">IP</th>
                     <th>结果</th>
                     <th></th>
                 </tr>
@@ -61,14 +61,14 @@
                                     <span>-</span>
                                 }
                             </td>
-                            <td class="text-muted small">
+                            <td class="text-muted small d-none d-md-table-cell">
                                 @item.ResourceTypeDisplay
                                 @if (!string.IsNullOrEmpty(item.ResourceId) && item.ResourceId != Guid.Empty.ToString())
                                 {
                                     <span class="text-muted ms-1">#@(item.ResourceId.Length > 12 ? item.ResourceId[..12] + "..." : item.ResourceId)</span>
                                 }
                             </td>
-                            <td>@(item.IpAddress ?? "-")</td>
+                            <td class="d-none d-md-table-cell">@(item.IpAddress ?? "-")</td>
                             <td>
                                 @if (item.StatusCode.HasValue)
                                 {
@@ -82,7 +82,7 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Details))
                                 {
-                                    <button type="button" class="btn btn-sm btn-outline-secondary detail-btn" data-bs-toggle="modal" data-bs-target="#auditDetailModal" data-details="@item.Details">详情</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary detail-btn" data-bs-toggle="modal" data-bs-target="#auditDetailModal" data-details="@item.Details" title="详情"><i class="fas fa-eye"></i><span class="d-none d-sm-inline">详情</span></button>
                                 }
                             </td>
                         </tr>

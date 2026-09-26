@@ -127,14 +127,14 @@
                                 <td>
                                     @if (item.Status == "Pending")
                                     {
-                                        <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id"><i class="fas fa-check-double"></i> 审核通过</button>
-                                        <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id"><i class="fas fa-times"></i> 拒绝</button>
+                                        <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id" title="审核通过"><i class="fas fa-check-double"></i><span class="d-none d-sm-inline">审核通过</span></button>
+                                        <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id" title="拒绝"><i class="fas fa-times"></i><span class="d-none d-sm-inline">拒绝</span></button>
                                     }
                                     else if (item.Status == "Active" && !item.IsVerified)
                                     {
-                                        <button class="btn btn-sm btn-outline-success btn-verify" data-id="@item.Id"><i class="fas fa-check"></i> 认证</button>
+                                        <button class="btn btn-sm btn-outline-success btn-verify" data-id="@item.Id" title="认证"><i class="fas fa-check"></i><span class="d-none d-sm-inline">认证</span></button>
                                     }
-                                    <button class="btn btn-sm btn-outline-primary btn-detail" data-id="@item.Id"><i class="fas fa-id-card"></i> 详情</button>
+                                    <button class="btn btn-sm btn-outline-primary btn-detail" data-id="@item.Id" title="详情"><i class="fas fa-id-card"></i><span class="d-none d-sm-inline">详情</span></button>
                                 </td>
                             </tr>
                         }
@@ -253,9 +253,9 @@
        按钮显隐由 openDrawer 按商户状态渲染 *@
     <div class="offcanvas-footer border-top p-3 d-none" id="drawerActions">
         <div class="d-flex gap-2 justify-content-end">
-            <button type="button" class="btn btn-sm btn-outline-danger" id="drawerReject"><i class="fas fa-times"></i> 拒绝</button>
-            <button type="button" class="btn btn-sm btn-outline-success" id="drawerVerify"><i class="fas fa-check"></i> 认证</button>
-            <button type="button" class="btn btn-sm btn-success" id="drawerApprove"><i class="fas fa-check-double"></i> 审核通过</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="drawerReject" title="拒绝"><i class="fas fa-times"></i><span class="d-none d-sm-inline">拒绝</span></button>
+            <button type="button" class="btn btn-sm btn-outline-success" id="drawerVerify" title="认证"><i class="fas fa-check"></i><span class="d-none d-sm-inline">认证</span></button>
+            <button type="button" class="btn btn-sm btn-success" id="drawerApprove" title="审核通过"><i class="fas fa-check-double"></i><span class="d-none d-sm-inline">审核通过</span></button>
         </div>
     </div>
 </div>

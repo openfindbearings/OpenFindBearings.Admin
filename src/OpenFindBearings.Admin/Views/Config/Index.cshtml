@@ -77,12 +77,12 @@
                     <small class="text-muted">@group.Count() 项</small>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
+                    <div class="table-responsive"><table class="table table-hover mb-0">
                         <thead>
                             <tr>
                                 <th style="width:30%">配置键</th>
                                 <th style="width:30%">配置值</th>
-                                <th style="width:25%">描述</th>
+                                <th style="width:25%" class="d-none d-md-table-cell">描述</th>
                                 <th style="width:15%" class="text-center">操作</th>
                             </tr>
                         </thead>
@@ -112,7 +112,7 @@
                                             <span>@item.Value</span>
                                         }
                                     </td>
-                                    <td class="text-muted small">@(item.Description ?? "-")</td>
+                                    <td class="text-muted small d-none d-md-table-cell">@(item.Description ?? "-")</td>
                                     <td class="text-center">
                                         <button class="btn btn-sm btn-outline-primary btn-edit-config"
                                                 data-key="@item.Key"
@@ -125,7 +125,7 @@
                                 </tr>
                             }
                         </tbody>
-                    </table>
+                    </table></div>
                 </div>
             </div>
         </div>
@@ -141,7 +141,7 @@
             <form method="post" asp-controller="Points" asp-action="SaveRules">
                 @Html.AntiForgeryToken()
                 <div class="card-body p-0">
-                    <table class="table table-hover mb-0 align-middle">
+                    <div class="table-responsive"><table class="table table-hover mb-0 align-middle">
                         <thead>
                             <tr>
                                 <th>动作</th>
@@ -150,7 +150,7 @@
                                 <th style="width:100px">每日上限</th>
                                 <th style="width:150px">连续阶梯</th>
                                 <th style="width:80px">状态</th>
-                                <th>说明</th>
+                                <th class="d-none d-md-table-cell">说明</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,15 +171,15 @@
                                             <input type="checkbox" name="items[@i].IsEnabled" value="true" class="form-check-input" @(item.IsEnabled ? "checked" : "") />
                                         </div>
                                     </td>
-                                    <td><small class="text-muted">@(item.Description ?? "-")</small></td>
+                                    <td class="d-none d-md-table-cell"><small class="text-muted">@(item.Description ?? "-")</small></td>
                                 </tr>
                             }
                         </tbody>
-                    </table>
+                    </table></div>
                 </div>
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     <small class="text-muted">每日上限=当日该动作累计发放封顶（0 不限）；连续阶梯为 JSON 数组按连续天数取档、超出取末档（仅签到类动作生效）；留空阶梯=固定分值。</small>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>保存全部</button>
+                    <button type="submit" class="btn btn-primary btn-sm" title="保存全部"><i class="fas fa-save me-1"></i><span class="d-none d-sm-inline">保存全部</span></button>
                 </div>
             </form>
         </div>

@@ -105,6 +105,7 @@ public class UsersController : Controller
             // 改动说明（v1.29.0）：角色徽章显示中文名——拉 API 角色目录建 name→displayName 映射
             // （roles/all 现有端点，角色数量级小；失败降级为显示英文标识）
             var displayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var roleCatalog = new List<(string Name, string? Display)>();
             var rdResp = await apiClient.GetAsync($"{apiBase}/api/admin/roles/all");
             if (rdResp.IsSuccessStatusCode)
             {
@@ -116,28 +117,45 @@ public class UsersController : Controller
                     {
                         var nm = r.TryGetProperty("name", out var n) ? n.GetString() : null;
                         var dn = r.TryGetProperty("displayName", out var d2) && d2.ValueKind == System.Text.Json.JsonValueKind.String ? d2.GetString() : null;
-                        if (!string.IsNullOrEmpty(nm) && !string.IsNullOrEmpty(dn)) displayNames[nm] = dn!;
+                        if (!string.IsNullOrEmpty(nm))
+                        {
+                            if (!string.IsNullOrEmpty(dn)) displayNames[nm] = dn!;
+                            roleCatalog.Add((nm!, dn));
+                        }
                     }
                 }
             }
             ViewBag.RoleDisplayNames = displayNames;
+            // 新建用户弹窗的角色复选目录（v1.29.0 建号即分配）
+            ViewBag.RoleCatalog = roleCatalog;
         }
         catch
         {
             ViewBag.PlatformRoles = new Dictionary<string, List<string>>();
             ViewBag.RoleDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ViewBag.RoleCatalog = new List<(string Name, string? Display)>();
         }
 
         return View();
     }
 
     /// <summary>
-    /// 创建用户
+    /// 创建后台用户（Identity 建号 + API 预置挂角色）
+    /// 改动说明（v1.29.0）：入口语义定死为"后台用户"——平台角色至少勾一个
+    /// （不勾建出来是进不了任何面板的孤儿账号，App 用户走 app 自助注册）；
+    /// 建号成功即调 API provision 预置业务行并授权，解"未登录过不能分配角色"死结；
+    /// provision 失败不回滚账号，提示稍后手动补
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create(string userName, string password, string? email, string? name, string? phoneNumber)
+    public async Task<IActionResult> Create(string userName, string password, string? email, string? name, string? phoneNumber, List<string>? roles)
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        if (roles == null || roles.Count == 0)
+        {
+            TempData["Error"] = "后台用户必须至少分配一个平台角色（App 用户请在 app 端自助注册）";
+            return RedirectToAction("Index");
+        }
+
+        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:5001";
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -150,7 +168,30 @@ public class UsersController : Controller
                 phoneNumber
             };
             var resp = await client.PostAsJsonAsync($"{identityBase}/api/account/admin/users", payload);
-            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "用户创建成功" : $"创建失败: {await resp.Content.ReadAsStringAsync()}";
+            if (!resp.IsSuccessStatusCode)
+            {
+                TempData["Error"] = $"创建失败: HTTP {(int)resp.StatusCode}";
+                return RedirectToAction("Index");
+            }
+
+            // 解析 Identity 返回的新用户 id（data.id），作为 API provision 的 authUserId
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var newId = doc.RootElement.TryGetProperty("data", out var d) && d.TryGetProperty("id", out var i) ? i.GetString() : null;
+            if (!string.IsNullOrEmpty(newId))
+            {
+                var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+                var apiClient = _factory.CreateClient("ApiClient");
+                var pr = await apiClient.PostAsJsonAsync($"{apiBase}/api/admin/users/provision",
+                    new { authUserId = newId, userName, roles });
+                TempData["Success"] = pr.IsSuccessStatusCode
+                    ? $"用户 '{userName}' 创建成功并已分配角色"
+                    : $"用户 '{userName}' 已创建，但平台角色预置失败（{pr.StatusCode}），请稍后在\"平台角色\"中手动分配";
+            }
+            else
+            {
+                TempData["Success"] = $"用户 '{userName}' 已创建，但未取到新账号 ID，请手动分配平台角色";
+            }
         }
         catch (Exception ex)
         {

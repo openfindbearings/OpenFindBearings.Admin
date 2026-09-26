@@ -353,7 +353,7 @@ public class UsersController : Controller
     /// 自锁守卫：不允许移除自己的 Admin 角色（防后台集体失联）
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> SavePlatformRoles(string id, List<string> roles)
+    public async Task<IActionResult> SavePlatformRoles(string id, List<string> roles, string? userName)
     {
         roles ??= new List<string>();
         var mySub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -375,11 +375,16 @@ public class UsersController : Controller
         {
             return Json(new { ok = false, message = $"读取现有角色失败: {rolesResp.StatusCode}" });
         }
-        // 404 = 用户尚未 JIT 进业务库：现有角色视为空集，分配时 API 侧会因无业务用户记录
-        // 返回 NotFound——此处先行提示，避免保存时语义不清
+        // 改动说明（v1.29.1）：404 = 用户尚未 JIT 进业务库（后台新建账号未登录过 app）。
+        // 原实现直接拒绝"暂无法分配"，现改调 API /users/provision 预置业务行并挂角色，
+        // 打通"后台建号 → 立即分配角色"闭环（provision 幂等：行已存在则只补角色）
         else
         {
-            return Json(new { ok = false, message = "该用户尚未登录过业务系统，暂无法分配平台角色" });
+            var prResp = await client.PostAsJsonAsync($"{apiBase}/api/admin/users/provision",
+                new { authUserId = id, userName, roles });
+            return prResp.IsSuccessStatusCode
+                ? Json(new { ok = true, message = "角色分配成功" })
+                : Json(new { ok = false, message = $"预置失败: {prResp.StatusCode}" });
         }
 
         foreach (var add in roles.Except(current))

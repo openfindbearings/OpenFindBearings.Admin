@@ -41,14 +41,15 @@
             </form>
         </div>
     </div>
-    @* 改动说明（v1.29.0）：页签区分后台用户与 App 用户（当前页客户端过滤，分页仍走服务端）；
+    @* 改动说明（v1.29.1）：本菜单语义=后台用户管理，默认页签从"全部"改为"后台用户"；
+       页签区分后台用户与 App 用户（当前页客户端过滤，分页仍走服务端）；
        分类依据=API 平台角色：挂 Admin/Operator/Auditor 任一为后台用户，否则归 App 用户 *@
     <ul class="nav ofb-tabs px-2" id="userTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" data-utab="all" type="button">全部</button>
+            <button class="nav-link" data-utab="all" type="button">全部</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" data-utab="panel" type="button">后台用户</button>
+            <button class="nav-link active" data-utab="panel" type="button">后台用户</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" data-utab="app" type="button">App 用户</button>
@@ -314,7 +315,9 @@
                     document.getElementById('prHint').textContent = '该用户尚未登录过业务系统，需其登录一次后才能分配平台角色';
                 }
                 const held = new Set(d.roles || []);
-                document.getElementById('prList').innerHTML = (d.catalog || []).map(r =>
+                // 改动说明（v1.29.1）：目录排除 Individual——App 用户由自助注册自动授予，
+                // 非后台分配对象，列出会误导管理员手工勾选
+                document.getElementById('prList').innerHTML = (d.catalog || []).filter(r => r.name !== 'Individual').map(r =>
                     '<label class="list-group-item d-flex align-items-center gap-2">' +
                     '<input type="checkbox" class="form-check-input" value="' + r.name + '"' + (held.has(r.name) ? ' checked' : '') +
                     (r.name === 'Admin' ? ' data-admin="1"' : '') + ' />' +
@@ -325,7 +328,7 @@
     });
     document.getElementById('prSave').addEventListener('click', function() {
         const roles = Array.from(document.querySelectorAll('#prList input:checked')).map(i => i.value);
-        const params = new URLSearchParams({ id: prUserId });
+        const params = new URLSearchParams({ id: prUserId, userName: document.getElementById('prName').textContent });
         roles.forEach(r => params.append('roles', r));
         fetch('@Url.Action("SavePlatformRoles")', {
             method: 'POST',
@@ -342,18 +345,19 @@
         });
     });
 
-  // 用户页签过滤（v1.29.0）：all=全部 / panel=后台用户 / app=App 用户，纯当前页显隐，
-  // 计数徽标统计当前页行数（分页数据在服务端，跨页精确计数需后端联查，收益不抵复杂度）
+  // 用户页签过滤（v1.29.1）：默认"后台用户"页签（本菜单语义=后台账号管理），
+  // 纯当前页显隐，分页数据在服务端；跨页精确计数需后端联查，收益不抵复杂度
   (function () {
     const rows = Array.from(document.querySelectorAll('tbody tr[data-utype]'));
-        document.querySelectorAll('#userTabs [data-utab]').forEach(btn => {
+    const applyTab = (t) => rows.forEach(r => { r.style.display = (t === 'all' || r.dataset.utype === t) ? '' : 'none'; });
+    document.querySelectorAll('#userTabs [data-utab]').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('#userTabs [data-utab]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const t = btn.dataset.utab;
-        rows.forEach(r => { r.style.display = (t === 'all' || r.dataset.utype === t) ? '' : 'none'; });
+        applyTab(btn.dataset.utab);
       });
     });
+    applyTab('panel');
   })();
 
   // 新建后台用户：平台角色至少勾一个（后端同校验，此处防无谓往返）v1.29.0

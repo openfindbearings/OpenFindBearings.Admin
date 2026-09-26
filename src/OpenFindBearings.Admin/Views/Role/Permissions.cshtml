@@ -24,7 +24,9 @@
                 {
                     <div class="col-md-4 mb-4">
                         <div class="card">
-                            <div class="card-header bg-light">
+                            @* 改动说明（v1.29.1）：去掉 bg-light——Bootstrap 浅色硬类在深色主题下
+                               组标题白底刺眼且文字不可读，回归 site.css 主题化 card-header 默认样式 *@
+                            <div class="card-header">
                                 <h6 class="mb-0">@group.Key</h6>
                             </div>
                             <div class="card-body">

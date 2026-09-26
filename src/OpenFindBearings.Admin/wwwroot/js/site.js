@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var savedTheme = localStorage.getItem('theme') || 'light';
 
     function applyTheme(theme) {
+        // 改动说明（v1.31.1）：同步 BS5.3 原生 data-bs-theme——全组件（alert/list-group/
+        // dropdown/form-control/bg-light 徽章等）随主题自动换底，根治深色下白底残留
+        document.documentElement.setAttribute('data-bs-theme', theme === 'dark' ? 'dark' : 'light');
         if (theme === 'dark') {
             document.body.classList.add('dark-theme');
             if (themeIcon) { themeIcon.className = 'fas fa-sun'; }

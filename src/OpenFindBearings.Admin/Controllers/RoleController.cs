@@ -131,7 +131,7 @@ public class RoleController : Controller
     /// 中文人读名走 DisplayName；前端预检英文标识给友好提示，免撞 API 400
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create(string roleName, string? displayName)
+    public async Task<IActionResult> Create(string roleName, string? displayName, string? description)
     {
         if (string.IsNullOrWhiteSpace(roleName))
         {
@@ -144,7 +144,8 @@ public class RoleController : Controller
             return RedirectToAction("Index");
         }
 
-        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles", new { name = roleName.Trim(), description = (string?)null, displayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim() });
+        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles", // 改动说明（v1.31.1）：description 从恒 null 改为透传弹窗新输入框的值（API 侧一直支持）
+                        new { name = roleName.Trim(), description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(), displayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim() });
         if (resp.IsSuccessStatusCode)
             TempData["Success"] = $"角色 '{roleName}' 创建成功";
         else

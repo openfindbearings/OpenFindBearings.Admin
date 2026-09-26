@@ -1,4 +1,17 @@
 @model MerchantListViewModel
+@functions
+{
+    // 改动说明（v1.31.1）：商家类型中文化（与入驻审批页同映射），此前直出英文枚举
+    string MerchantTypeName(string t) => t switch
+    {
+        "Manufacturer" => "生产厂家",
+        "AuthorizedDealer" => "授权经销商",
+        "Distributor" => "分销商",
+        "Trader" => "贸易商",
+        _ => t
+    };
+}
+
 @using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "商家列表";
@@ -26,11 +39,11 @@
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">商家列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal">
-                <i class="fas fa-file-excel"></i> Excel 导入
+            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal" title="Excel 导入库存">
+                <i class="fas fa-file-excel"></i><span class="d-none d-sm-inline"> Excel 导入</span>
             </button>
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createMerchantModal">
-                <i class="fas fa-plus"></i> 新建
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createMerchantModal" title="新建商家">
+                <i class="fas fa-plus"></i><span class="d-none d-sm-inline"> 新建</span>
             </button>
             <form class="d-flex gap-2 align-items-center" method="get">
                 <input type="hidden" name="verifiedOnly" value="@vo" />
@@ -40,8 +53,8 @@
         </div>
     </div>
     <div class="card-body p-0">
-        <table class="table table-hover">
-            <thead><tr><th>名称</th><th>英文名</th><th>公司</th><th>类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
+        <div class="table-responsive"><table class="table table-hover">
+            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -49,30 +62,30 @@
                     {
                         <tr>
                             <td>@item.Name</td>
-                            <td>@(item.EnglishName ?? "-")</td>
-                            <td>@(item.CompanyName ?? "-")</td>
-                            <td>@item.Type</td>
+                            <td class="d-none d-md-table-cell">@(item.EnglishName ?? "-")</td>
+                            <td class="d-none d-md-table-cell">@(item.CompanyName ?? "-")</td>
+                            <td class="d-none d-md-table-cell">@MerchantTypeName(item.Type)</td>
                             <td>@(item.ContactPerson ?? "-")</td>
                             <td>@(item.Phone ?? "-")</td>
                             <td>@(item.IsVerified ? "已认证" : "未认证")</td>
                             <td>
                                 @if (PanelPerms.Has(User, "merchant.manage"))
                                 {
-                                <button class="btn btn-sm btn-outline-primary" onclick='openEditMerchant(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                <button class="btn btn-sm btn-outline-primary" onclick='openEditMerchant(@Html.Raw(Json.Serialize(item)))' title="编辑"><i class="fas fa-pen"></i><span class="d-none d-sm-inline">编辑</span></button>
                                 }
-                                <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name">在售商品</button>
+                                <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name" title="在售商品"><i class="fas fa-box"></i><span class="d-none d-sm-inline">在售商品</span></button>
                                 @if (Model.IncludeDeleted)
                                 {
                                     @if (PanelPerms.Has(User, "data.restore"))
                                     {
                                     <form method="post" asp-action="RestoreMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要恢复该商家吗？">
-                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                        <button class="btn btn-sm btn-outline-success" title="恢复"><i class="fas fa-rotate-left"></i><span class="d-none d-sm-inline">恢复</span></button>
                                     </form>
                                     }
                                     @if (PanelPerms.Has(User, "data.harddelete"))
                                     {
                                     <form method="post" asp-action="HardDeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该商家吗？" data-confirm-danger>
-                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="彻底删除"><i class="fas fa-fire"></i><span class="d-none d-sm-inline">彻底删除</span></button>
                                     </form>
                                     }
                                 }
@@ -89,19 +102,19 @@
                                         @if (PanelPerms.Has(User, "merchant.detach"))
                                         {
                                         <form method="post" asp-action="DetachMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定解除该商户归属？商品/证照/成员将清空，商户退回公开信息池（仅认领商户可解除，自建商户请用删除）。" data-confirm-danger>
-                                            <button class="btn btn-sm btn-outline-warning">解除归属</button>
+                                            <button class="btn btn-sm btn-outline-warning" title="解除归属"><i class="fas fa-link-slash"></i><span class="d-none d-sm-inline">解除归属</span></button>
                                         </form>
                                         }
                                     }
                                     else
                                     {
                                         <button class="btn btn-sm btn-outline-warning" disabled
-                                                title="仅生效状态的认领/提名已有商户可解除归属：自建商户请用删除，公海未认领商户无归属可解">解除归属</button>
+                                                title="仅生效状态的认领/提名已有商户可解除归属：自建商户请用删除，公海未认领商户无归属可解"><i class="fas fa-link-slash"></i><span class="d-none d-sm-inline">解除归属</span></button>
                                     }
                                     @if (PanelPerms.Has(User, "merchant.manage"))
                                     {
                                     <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该商家吗？" data-confirm-danger>
-                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="删除"><i class="fas fa-trash"></i><span class="d-none d-sm-inline">删除</span></button>
                                     </form>
                                     }
                                 }
@@ -114,7 +127,7 @@
                     <tr><td colspan="8" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
-        </table>
+        </table></div>
     </div>
     @if (Model.TotalPages > 1)
     {
@@ -267,11 +280,11 @@
                 <div style="width:240px"><input type="text" class="form-control form-control-sm" id="onSaleSearch" placeholder="搜索型号/曾用代号/品牌..."></div>
             </div>
             <div style="max-height:55vh;overflow-y:auto">
-                <table class="modal-table"><thead class="sticky-thead"><tr>
+                <div class="table-responsive"><table class="modal-table"><thead class="sticky-thead"><tr>
                     <th>型号</th><th>曾用代号</th><th>类型</th><th>尺寸</th><th>品牌</th>
                     <th id="onSalePriceHeader" style="cursor:@(numericSortable ? "pointer" : "not-allowed")" title="@(numericSortable ? "点击按价格排序" : "价格排序已关闭")">价格 @if(numericSortable){<i class="fas fa-sort"></i>}</th>
                     <th>状态</th>
-                </tr></thead><tbody id="onSaleBody"></tbody></table>
+                </tr></thead><tbody id="onSaleBody"></tbody></table></div>
             </div>
             <div class="d-flex justify-content-between align-items-center px-3 py-2" id="onSalePager" style="display:none!important"></div>
         </div>

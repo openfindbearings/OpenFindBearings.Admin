@@ -86,10 +86,10 @@
                                 <td>
                                     @* v1.22.0：补确认框与全站审批口径统一（原直提易误点） *@
                                     <form method="post" asp-action="Approve" asp-route-id="@item.Id" class="d-inline" data-confirm="确认通过该条证照材料？" data-confirm-title="通过材料">
-                                        <button class="btn btn-sm btn-success"><i class="fas fa-check"></i> 通过</button>
+                                        <button class="btn btn-sm btn-success" title="通过"><i class="fas fa-check"></i><span class="d-none d-sm-inline">通过</span></button>
                                     </form>
                                     <form method="post" asp-action="Reject" asp-route-id="@item.Id" class="d-inline js-reject-form">
-                                        <button class="btn btn-sm btn-outline-danger"><i class="fas fa-times"></i> 拒绝</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="拒绝"><i class="fas fa-times"></i><span class="d-none d-sm-inline">拒绝</span></button>
                                     </form>
                                 </td>
                             </tr>

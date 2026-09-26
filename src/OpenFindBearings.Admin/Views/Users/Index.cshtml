@@ -26,7 +26,7 @@
     var roleDisplayNames = ViewBag.RoleDisplayNames as Dictionary<string, string> ?? new(StringComparer.OrdinalIgnoreCase);
     string[] panelRoleNames = ["Admin", "Operator", "Auditor"];
     string RoleBadgeClass(string r) => r switch { "Admin" => "bg-success", "Operator" => "bg-primary", "Auditor" => "bg-warning text-dark", _ => "bg-secondary" };
-    string RoleBadgeText(string r) => roleDisplayNames.TryGetValue(r, out var dn) ? dn : (r == "Individual" ? "普通用户" : r);
+    string RoleBadgeText(string r) => roleDisplayNames.TryGetValue(r, out var dn) ? dn : (r == "Individual" ? "注册用户" : r);
 }
 
 <div class="card">
@@ -35,7 +35,7 @@
         <div class="d-flex flex-wrap gap-2 align-items-center">
             @if (PanelPerms.Has(User, "user.manage"))
             {
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal" title="新建后台用户">
                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建用户</span>
             </button>
             }
@@ -72,12 +72,12 @@
         </li>
     </ul>
     <div class="card-body p-0">
-        <table class="table table-hover">
+        <div class="table-responsive"><table class="table table-hover">
             <thead>
                 <tr>
                     <th>用户名</th>
                     <th>姓名</th>
-                    <th>邮箱</th>
+                    <th class="d-none d-md-table-cell">邮箱</th>
                     <th>手机号</th>
                     <th>状态</th>
                     <th>角色</th>
@@ -99,7 +99,7 @@
                         <tr data-utype="@utype">
                             <td>@item.UserName</td>
                             <td>@(item.Name ?? "-")</td>
-                            <td>@(item.Email ?? "-")</td>
+                            <td class="d-none d-md-table-cell">@(item.Email ?? "-")</td>
                             <td>@(item.PhoneNumber ?? "-")</td>
                             <td>
                                 @if (!item.IsActive)
@@ -142,13 +142,13 @@
                                     @if (PanelPerms.Has(User, "user.manage"))
                                     {
                                     <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" data-confirm="确认恢复该用户？"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
-                                        <button class="btn btn-sm btn-outline-success">恢复</button>
+                                        <button class="btn btn-sm btn-outline-success" title="恢复"><i class="fas fa-rotate-left"></i><span class="d-none d-sm-inline">恢复</span></button>
                                     </form>
                                     }
                                     @if (PanelPerms.Has(User, "data.harddelete"))
                                     {
                                     <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" data-confirm="此操作不可恢复，确定要彻底删除该用户吗？" data-confirm-danger><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
-                                        <button class="btn btn-sm btn-outline-danger">彻底删除</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="彻底删除"><i class="fas fa-fire"></i><span class="d-none d-sm-inline">彻底删除</span></button>
                                     </form>
                                     }
                                 }
@@ -160,7 +160,7 @@
                                     <form method="post" asp-action="ToggleStatus" asp-route-id="@item.Id" class="d-inline">
                                         <input type="hidden" name="enable" value="@((!item.IsEnabled).ToString().ToLower())" />
                                         <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
-                                        <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")">@(item.IsEnabled ? "禁用" : "启用")</button>
+                                        <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")" title="@(item.IsEnabled ? "禁用" : "启用")"><i class="fas @(item.IsEnabled ? "fa-ban" : "fa-circle-check")"></i><span class="d-none d-sm-inline">@(item.IsEnabled ? "禁用" : "启用")</span></button>
                                     </form>
                                     }
                                     @* 改动说明（v1.31.1）：锁定态解锁按钮——Unlock 动作早已存在但无视图入口（孤儿），
@@ -169,17 +169,17 @@
                                     {
                                     <form method="post" asp-action="Unlock" asp-route-id="@item.Id" class="d-inline">
                                         <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
-                                        <button class="btn btn-sm btn-outline-info">解锁</button>
+                                        <button class="btn btn-sm btn-outline-info" title="解锁"><i class="fas fa-lock-open"></i><span class="d-none d-sm-inline">解锁</span></button>
                                     </form>
                                     }
                                     @if (PanelPerms.Has(User, "user.ban"))
                                     {
-                                    <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName">重置密码</button>
+                                    <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName" title="重置密码"><i class="fas fa-key"></i><span class="d-none d-sm-inline">重置密码</span></button>
                                     }
                                     @* v1.25.0 平台角色分配入口（API RBAC，与 Identity 角色列分离） *@
                                     @if (PanelPerms.Has(User, "user.assign"))
                                     {
-                                    <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName">分配角色</button>
+                                    <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName" title="分配角色"><i class="fas fa-user-tag"></i><span class="d-none d-sm-inline">分配角色</span></button>
                                     }
                                     @* 改动说明（v1.31.1）：两步式删除——删除按钮仅出现在"已禁用"行（先禁用再删除防误删），
                                        软删可在「已删除」视图恢复；守卫（删自己/最后管理员）在控制器端 *@
@@ -187,7 +187,7 @@
                                     {
                                     <form method="post" asp-action="Delete" asp-route-id="@item.Id" class="d-inline" data-confirm="确认删除该用户？删除后可在「已删除」筛选中恢复或彻底删除。注意：其商户成员/积分/收藏等业务数据不会级联清理。" data-confirm-danger>
                                         <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
-                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                        <button class="btn btn-sm btn-outline-danger" title="删除"><i class="fas fa-trash"></i><span class="d-none d-sm-inline">删除</span></button>
                                     </form>
                                     }
                                 }
@@ -200,7 +200,7 @@
                     <tr><td colspan="8" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
-        </table>
+        </table></div>
     </div>
     @if (totalPages > 1)
     {
@@ -262,7 +262,7 @@
                         <input type="text" name="userName" class="form-control" required />
                     </div>
                     @* 改动说明（v1.30.0）：不再输入密码——新账号自动使用系统初始密码，首次登录强制修改 *@
-                    <div class="alert alert-info py-2 small">未设密码：新账号将使用系统初始密码，本人首次登录时会被要求必须修改。</div>                    <div class="mb-3">
+<div class="form-text mb-2">新账号不设置密码：将使用系统初始密码，本人首次登录时须先修改密码方可使用（初始密码请线下转告本人）。</div>                    <div class="mb-3">
                         <label class="form-label">姓名</label>
                         <input type="text" name="name" class="form-control" />
                     </div>
@@ -294,7 +294,7 @@
                                 </label>
                             }
                         </div>
-                        <div class="form-text">普通用户请在 app 端自助注册，不在此创建</div>
+                        <div class="form-text">注册用户请在 app 端自助注册，不在此创建</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -343,7 +343,7 @@
             <div class="modal-body">
                 <div id="prHint" class="text-muted small mb-2"></div>
                 <div id="prList" class="list-group"></div>
-                <div class="text-muted small mt-2">可多选并存（如"普通用户+操作员"=app 身份+后台职责）；勾"无"即卸任全部角色（普通用户下次 app 登录会自动恢复身份标记）。</div>
+                <div class="text-muted small mt-2">可多选并存（如"普通用户+操作员"=app 身份+后台职责）；勾"无"即卸任全部角色（注册用户下次 app 登录会自动恢复身份标记）。</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -374,14 +374,14 @@
                     document.getElementById('prHint').textContent = '该用户尚无业务档案，保存时系统会自动建档后分配';
                 }
                 const held = new Set(d.roles || []);
-                // 改动说明（v1.30.0）：复选可并存（如 普通用户+操作员=app身份+后台职责）；
+                // 改动说明（v1.30.0）：复选可并存（如 注册用户+操作员=app身份+后台职责）；
                 // 目录恢复 Individual 供转正/降职；"无"为特殊项——勾上即卸任所有角色
-                const item = (name, label, desc, isChecked) =>
+                const item = (name, label, desc, isChecked, sys) =>
                     '<label class="list-group-item d-flex align-items-center gap-2">' +
                     '<input type="checkbox" class="form-check-input pr-role" value="' + name + '"' + (isChecked ? ' checked' : '') + ' />' +
-                    '<span>' + label + (desc ? ' <span class="text-muted small">' + desc + '</span>' : '') + '</span></label>';
+                    '<span>' + label + (sys ? ' <span class="badge bg-secondary ms-1">内置</span>' : ') + (desc ? ' <span class="text-muted small">' + desc + '</span>' : '') + '</span></label>';
                 document.getElementById('prList').innerHTML = (d.catalog || []).map(r =>
-                    item(r.name, (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : ''), r.description, held.has(r.name))
+                    item(r.name, (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : ''), r.description, held.has(r.name), r.isSystemRole)
                 ).join('') + item('', '无（卸任所有角色）', '', held.size === 0) || '<div class="text-muted small">无可用角色</div>';
                 // "无"与其余项互斥联动
                 document.querySelectorAll('#prList input.pr-role').forEach(cb => cb.addEventListener('change', function() {

@@ -57,10 +57,10 @@
                             <td>@item.PublisherName</td>
                             <td><small data-utc="@item.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")"></small></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="showDetail('@item.Id')">详情</button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showDetail('@item.Id')" title="详情"><i class="fas fa-eye"></i><span class="d-none d-sm-inline">详情</span></button>
                                 @if (item.Status == 1 || item.Status == 3)
                                 {
-                                    <button class="btn btn-sm btn-outline-danger" onclick="takeDown('@item.Id', '@Html.Raw(item.PartNumber.Replace("'", "\\'"))')">下架</button>
+                                    <button class="btn btn-sm btn-outline-danger" title="下架" onclick="takeDown('@item.Id', '@Html.Raw(item.PartNumber.Replace("'", "\\'"))')"><i class="fas fa-ban"></i><span class="d-none d-sm-inline"> 下架</span></button>
                                 }
                             </td>
                         </tr>

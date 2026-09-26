@@ -1,14 +1,12 @@
 using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenFindBearings.Admin.Models.DTOs;
-using System.Text.Json;
 
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 积分任务管理控制器（v1.26.0），代理 API /api/admin/points/rules 端点。
-/// 赚分规则（分值/每日上限/阶梯/启停）实时生效不发版——运营调分的唯一入口
+/// 积分任务保存控制器（v1.28.0 改版：原独立列表页 Index 并入系统配置页"积分任务"tab，
+/// 由 ConfigController 拉取渲染；本控制器仅保留批量保存端点，代理 API PUT /api/admin/points/rules/{id}）
 /// </summary>
 [Authorize]
 [PanelPermission("system.view")]
@@ -26,42 +24,9 @@ public class PointsController : Controller
     }
 
     /// <summary>
-    /// 规则列表页
-    /// </summary>
-    public async Task<IActionResult> Index()
-    {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
-        var client = _factory.CreateClient("ApiClient");
-        try
-        {
-            var resp = await client.GetAsync($"{apiBase}/api/admin/points/rules");
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync();
-                var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
-                {
-                    ViewBag.Items = JsonSerializer.Deserialize<List<PointRuleDto>>(data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
-                    return View();
-                }
-            }
-            TempData["Error"] = $"规则加载失败: {resp.StatusCode}";
-            ViewBag.Items = new List<PointRuleDto>();
-            return View();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "加载积分规则失败");
-            TempData["Error"] = $"加载失败: {ex.Message}";
-            ViewBag.Items = new List<PointRuleDto>();
-            return View();
-        }
-    }
-
-    /// <summary>
     /// 批量保存规则（逐条代理 API PUT /api/admin/points/rules/{id}；阶梯空串=取消阶梯）
-    /// 改动说明：原单条 UpdateRule 的 form 嵌 tbody 为非法 HTML，改整表单批量提交
+    /// 改动说明：原单条 UpdateRule 的 form 嵌 tbody 为非法 HTML，改整表单批量提交；
+    ///           v1.28.0 保存后回跳系统配置页的积分任务 tab（原回跳的本页 Index 已删）
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -88,7 +53,7 @@ public class PointsController : Controller
             _logger.LogError(ex, "保存积分规则失败");
             TempData["Error"] = $"保存失败: {ex.Message}";
         }
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction("Index", "Config", new { tab = "points" });
     }
 
     /// <summary>

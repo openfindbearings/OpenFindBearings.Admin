@@ -26,12 +26,14 @@ public class ConfigController : Controller
     }
 
     /// <summary>
-    /// 配置列表页，按 Group 分组展示
+    /// 配置列表页，按 Group 分组以 tab 页签展示（v1.28.0：末位 tab 为积分赚分规则，
+    /// 原独立"积分任务"页并入；规则拉取失败不阻塞配置 tab，单独提示）
     /// </summary>
     public async Task<IActionResult> Index()
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
+        await LoadPointRulesAsync(client, apiBase);
         try
         {
             var resp = await client.GetAsync($"{apiBase}/api/admin/config");
@@ -68,11 +70,40 @@ public class ConfigController : Controller
     }
 
     /// <summary>
-    /// 更新配置值
+    /// 拉取积分赚分规则供"积分任务"tab 渲染（v1.28.0 自 PointsController.Index 迁入）
+    /// </summary>
+    private async Task LoadPointRulesAsync(HttpClient client, string apiBase)
+    {
+        try
+        {
+            var resp = await client.GetAsync($"{apiBase}/api/admin/points/rules");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                {
+                    ViewBag.PointRules = JsonSerializer.Deserialize<List<PointRuleDto>>(data.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    return;
+                }
+            }
+            _logger.LogWarning("获取积分规则返回非成功状态: {StatusCode}", (int)resp.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            // 规则拉取失败仅影响积分 tab，不阻塞配置管理主功能
+            _logger.LogWarning(ex, "获取积分规则失败");
+        }
+        ViewBag.PointRules = new List<PointRuleDto>();
+    }
+
+    /// <summary>
+    /// 更新配置值（v1.28.0：接收 tab 参数，回跳后停留在原页签）
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(string key, string value)
+    public async Task<IActionResult> Update(string key, string value, string? tab)
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
@@ -96,6 +127,7 @@ public class ConfigController : Controller
             _logger.LogError(ex, "更新配置失败: {Key}", key);
             TempData["Error"] = $"更新失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        // v1.28.0：回跳保留当前页签
+        return RedirectToAction("Index", new { tab });
     }
 }

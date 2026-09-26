@@ -14,6 +14,14 @@
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&includeDeleted={includeDeleted.ToString().ToLower()}";
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "从未";
+    // 改动说明（v1.29.0）：角色列数据源从 Identity Roles（恒空，认证中心角色与业务无关）
+    // 切换为 API 平台角色字典 sub→roles[]；后台角色=Admin/Operator/Auditor，仅 Individual 者归"App 用户"
+    var platformRoles = ViewBag.PlatformRoles as Dictionary<string, List<string>> ?? new();
+    // 改动说明（v1.29.0）：角色徽章显示 API 目录里的中文显示名（DisplayName ?? Name）
+    var roleDisplayNames = ViewBag.RoleDisplayNames as Dictionary<string, string> ?? new(StringComparer.OrdinalIgnoreCase);
+    string[] panelRoleNames = ["Admin", "Operator", "Auditor"];
+    string RoleBadgeClass(string r) => r switch { "Admin" => "bg-success", "Operator" => "bg-primary", "Auditor" => "bg-warning text-dark", _ => "bg-secondary" };
+    string RoleBadgeText(string r) => roleDisplayNames.TryGetValue(r, out var dn) ? dn : (r == "Individual" ? "App用户" : r);
 }
 
 <div class="card">
@@ -33,6 +41,19 @@
             </form>
         </div>
     </div>
+    @* 改动说明（v1.29.0）：页签区分后台用户与 App 用户（当前页客户端过滤，分页仍走服务端）；
+       分类依据=API 平台角色：挂 Admin/Operator/Auditor 任一为后台用户，否则归 App 用户 *@
+    <ul class="nav ofb-tabs px-2" id="userTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-utab="all" type="button">全部 <span class="badge bg-secondary" id="cnt-all">0</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-utab="panel" type="button">后台用户 <span class="badge bg-primary" id="cnt-panel">0</span></button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-utab="app" type="button">App 用户 <span class="badge bg-info text-dark" id="cnt-app">0</span></button>
+        </li>
+    </ul>
     <div class="card-body p-0">
         <table class="table table-hover">
             <thead>
@@ -53,7 +74,9 @@
                 {
                     @foreach (var item in items)
                     {
-                        <tr>
+                        var roles = platformRoles.TryGetValue(item.Id.ToString(), out var rr) ? rr : new List<string>();
+                        var isPanel = roles.Any(r => panelRoleNames.Contains(r));
+                        <tr data-utype="@(isPanel ? "panel" : "app")">
                             <td>@item.UserName</td>
                             <td>@(item.Name ?? "-")</td>
                             <td>@(item.Email ?? "-")</td>
@@ -72,7 +95,21 @@
                                     <span class="badge bg-success">正常</span>
                                 }
                             </td>
-                            <td>@(item.Roles.Any() ? string.Join(", ", item.Roles) : "-")</td>
+                            @* 改动说明（v1.29.0）：原渲染 item.Roles（Identity 角色，恒空）；
+                               改渲染 API 平台角色徽章，未 JIT 用户显示"-"，仅 Individual 显示"App 用户"灰徽章 *@
+                            <td>
+                                @if (roles.Any())
+                                {
+                                    @foreach (var r in roles)
+                                    {
+                                        <span class="badge @RoleBadgeClass(r) mb-1">@RoleBadgeText(r)</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
                             <td data-utc="@BdTimeRaw(item.LastLoginAt)">@BdTimeRaw(item.LastLoginAt)</td>
                             <td>
                                 @if (!item.IsActive)
@@ -258,7 +295,7 @@
                     '<label class="list-group-item d-flex align-items-center gap-2">' +
                     '<input type="checkbox" class="form-check-input" value="' + r.name + '"' + (held.has(r.name) ? ' checked' : '') +
                     (r.name === 'Admin' ? ' data-admin="1"' : '') + ' />' +
-                    '<span>' + r.name + (r.description ? ' <span class="text-muted small">' + r.description + '</span>' : '') + '</span></label>'
+                    '<span>' + (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : '') + (r.description ? ' <span class="text-muted small">' + r.description + '</span>' : '') + '</span></label>'
                 ).join('') || '<div class="text-muted small">无可用角色</div>';
             })
             .catch(() => { document.getElementById('prList').innerHTML = '<div class="text-danger small">加载失败</div>'; });
@@ -281,5 +318,24 @@
             }
         });
     });
+
+  // 用户页签过滤（v1.29.0）：all=全部 / panel=后台用户 / app=App 用户，纯当前页显隐，
+  // 计数徽标统计当前页行数（分页数据在服务端，跨页精确计数需后端联查，收益不抵复杂度）
+  (function () {
+    const rows = Array.from(document.querySelectorAll('tbody tr[data-utype]'));
+    const counts = { all: rows.length, panel: 0, app: 0 };
+    rows.forEach(r => { counts[r.dataset.utype] = (counts[r.dataset.utype] || 0) + 1; });
+    document.getElementById('cnt-all').textContent = counts.all;
+    document.getElementById('cnt-panel').textContent = counts.panel;
+    document.getElementById('cnt-app').textContent = counts.app;
+    document.querySelectorAll('#userTabs [data-utab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#userTabs [data-utab]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const t = btn.dataset.utab;
+        rows.forEach(r => { r.style.display = (t === 'all' || r.dataset.utype === t) ? '' : 'none'; });
+      });
+    });
+  })();
 </script>
 }

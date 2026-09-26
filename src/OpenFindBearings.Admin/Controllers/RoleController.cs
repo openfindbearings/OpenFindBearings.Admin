@@ -65,7 +65,9 @@ public class RoleController : Controller
                 roles = items.EnumerateArray().Select(x => new RoleViewModel
                 {
                     RoleName = x.GetProperty("name").GetString() ?? "",
-                    PermissionCount = x.TryGetProperty("permissions", out var p) && p.ValueKind == JsonValueKind.Array ? p.GetArrayLength() : 0
+                    // 改动说明（v1.29.0）：中文显示名透传（Name 为英文机器标识）
+                    DisplayName = x.TryGetProperty("displayName", out var dn) && dn.ValueKind == JsonValueKind.String ? dn.GetString() : null,
+                    PermissionCount = x.TryGetProperty("permissions", out var p) && p.ValueKind == JsonValueKind.Array ? p.GetArrayLength() : 0,
                 }).ToList();
             }
         }
@@ -123,17 +125,24 @@ public class RoleController : Controller
 
     /// <summary>
     /// 创建角色（代理 API；权限后续在详情页勾选）
+    /// 改动说明（v1.29.0）：加 displayName——英文标识 Name 为鉴权键（API 正则校验），
+    /// 中文人读名走 DisplayName；前端预检英文标识给友好提示，免撞 API 400
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create(string roleName)
+    public async Task<IActionResult> Create(string roleName, string? displayName)
     {
         if (string.IsNullOrWhiteSpace(roleName))
         {
-            TempData["Error"] = "角色名不能为空";
+            TempData["Error"] = "角色标识不能为空";
+            return RedirectToAction("Index");
+        }
+        if (!System.Text.RegularExpressions.Regex.IsMatch(roleName.Trim(), "^[A-Za-z][A-Za-z0-9_]*$"))
+        {
+            TempData["Error"] = "角色标识仅允许英文字母开头（字母/数字/下划线），中文名称请填\"显示名称\"";
             return RedirectToAction("Index");
         }
 
-        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles", new { name = roleName.Trim(), description = (string?)null });
+        var resp = await Api().PostAsJsonAsync($"{ApiBase()}/api/admin/roles", new { name = roleName.Trim(), description = (string?)null, displayName = string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim() });
         if (resp.IsSuccessStatusCode)
             TempData["Success"] = $"角色 '{roleName}' 创建成功";
         else

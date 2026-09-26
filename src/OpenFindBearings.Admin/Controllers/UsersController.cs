@@ -76,6 +76,58 @@ public class UsersController : Controller
 
         ViewBag.Search = search;
         ViewBag.IncludeDeleted = includeDeleted;
+
+        // 改动说明（v1.29.0）：Identity 列表的 Roles 是认证中心角色（恒空，业务平台角色不在 Identity），
+        // 角色列改从 API 批量端点 /api/admin/users/platform-roles 拉 sub→roles[] 字典合并渲染；
+        // 拉取失败降级为"无角色显示"，不阻塞列表主流程
+        try
+        {
+            var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var apiClient = _factory.CreateClient("ApiClient");
+            var prResp = await apiClient.GetAsync($"{apiBase}/api/admin/users/platform-roles");
+            if (prResp.IsSuccessStatusCode)
+            {
+                var prJson = await prResp.Content.ReadAsStringAsync();
+                var prDoc = System.Text.Json.JsonDocument.Parse(prJson);
+                var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                if (prDoc.RootElement.TryGetProperty("data", out var dd) && dd.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    foreach (var prop in dd.EnumerateObject())
+                        map[prop.Name] = prop.Value.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x != "").ToList();
+                }
+                ViewBag.PlatformRoles = map;
+            }
+            else
+            {
+                ViewBag.PlatformRoles = new Dictionary<string, List<string>>();
+            }
+
+            // 改动说明（v1.29.0）：角色徽章显示中文名——拉 API 角色目录建 name→displayName 映射
+            // （roles/all 现有端点，角色数量级小；失败降级为显示英文标识）
+            var displayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var rdResp = await apiClient.GetAsync($"{apiBase}/api/admin/roles/all");
+            if (rdResp.IsSuccessStatusCode)
+            {
+                var rdJson = await rdResp.Content.ReadAsStringAsync();
+                using var rdDoc = System.Text.Json.JsonDocument.Parse(rdJson);
+                if (rdDoc.RootElement.TryGetProperty("data", out var rarr) && rarr.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var r in rarr.EnumerateArray())
+                    {
+                        var nm = r.TryGetProperty("name", out var n) ? n.GetString() : null;
+                        var dn = r.TryGetProperty("displayName", out var d2) && d2.ValueKind == System.Text.Json.JsonValueKind.String ? d2.GetString() : null;
+                        if (!string.IsNullOrEmpty(nm) && !string.IsNullOrEmpty(dn)) displayNames[nm] = dn!;
+                    }
+                }
+            }
+            ViewBag.RoleDisplayNames = displayNames;
+        }
+        catch
+        {
+            ViewBag.PlatformRoles = new Dictionary<string, List<string>>();
+            ViewBag.RoleDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
         return View();
     }
 
@@ -244,8 +296,10 @@ public class UsersController : Controller
                 catalog = d.EnumerateArray().Select(x => (object)new
                 {
                     name = x.GetProperty("name").GetString(),
-                    description = x.TryGetProperty("description", out var dd) ? dd.GetString() : null,
-                    isSystemRole = x.TryGetProperty("isSystemRole", out var s) && s.GetBoolean()
+                    // 改动说明（v1.29.0）：目录带中文显示名，弹窗勾选行主显 DisplayName
+                    displayName = x.TryGetProperty("displayName", out var dn) && dn.ValueKind == System.Text.Json.JsonValueKind.String ? dn.GetString() : null,
+                    description = x.TryGetProperty("description", out var dd) && dd.ValueKind == System.Text.Json.JsonValueKind.String ? dd.GetString() : null,
+                    isSystemRole = x.TryGetProperty("isSystemRole", out var isSr) && isSr.GetBoolean()
                 }).ToList();
             }
         }

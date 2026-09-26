@@ -26,11 +26,19 @@
                     @foreach (var item in roles)
                     {
                         <tr>
-                            <td><strong>@item.RoleName</strong></td>
+                            @* 改动说明（v1.29.0）：主显中文显示名，英文标识降为副标小字（Name 是鉴权机器键）；
+                               删除守卫比对改 "Admin"——原小写 "admin" 与种子实际值大小写不符恒不命中（API 侧有守卫故未出事） *@
+                            <td>
+                                <strong>@(string.IsNullOrWhiteSpace(item.DisplayName) ? item.RoleName : item.DisplayName)</strong>
+                                @if (!string.IsNullOrWhiteSpace(item.DisplayName))
+                                {
+                                    <small class="text-muted d-block">@item.RoleName</small>
+                                }
+                            </td>
                             <td><span class="badge bg-info">@item.PermissionCount 项</span></td>
                             <td>
                                 <a asp-action="Permissions" asp-route-roleName="@item.RoleName" class="btn btn-sm btn-outline-primary">权限配置</a>
-                                @if (item.RoleName != "admin")
+                                @if (item.RoleName != "Admin")
                                 {
                                     <form method="post" asp-action="Delete" asp-route-roleName="@item.RoleName" class="d-inline" data-confirm="确认删除角色 @item.RoleName？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
@@ -59,9 +67,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    @* 改动说明（v1.29.0）：标识/显示名分离——Name 限英文（鉴权键），DisplayName 可中文（人读） *@
                     <div class="mb-3">
-                        <label class="form-label">角色名称 <span class="text-danger">*</span></label>
-                        <input type="text" name="roleName" class="form-control" required placeholder="例如：业务员" />
+                        <label class="form-label">角色标识 <span class="text-danger">*</span></label>
+                        <input type="text" name="roleName" class="form-control" required pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="如 SupportAgent（英文，用于系统比对）" />
+                        <div class="form-text">英文机器标识，创建后不可改；仅限字母/数字/下划线</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">显示名称</label>
+                        <input type="text" name="displayName" class="form-control" maxlength="50" placeholder="如 客服专员（可中文，界面展示用）" />
+                        <div class="form-text">留空则界面显示英文标识</div>
                     </div>
                 </div>
                 <div class="modal-footer">

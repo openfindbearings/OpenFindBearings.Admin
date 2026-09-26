@@ -27,6 +27,8 @@ public class UserItemDto
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; }
+    // 改动说明（v1.31.1）：镜像 Identity UserResponse.IsLockedOut——锁定徽章与解锁按钮消费
+    public bool IsLockedOut { get; set; }
 
     [JsonPropertyName("tenantId")]
     public Guid? TenantId { get; set; }

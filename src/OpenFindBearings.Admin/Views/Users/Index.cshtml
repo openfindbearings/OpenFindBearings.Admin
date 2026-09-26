@@ -110,6 +110,11 @@
                                 {
                                     <span class="badge bg-warning text-dark">已禁用</span>
                                 }
+                                else if (item.IsLockedOut)
+                                {
+                                    @* 改动说明（v1.31.1）：临时锁定（5 次输错密码锁 15 分钟）显式呈现，配套解锁按钮 *@
+                                    <span class="badge bg-info text-dark">已锁定</span>
+                                }
                                 else
                                 {
                                     <span class="badge bg-success">正常</span>
@@ -156,6 +161,15 @@
                                         <input type="hidden" name="enable" value="@((!item.IsEnabled).ToString().ToLower())" />
                                         <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                                         <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")">@(item.IsEnabled ? "禁用" : "启用")</button>
+                                    </form>
+                                    }
+                                    @* 改动说明（v1.31.1）：锁定态解锁按钮——Unlock 动作早已存在但无视图入口（孤儿），
+                                       现由 IsLockedOut 徽章配套激活；权限同封禁链 user.ban *@
+                                    @if (item.IsLockedOut && PanelPerms.Has(User, "user.ban"))
+                                    {
+                                    <form method="post" asp-action="Unlock" asp-route-id="@item.Id" class="d-inline">
+                                        <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
+                                        <button class="btn btn-sm btn-outline-info">解锁</button>
                                     </form>
                                     }
                                     @if (PanelPerms.Has(User, "user.ban"))
@@ -413,6 +427,11 @@
         document.querySelectorAll('#userTabs [data-utab]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         applyTab(btn.dataset.utab);
+        // 改动说明（v1.31.1）：页签切换同步写回表单 hidden 与分页链接的 tab 参数——
+        // 否则切页签后再做状态筛选/翻页，GET 提交带的是渲染时旧页签值，会被弹回"全部"
+        const t = btn.dataset.utab;
+        document.querySelectorAll('input[name="tab"]').forEach(h => { h.value = t; });
+        document.querySelectorAll('a[href*="tab="]').forEach(a => { a.href = a.href.replace(/([?&])tab=[^&]*/, '$1' + t); });
       });
     });
     applyTab('@currentTab');

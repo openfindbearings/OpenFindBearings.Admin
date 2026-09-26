@@ -9,12 +9,14 @@
     var page = ViewBag.Page as int? ?? 1;
     var pageSize = ViewBag.PageSize as int? ?? 20;
     var totalCount = ViewBag.TotalCount as int? ?? 0;
-    var includeDeleted = (bool)(ViewBag.IncludeDeleted ?? false);
+    // 改动说明（v1.30.0）："显示已删除"勾选升级为状态下拉：
+    // enabled=正常 / disabled=已禁用（黑名单）/ locked=已锁定 / deleted=已删除（待恢复）/ all=全部
+    var status = (string?)ViewBag.Status ?? "enabled";
     var totalPages = totalCount > 0 && pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
     // 改动说明（v1.29.2）：URL ?tab= 决定初始页签（all/panel/app，默认 panel），操作回跳与翻页保持
     var currentTab = (string?)ViewBag.Tab;
     if (currentTab != "all" && currentTab != "app") currentTab = "panel";
-    string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&includeDeleted={includeDeleted.ToString().ToLower()}&tab={currentTab}";
+    string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&status={status}&tab={currentTab}";
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "从未";
     // 改动说明（v1.29.0）：角色列数据源从 Identity Roles（恒空，认证中心角色与业务无关）
@@ -31,17 +33,24 @@
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">用户管理 <small class="text-muted">(@totalCount 条)</small></h6>
         <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if (PanelPerms.Has(User, "user.manage"))
+            {
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal">
                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建用户</span>
             </button>
+            }
             <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
                 @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认 tab *@
                 <input type="hidden" name="tab" value="@currentTab" />
                 <input type="text" name="search" value="@search" class="form-control" placeholder="搜索用户..." style="min-width:140px" />
-                <div class="form-check d-none d-sm-block" style="white-space:nowrap">
-                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(includeDeleted ? "checked" : "") onchange="this.form.submit()" />
-                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
-                </div>
+                @* 改动说明（v1.30.0）：状态下拉——黑名单（已禁用）与已删除各有独立视图，操作列照常给恢复/启用入口 *@
+                <select class="form-select form-select-sm" name="status" style="width:auto;white-space:nowrap" onchange="this.form.submit()">
+                    <option value="enabled" selected="@(status == "enabled")">正常</option>
+                    <option value="disabled" selected="@(status == "disabled")">已禁用（黑名单）</option>
+                    <option value="locked" selected="@(status == "locked")">已锁定</option>
+                    <option value="deleted" selected="@(status == "deleted")">已删除</option>
+                    <option value="all" selected="@(status == "all")">全部</option>
+                </select>
                 <button class="btn btn-primary"><i class="fas fa-search"></i></button>
             </form>
         </div>
@@ -123,24 +132,39 @@
                             <td>
                                 @if (!item.IsActive)
                                 {
+                                    @if (PanelPerms.Has(User, "user.manage"))
+                                    {
                                     <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" data-confirm="确认恢复该用户？"><input type="hidden" name="tab" value="@currentTab" />
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
+                                    }
+                                    @if (PanelPerms.Has(User, "data.harddelete"))
+                                    {
                                     <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" data-confirm="此操作不可恢复，确定要彻底删除该用户吗？" data-confirm-danger><input type="hidden" name="tab" value="@currentTab" />
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
+                                    }
                                 }
                                 else
                                 {
                                     @* 改动说明（v1.29.2）：显式传目标态 enable（当前取反）+ 回跳 tab 保持 *@
+                                    @if (PanelPerms.Has(User, "user.ban"))
+                                    {
                                     <form method="post" asp-action="ToggleStatus" asp-route-id="@item.Id" class="d-inline">
                                         <input type="hidden" name="enable" value="@((!item.IsEnabled).ToString().ToLower())" />
                                         <input type="hidden" name="tab" value="@currentTab" />
                                         <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")">@(item.IsEnabled ? "禁用" : "启用")</button>
                                     </form>
+                                    }
+                                    @if (PanelPerms.Has(User, "user.ban"))
+                                    {
                                     <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName">重置密码</button>
+                                    }
                                     @* v1.25.0 平台角色分配入口（API RBAC，与 Identity 角色列分离） *@
-                                    <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName">平台角色</button>
+                                    @if (PanelPerms.Has(User, "user.assign"))
+                                    {
+                                    <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName">分配角色</button>
+                                    }
                                 }
                             </td>
                         </tr>
@@ -282,17 +306,19 @@
     </div>
 </div>
 
-<!-- 平台角色弹窗（v1.25.0）：角色目录与勾选态来自 API RBAC，保存走差量分配/移除 -->
+<!-- 分配角色弹窗（v1.30.0 改版）：复选可并存（普通用户+后台角色同挂=双身份），目录含 Individual；
+     "无"特殊项=卸任全部角色。后端 SavePlatformRoles 收"显式目标态"（空 roles=清空），差量逻辑复用 v1.29.2 -->
 <div class="modal fade" id="platformRolesModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">平台角色 - <span id="prName"></span></h6>
+                <h6 class="modal-title">分配角色 - <span id="prName"></span></h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="prHint" class="text-muted small mb-2"></div>
                 <div id="prList" class="list-group"></div>
+                <div class="text-muted small mt-2">可多选并存（如"普通用户+操作员"=app 身份+后台职责）；勾"无"即卸任全部角色（普通用户下次 app 登录会自动恢复身份标记）。</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -320,24 +346,37 @@
             .then(r => r.json())
             .then(d => {
                 if (d.notProvisioned) {
-                    document.getElementById('prHint').textContent = '该用户尚未登录过业务系统，需其登录一次后才能分配平台角色';
+                    document.getElementById('prHint').textContent = '该用户尚无业务档案，保存时系统会自动建档后分配';
                 }
                 const held = new Set(d.roles || []);
-                // 改动说明（v1.29.1）：目录排除 Individual——App 用户由自助注册自动授予，
-                // 非后台分配对象，列出会误导管理员手工勾选
-                document.getElementById('prList').innerHTML = (d.catalog || []).filter(r => r.name !== 'Individual').map(r =>
+                // 改动说明（v1.30.0）：复选可并存（如 普通用户+操作员=app身份+后台职责）；
+                // 目录恢复 Individual 供转正/降职；"无"为特殊项——勾上即卸任所有角色
+                const item = (name, label, desc, isChecked) =>
                     '<label class="list-group-item d-flex align-items-center gap-2">' +
-                    '<input type="checkbox" class="form-check-input" value="' + r.name + '"' + (held.has(r.name) ? ' checked' : '') +
-                    (r.name === 'Admin' ? ' data-admin="1"' : '') + ' />' +
-                    '<span>' + (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : '') + (r.description ? ' <span class="text-muted small">' + r.description + '</span>' : '') + '</span></label>'
-                ).join('') || '<div class="text-muted small">无可用角色</div>';
+                    '<input type="checkbox" class="form-check-input pr-role" value="' + name + '"' + (isChecked ? ' checked' : '') + ' />' +
+                    '<span>' + label + (desc ? ' <span class="text-muted small">' + desc + '</span>' : '') + '</span></label>';
+                document.getElementById('prList').innerHTML = (d.catalog || []).map(r =>
+                    item(r.name, (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : ''), r.description, held.has(r.name))
+                ).join('') + item('', '无（卸任所有角色）', '', held.size === 0) || '<div class="text-muted small">无可用角色</div>';
+                // "无"与其余项互斥联动
+                document.querySelectorAll('#prList input.pr-role').forEach(cb => cb.addEventListener('change', function() {
+                    if (this.value === '' && this.checked) {
+                        document.querySelectorAll('#prList input.pr-role').forEach(o => { if (o !== this) o.checked = false; });
+                    } else if (this.value !== '' && this.checked) {
+                        const none = document.querySelector('#prList input.pr-role[value=""]');
+                        if (none) none.checked = false;
+                    }
+                }));
             })
             .catch(() => { document.getElementById('prList').innerHTML = '<div class="text-danger small">加载失败</div>'; });
     });
     document.getElementById('prSave').addEventListener('click', function() {
-        const roles = Array.from(document.querySelectorAll('#prList input:checked')).map(i => i.value);
+        // 改动说明（v1.30.0）：勾"无"或全不勾=目标态空清单，后端 provision/差量逻辑一律清空角色
+        const noneChecked = !!document.querySelector('#prList input.pr-role[value=""]:checked');
         const params = new URLSearchParams({ id: prUserId, userName: document.getElementById('prName').textContent });
-        roles.forEach(r => params.append('roles', r));
+        if (!noneChecked) {
+            document.querySelectorAll('#prList input.pr-role:checked').forEach(i => params.append('roles', i.value));
+        }
         fetch('@Url.Action("SavePlatformRoles")', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },

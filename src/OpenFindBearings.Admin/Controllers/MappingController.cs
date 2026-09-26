@@ -8,7 +8,7 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
-[PanelPermission("sync.review")]
+[PanelPermission("mapping.view")]
 public class MappingController : Controller
 {
     private readonly IHttpClientFactory _factory;

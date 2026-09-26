@@ -7,7 +7,7 @@ using OpenFindBearings.Admin.Models.ViewModels;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
-[PanelPermission("sync.review")]
+[PanelPermission("review.sync")]
 public class ReviewController : Controller
 {
     private readonly IHttpClientFactory _factory;

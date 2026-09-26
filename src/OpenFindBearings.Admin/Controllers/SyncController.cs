@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace OpenFindBearings.Admin.Controllers;
 
 [Authorize]
-[PanelPermission("sync.review")]
+[PanelPermission("sync.run")]
 public class SyncController : Controller
 {
     private readonly IHttpClientFactory _factory;

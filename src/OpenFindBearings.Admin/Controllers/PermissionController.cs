@@ -11,7 +11,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 界面新增权限点无意义（权限点=端点过滤器代码常量），此页仅展示与分组
 /// </summary>
 [Authorize]
-[PanelPermission("role.manage")]
+[PanelPermission("permission.view")]
 public class PermissionController : Controller
 {
     private readonly IHttpClientFactory _factory;
@@ -68,16 +68,19 @@ public class PermissionController : Controller
         return View();
     }
 
-    private static string GetGroup(string key) => key switch
+    // 改动说明（v1.30.0 权限目录重排）：组名由键前缀推导（与三段式目录天然对齐），
+    // 逐键列举的旧 switch 随目录膨胀必漂移，废弃
+    private static string GetGroup(string key) => key.Split('.')[0] switch
     {
-        "dashboard.view" => "仪表盘",
-        "bearing.view" or "bearing.create" or "bearing.edit" or "bearing.delete" => "轴承管理",
-        "merchant.view" or "merchant.manage" or "merchant.verify" or "merchant.detach" or "sourcing.view" or "sourcing.manage" => "商家管理",
-        "correction.review" or "correction.submit" or "sync.review" => "审核管理",
-        "role.manage" or "user.manage" => "认证管理",
-        "system.view" or "system.manage" => "系统配置",
-        "audit.view" => "审计日志",
-        "data.restore" or "data.harddelete" => "数据操作",
+        "dashboard" => "仪表盘",
+        "bearing" or "brand" or "type" => "数据管理",
+        "merchant" or "mapping" => "商家与映射",
+        "data" => "数据危险操作",
+        "review" or "correction" or "sourcing" => "审核管理",
+        "sync" => "任务管理",
+        "user" or "role" or "permission" => "认证管理",
+        "system" or "points" => "系统配置",
+        "audit" => "审计日志",
         _ => "其他"
     };
 
@@ -89,18 +92,24 @@ public class PermissionController : Controller
         "bearing.edit" => "编辑轴承",
         "bearing.delete" => "删除轴承",
         "merchant.view" => "查看商家",
-        "merchant.manage" => "管理商家",
+        "merchant.manage" => "编辑商家",
         "merchant.detach" => "解除商户归属",
-                    "sourcing.view" => "查看寻货",
-                    "sourcing.manage" => "寻货治理（下架）",
+        "merchant.import" => "商家库存导入",
+        "sourcing.view" => "查看寻货",
+        "sourcing.manage" => "寻货治理（下架）",
         "merchant.verify" => "认证审核",
         "correction.review" => "纠错审核",
-        "correction.submit" => "提交纠错",
-        "sync.review" => "同步数据审核",
+        "review.sync" => "同步数据审核",
         "role.manage" => "角色管理",
-        "user.manage" => "用户管理",
+        "user.view" => "查看用户",
+        "user.ban" => "封禁与解禁用户",
+        "user.manage" => "管理用户账号",
+        "user.assign" => "分配平台角色",
+        "permission.view" => "查看权限清单",
         "system.view" => "查看系统配置",
         "system.manage" => "管理配置",
+        "points.manage" => "配置积分任务",
+        "sync.run" => "触发爬虫任务",
         "audit.view" => "查看审计日志",
         "data.restore" => "恢复已删除数据",
         "data.harddelete" => "彻底删除数据",

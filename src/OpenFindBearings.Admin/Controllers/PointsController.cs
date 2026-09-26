@@ -9,7 +9,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 由 ConfigController 拉取渲染；本控制器仅保留批量保存端点，代理 API PUT /api/admin/points/rules/{id}）
 /// </summary>
 [Authorize]
-[PanelPermission("system.view")]
+[PanelPermission("points.manage")]
 public class PointsController : Controller
 {
     private readonly IHttpClientFactory _factory;

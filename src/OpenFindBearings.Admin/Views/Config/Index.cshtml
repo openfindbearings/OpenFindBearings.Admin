@@ -201,7 +201,9 @@
                     <input type="hidden" name="tab" id="configTab" value="" />
                     <div class="mb-3">
                         <label class="form-label">配置键</label>
-                        <input type="text" class="form-control" id="configKeyDisplay" disabled />
+                        @* 改动说明：disabled 改 readonly——键名本就不参与提交（提交走 hidden key），
+                           readonly 允许选中复制键名，且配合 site.css 主题化只读样式在深色下可读 *@
+                        <input type="text" class="form-control" id="configKeyDisplay" readonly tabindex="-1" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">配置值 <span id="configValueTypeHint" class="text-muted small"></span></label>

@@ -87,7 +87,7 @@
 ### v1.13.0 → v1.14.0 更新内容
 
 1. **Dashboard 商家统计三分类**：首行商家总数卡内嵌"已入驻 X" 格式（如 0/690），第二行第 4 卡由"认证商家数量"改为"入驻申请待审批"，不统计爬虫商家数量。卡片文字变更：h3 显示 0/690（已入驻/总数），标题改"商家数量（已入驻/总数）"、移除原内嵌小字。
-- v1.28.0 系统配置 tab 化改版：配置页由纵向多卡片改为 Bootstrap nav-tabs（站点设置/价格显示/数据同步/业务设置/积分任务，按常用序排列、未知组垫底、?tab= URL 记忆页签，配置与规则保存回跳均停留原 tab）；独立"积分任务"页并入为末位 tab（PointsController 删 Index 仅存 SaveRules 保存端点，Views/Points 与菜单项删除）；groupNames 补 Business=业务设置 映射（BusinessClock 时区偏移种子落此组）；积分规则拉取失败单独降级不阻塞配置 tab
+- v1.28.0 系统配置 tab 化改版：配置页由纵向多卡片改为 Bootstrap nav-tabs（站点设置/价格显示/数据同步/业务设置/积分任务，按常用序排列、未知组垫底、?tab= URL 记忆页签，配置与规则保存回跳均停留原 tab）；独立"积分任务"页并入为末位 tab（PointsController 删 Index 仅存 SaveRules 保存端点，Views/Points 与菜单项删除）；groupNames 补 Business=业务设置 映射（BusinessClock 时区偏移种子落此组）；积分规则拉取失败单独降级不阻塞配置 tab；深色主题修复：site.css 补 form-control disabled/readonly 主题化规则（Bootstrap 默认浅灰底在深色下文字不可见），弹窗配置键改 readonly 可选中复制
 - v1.27.0 积分任务管理页（/Points，system.view 权限组）：赚分规则表格批量保存（分值/每日上限/连续阶梯/启停开关），代理 API /api/admin/points/rules，改完实时生效不发版；复选框隐藏 false 垫底保证停用可提交；合规红线（不可充值/提现/转让）页头标注。
 - v1.25.0 商户管理页新增"解除归属"操作（POST /api/admin/merchants/{id}/detach，权限键 merchant.detach 迁移补插存量库）：认领商户清场回公海（商品/证照/成员/邀请/纠错全清，随爬取自然更新、可再认领），自建商户被 API 拒绝并透传原因；data-confirm-danger 二次确认；权限分组与中文名两处映射同步。
 - v1.25.0 后台权限体系接线 API RBAC（三员分立轻量落地）：① 登录门禁——OIDC 回调后调 API GET /api/me/permissions，无面板角色（Admin/Operator/Auditor）即拒登，权限清单写 cookie 多值 claim；② Cookie 事件 30 分钟复核（SecurityStamp 模式），权限收回自动踢出；③ 菜单按 permission claim 动态渲染（Admin 角色全显示）；④ 13 个 Controller 挂 [PanelPermission] 动态策略（PanelPolicyProvider 按需生成）；⑤ 角色/权限管理页改代理 API /api/admin/roles*（权限点目录只读），本地 db_admin 僵尸表（admin_user_roles/admin_role_permissions）与种子整体删除；⑥ 用户页新增"平台角色"弹窗（by-auth 端点差量分配，自锁守卫禁移自己 Admin）。 |

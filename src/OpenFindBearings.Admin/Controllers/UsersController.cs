@@ -24,7 +24,7 @@ public class UsersController : Controller
     /// <summary>
     /// 用户列表
     /// </summary>
-    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, bool includeDeleted = false)
+    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, bool includeDeleted = false, string tab = "panel")
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -76,6 +76,8 @@ public class UsersController : Controller
 
         ViewBag.Search = search;
         ViewBag.IncludeDeleted = includeDeleted;
+        // 改动说明（v1.29.2）：页签态随 URL 往返（操作回跳不丢位置）
+        ViewBag.Tab = tab;
 
         // 改动说明（v1.29.0）：Identity 列表的 Roles 是认证中心角色（恒空，业务平台角色不在 Identity），
         // 角色列改从 API 批量端点 /api/admin/users/platform-roles 拉 sub→roles[] 字典合并渲染；
@@ -147,12 +149,12 @@ public class UsersController : Controller
     /// provision 失败不回滚账号，提示稍后手动补
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Create(string userName, string password, string? email, string? name, string? phoneNumber, List<string>? roles)
+    public async Task<IActionResult> Create(string userName, string? email, string? name, string? phoneNumber, List<string>? roles, string? tab)
     {
         if (roles == null || roles.Count == 0)
         {
-            TempData["Error"] = "后台用户必须至少分配一个平台角色（App 用户请在 app 端自助注册）";
-            return RedirectToAction("Index");
+            TempData["Error"] = "后台用户必须至少分配一个平台角色（普通用户请在 app 端自助注册）";
+            return RedirectToAction("Index", new { tab });
         }
 
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:5001";
@@ -162,7 +164,6 @@ public class UsersController : Controller
             var payload = new
             {
                 userName,
-                password,
                 email,
                 name,
                 phoneNumber
@@ -171,7 +172,7 @@ public class UsersController : Controller
             if (!resp.IsSuccessStatusCode)
             {
                 TempData["Error"] = $"创建失败: HTTP {(int)resp.StatusCode}";
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", new { tab });
             }
 
             // 解析 Identity 返回的新用户 id（data.id），作为 API provision 的 authUserId
@@ -197,34 +198,38 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"创建失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        return RedirectToAction("Index", new { tab });
     }
 
     /// <summary>
     /// 启用/禁用用户
+    /// 改动说明（v1.29.2）：① 原 PatchAsync 传 null body，Identity 端点 [FromBody] 必 415
+    /// UnsupportedMediaType（禁用/启用一直全坏），改传 {enable:当前取反} 显式目标态；
+    /// ② 回跳保留 tab 参数，操作后不跳回默认页签
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> ToggleStatus(string id)
+    public async Task<IActionResult> ToggleStatus(string id, bool enable, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
         try
         {
-            var resp = await client.PatchAsync($"{identityBase}/api/account/admin/users/{id}/status", null);
-            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "状态已切换" : $"操作失败: {resp.StatusCode}";
+            var resp = await client.PatchAsync($"{identityBase}/api/account/admin/users/{id}/status",
+                new StringContent(System.Text.Json.JsonSerializer.Serialize(new { enable }), System.Text.Encoding.UTF8, "application/json"));
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? (enable ? "已启用" : "已禁用") : $"操作失败: {resp.StatusCode}";
         }
         catch (Exception ex)
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        return RedirectToAction("Index", new { tab });
     }
 
     /// <summary>
     /// 解锁用户
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Unlock(string id)
+    public async Task<IActionResult> Unlock(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -237,35 +242,46 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        return RedirectToAction("Index", new { tab });
     }
 
     /// <summary>
-    /// 重置密码
+    /// <summary>
+    /// 重置密码为系统初始密码（v1.30.0：不再人工输入新密码——调 Identity reset-to-default，
+    /// 密码值单一事实源在 Identity 配置；成功后回显初始密码供转告本人，该账号首登被强制改密）
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> ResetPassword(string id, string newPassword)
+    public async Task<IActionResult> ResetPassword(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
         try
         {
-            var payload = new { newPassword };
-            var resp = await client.PostAsJsonAsync($"{identityBase}/api/account/admin/users/{id}/reset-password", payload);
-            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "密码已重置" : $"操作失败: {resp.StatusCode}";
+            var resp = await client.PostAsync($"{identityBase}/api/account/admin/users/{id}/reset-to-default", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(body);
+                var pwd = doc.RootElement.TryGetProperty("data", out var d) && d.ValueKind == System.Text.Json.JsonValueKind.String ? d.GetString() : null;
+                TempData["Success"] = string.IsNullOrEmpty(pwd) ? "已重置为初始密码" : $"已重置为初始密码：{pwd}（请转告本人，首次登录须修改）";
+            }
+            else
+            {
+                TempData["Error"] = $"重置失败: {resp.StatusCode}";
+            }
         }
         catch (Exception ex)
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        return RedirectToAction("Index", new { tab });
     }
 
     /// <summary>
     /// 恢复已删除用户
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> Restore(string id)
+    public async Task<IActionResult> Restore(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -278,14 +294,14 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"恢复失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        return RedirectToAction("Index", new { tab });
     }
 
     /// <summary>
     /// 彻底删除用户（物理删除，不可恢复）
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> HardDelete(string id)
+    public async Task<IActionResult> HardDelete(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -375,23 +391,15 @@ public class UsersController : Controller
         {
             return Json(new { ok = false, message = $"读取现有角色失败: {rolesResp.StatusCode}" });
         }
-        // 改动说明（v1.29.1）：404 = 用户尚未 JIT 进业务库（后台新建账号未登录过 app）。
-        // 原实现直接拒绝"暂无法分配"，现改调 API /users/provision 预置业务行并挂角色，
-        // 打通"后台建号 → 立即分配角色"闭环（provision 幂等：行已存在则只补角色）
-        else
+        // 改动说明（v1.29.2）：原"404 才走 provision"判断失效——API GET by-auth 对无业务行用户
+        // 返回 200+空数组而非 404，保存时拿空 current 去逐个 POST 授权撞 404（截图"分配 Operator 失败"）。
+        // 改为无条件先 provision（幂等：行存在只补角色，不存在则建行+挂全部勾选角色），
+        // 再移除"原有但本次未勾"的角色；勾选态=最终态语义不变
+        var prResp = await client.PostAsJsonAsync($"{apiBase}/api/admin/users/provision",
+            new { authUserId = id, userName, roles });
+        if (!prResp.IsSuccessStatusCode)
         {
-            var prResp = await client.PostAsJsonAsync($"{apiBase}/api/admin/users/provision",
-                new { authUserId = id, userName, roles });
-            return prResp.IsSuccessStatusCode
-                ? Json(new { ok = true, message = "角色分配成功" })
-                : Json(new { ok = false, message = $"预置失败: {prResp.StatusCode}" });
-        }
-
-        foreach (var add in roles.Except(current))
-        {
-            var resp = await client.PostAsJsonAsync($"{apiBase}/api/admin/users/by-auth/{id}/roles", new { roleName = add });
-            if (!resp.IsSuccessStatusCode)
-                return Json(new { ok = false, message = $"分配 {add} 失败: {resp.StatusCode}" });
+            return Json(new { ok = false, message = $"角色预置失败: {prResp.StatusCode}（确认 API 版本含 provision 端点）" });
         }
 
         foreach (var remove in current.Except(roles))

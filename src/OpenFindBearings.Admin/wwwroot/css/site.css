@@ -227,6 +227,15 @@ body.dark-theme .table-striped > tbody > tr:nth-of-type(odd) > td { background-c
 .form-control, .form-select { background: var(--form-bg); border-color: var(--form-border); color: var(--text-primary); }
 .form-control:focus, .form-select:focus { background: var(--form-bg); border-color: var(--form-focus-border); color: var(--text-primary); box-shadow: 0 0 0 .25rem var(--form-focus-shadow); }
 .form-control::placeholder { color: var(--text-muted); }
+/* 改动说明：Bootstrap 默认 disabled/readonly 输入框是浅灰底(#e9ecef)，深色主题下
+   浅色文字配浅灰底完全不可见（系统配置"编辑配置"弹窗配置键即此问题）；
+   统一改走主题变量，视觉上明确"只读"但文字可读 */
+.form-control:disabled, .form-control[readonly] {
+  background: var(--form-bg);
+  color: var(--text-muted);
+  border-color: var(--form-border);
+  opacity: 1;
+}
 
 /* ===== Dark theme specific ===== */
 body.dark-theme .btn-close { filter: invert(1); }

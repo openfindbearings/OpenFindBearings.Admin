@@ -54,6 +54,7 @@ public class HomeController : Controller
     }
 
     [Authorize]
+    [PanelPermission("sync.run")]  // 改动说明（v1.30.0）：爬虫触发页由借用的 dashboard.view 改独立 sync.run
     public IActionResult Crawler()
     {
         return View("~/Views/Crawler/Index.cshtml");

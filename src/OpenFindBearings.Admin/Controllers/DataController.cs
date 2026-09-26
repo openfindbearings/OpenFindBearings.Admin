@@ -12,7 +12,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 数据管理控制器
 /// </summary>
 [Authorize]
-[PanelPermission("bearing.view")]
+[PanelPermission("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.import")]
 public class DataController : Controller
 {
     private readonly IHttpClientFactory _factory;

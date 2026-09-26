@@ -103,6 +103,7 @@ public class ConfigController : Controller
     /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [PanelPermission("system.manage")]
     public async Task<IActionResult> Update(string key, string value, string? tab)
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";

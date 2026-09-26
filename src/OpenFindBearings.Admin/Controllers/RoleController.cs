@@ -115,6 +115,8 @@ public class RoleController : Controller
                 catalog = items.EnumerateArray().Select(x => new PermissionItemViewModel
                 {
                     Key = x.GetProperty("name").GetString() ?? "",
+                    // 改动说明（v1.30.0）：直读权限表中文描述，视图侧免逐键硬编码映射
+                    Description = x.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
                     Granted = granted.Contains(x.GetProperty("name").GetString() ?? "")
                 }).ToList();
             }

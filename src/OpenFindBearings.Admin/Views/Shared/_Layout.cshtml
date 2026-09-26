@@ -10,7 +10,8 @@
     var siteName = Config["SiteName"] ?? "OpenFindBearings";
     var siteDescription = Config["SiteDescription"] ?? "";
     // 改动说明（v1.25.0）：菜单按登录时写入的 permission 多值 claim 动态渲染（OR 命中）；
-    //   panel_role=Admin 全显示（超管短路），与 Controller 的 PanelPermission 策略同口径
+    //   panel_role=Admin 全显示（超管短路），与 Controller 的 PanelPermission 策略同口径；
+    //   子视图按钮级判定用 Helpers.PanelPerms.Has(User, ...)（_ViewImports 不支持本块共享）
     var permSet = User.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToHashSet();
     bool HasPerm(params string[] perms) =>
         User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
@@ -47,24 +48,37 @@
                     </a>
                 </li>
                 }
-                @if (HasPerm("bearing.view", "sync.review"))
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.import", "mapping.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
                         <i class="fas fa-database"></i><span>信息管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-info">
+                        <li class="sub-header">基础信息</li>
+                        @* 改动说明（v1.30.0 权限目录重排）：子页逐项独立 view 键，映射改 mapping.view *@
+                        @if (HasPerm("brand.view"))
+                        {
+                        <li><a asp-controller="Data" asp-action="Brands" class="nav-link" data-page="data-brands"><i class="fas fa-circle"></i><span>品牌列表</span></a></li>
+                        }
+                        @if (HasPerm("type.view"))
+                        {
+                        <li><a asp-controller="Data" asp-action="BearingTypes" class="nav-link" data-page="data-types"><i class="fas fa-circle"></i><span>类型列表</span></a></li>
+                        }
                         @if (HasPerm("bearing.view"))
                         {
-                        <li class="sub-header">基础信息</li>
-                        <li><a asp-controller="Data" asp-action="Brands" class="nav-link" data-page="data-brands"><i class="fas fa-circle"></i><span>品牌列表</span></a></li>
-                        <li><a asp-controller="Data" asp-action="BearingTypes" class="nav-link" data-page="data-types"><i class="fas fa-circle"></i><span>类型列表</span></a></li>
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
+                        }
+                        @if (HasPerm("merchant.view"))
+                        {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
+                        }
                         <li class="sub-header">库存管理</li>
+                        @if (HasPerm("merchant.import"))
+                        {
                         <li><a asp-controller="Data" asp-action="ImportInventory" class="nav-link" data-page="data-import-inventory"><i class="fas fa-circle"></i><span>库存导入</span></a></li>
                         }
-                        @if (HasPerm("sync.review"))
+                        @if (HasPerm("mapping.view"))
                         {
                         <li class="sub-header">映射信息</li>
                         <li><a asp-controller="Mapping" asp-action="Index" asp-route-type="brand" class="nav-link" data-page="mapping-brand"><i class="fas fa-circle"></i><span>品牌映射</span></a></li>
@@ -73,14 +87,14 @@
                     </ul>
                 </li>
                 }
-                @if (HasPerm("sync.review", "correction.review", "merchant.verify", "sourcing.view"))
+                @if (HasPerm("review.sync", "correction.review", "merchant.verify", "sourcing.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-review">
                         <i class="fas fa-check-double"></i><span>审核管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-review">
-                        @if (HasPerm("sync.review"))
+                        @if (HasPerm("review.sync"))
                         {
                         <li><a asp-controller="Review" asp-action="Index" class="nav-link" data-page="review"><i class="fas fa-circle"></i><span>同步数据审核</span></a></li>
                         }
@@ -97,37 +111,40 @@
                     </ul>
                 </li>
                 }
-                @if (HasPerm("user.manage", "role.manage"))
+                @if (HasPerm("user.view", "user.manage", "role.manage"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-auth">
                         <i class="fas fa-shield-alt"></i><span>认证管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-auth">
-                        @if (HasPerm("user.manage"))
+                        @if (HasPerm("user.view"))
                         {
                         <li><a asp-controller="Users" asp-action="Index" class="nav-link" data-page="users"><i class="fas fa-circle"></i><span>用户管理</span></a></li>
                         }
                         @if (HasPerm("role.manage"))
                         {
                         <li><a asp-controller="Role" asp-action="Index" class="nav-link" data-page="role"><i class="fas fa-circle"></i><span>角色管理</span></a></li>
+                        }
+                        @if (HasPerm("permission.view"))
+                        {
                         <li><a asp-controller="Permission" asp-action="Index" class="nav-link" data-page="permission"><i class="fas fa-circle"></i><span>权限管理</span></a></li>
                         }
                     </ul>
                 </li>
                 }
-                @if (HasPerm("sync.review", "dashboard.view"))
+                @if (HasPerm("sync.run"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-task">
                         <i class="fas fa-tasks"></i><span>任务管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-task">
-                        @if (HasPerm("sync.review"))
+                        @if (HasPerm("sync.run"))
                         {
                         <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>ETL 同步</span></a></li>
                         }
-                        @if (HasPerm("dashboard.view"))
+                        @if (HasPerm("sync.run"))
                         {
                         <li><a asp-controller="Home" asp-action="Crawler" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>数据爬虫</span></a></li>
                         }

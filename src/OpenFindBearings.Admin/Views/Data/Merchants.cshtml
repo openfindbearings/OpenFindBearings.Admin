@@ -56,16 +56,25 @@
                             <td>@(item.Phone ?? "-")</td>
                             <td>@(item.IsVerified ? "已认证" : "未认证")</td>
                             <td>
+                                @if (PanelPerms.Has(User, "merchant.manage"))
+                                {
                                 <button class="btn btn-sm btn-outline-primary" onclick='openEditMerchant(@Html.Raw(Json.Serialize(item)))'>编辑</button>
+                                }
                                 <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name">在售商品</button>
                                 @if (Model.IncludeDeleted)
                                 {
+                                    @if (PanelPerms.Has(User, "data.restore"))
+                                    {
                                     <form method="post" asp-action="RestoreMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要恢复该商家吗？">
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
+                                    }
+                                    @if (PanelPerms.Has(User, "data.harddelete"))
+                                    {
                                     <form method="post" asp-action="HardDeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="此操作不可恢复，确定要彻底删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
+                                    }
                                 }
                                 else
                                 {
@@ -77,18 +86,24 @@
                                             || (item.ApplicationMode == "None" && item.DataSource == "Manual"));
                                     @if (canDetach)
                                     {
+                                        @if (PanelPerms.Has(User, "merchant.detach"))
+                                        {
                                         <form method="post" asp-action="DetachMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定解除该商户归属？商品/证照/成员将清空，商户退回公开信息池（仅认领商户可解除，自建商户请用删除）。" data-confirm-danger>
                                             <button class="btn btn-sm btn-outline-warning">解除归属</button>
                                         </form>
+                                        }
                                     }
                                     else
                                     {
                                         <button class="btn btn-sm btn-outline-warning" disabled
                                                 title="仅生效状态的认领/提名已有商户可解除归属：自建商户请用删除，公海未认领商户无归属可解">解除归属</button>
                                     }
+                                    @if (PanelPerms.Has(User, "merchant.manage"))
+                                    {
                                     <form method="post" asp-action="DeleteMerchant" asp-route-id="@item.Id" class="d-inline" data-confirm="确定要删除该商家吗？" data-confirm-danger>
                                         <button class="btn btn-sm btn-outline-danger">删除</button>
                                     </form>
+                                    }
                                 }
                             </td>
                         </tr>

@@ -9,7 +9,7 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 用户管理控制器（调用 Identity API）
 /// </summary>
 [Authorize]
-[PanelPermission("user.manage")]
+[PanelPermission("user.view")]
 public class UsersController : Controller
 {
     private readonly IHttpClientFactory _factory;
@@ -23,19 +23,31 @@ public class UsersController : Controller
 
     /// <summary>
     /// 用户列表
+    /// 改动说明（v1.30.0）：includeDeleted 勾选升级为状态下拉（正常/已禁用=黑名单/已锁定/已删除/全部）——
+    /// 封禁处置与软删待恢复是两种生命周期阶段，各给独立视图快速定位
     /// </summary>
-    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, bool includeDeleted = false, string tab = "panel")
+    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, string status = "enabled", string tab = "panel")
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
-        var status = includeDeleted ? "" : "enabled";
         var url = $"{identityBase}/api/account/admin/users?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&search={Uri.EscapeDataString(search)}";
-        if (!string.IsNullOrWhiteSpace(status))
-            url += $"&status={status}";
-        if (includeDeleted)
+        // 状态映射：deleted 走新枚举但须带 includeDeleted 才能看到软删行；all=活跃+禁用+软删全量
+        var effectiveStatus = string.IsNullOrWhiteSpace(status) ? "enabled" : status.Trim().ToLowerInvariant();
+        if (effectiveStatus == "deleted")
+        {
+            url += "&status=deleted&includeDeleted=true";
+        }
+        else if (effectiveStatus == "all")
+        {
             url += "&includeDeleted=true";
+        }
+        else
+        {
+            url += $"&status={Uri.EscapeDataString(effectiveStatus)}";
+        }
+        ViewBag.Status = effectiveStatus;
 
         try
         {
@@ -75,8 +87,7 @@ public class UsersController : Controller
         }
 
         ViewBag.Search = search;
-        ViewBag.IncludeDeleted = includeDeleted;
-        // 改动说明（v1.29.2）：页签态随 URL 往返（操作回跳不丢位置）
+        // 改动说明（v1.30.0）：IncludeDeleted 已废弃，状态下拉以 ViewBag.Status 传递（前段已赋值）
         ViewBag.Tab = tab;
 
         // 改动说明（v1.29.0）：Identity 列表的 Roles 是认证中心角色（恒空，业务平台角色不在 Identity），
@@ -149,6 +160,7 @@ public class UsersController : Controller
     /// provision 失败不回滚账号，提示稍后手动补
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.manage")]
     public async Task<IActionResult> Create(string userName, string? email, string? name, string? phoneNumber, List<string>? roles, string? tab)
     {
         if (roles == null || roles.Count == 0)
@@ -208,6 +220,7 @@ public class UsersController : Controller
     /// ② 回跳保留 tab 参数，操作后不跳回默认页签
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.ban")]
     public async Task<IActionResult> ToggleStatus(string id, bool enable, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
@@ -229,6 +242,7 @@ public class UsersController : Controller
     /// 解锁用户
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.ban")]
     public async Task<IActionResult> Unlock(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
@@ -251,6 +265,7 @@ public class UsersController : Controller
     /// 密码值单一事实源在 Identity 配置；成功后回显初始密码供转告本人，该账号首登被强制改密）
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.ban")]
     public async Task<IActionResult> ResetPassword(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
@@ -281,6 +296,7 @@ public class UsersController : Controller
     /// 恢复已删除用户
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.manage")]
     public async Task<IActionResult> Restore(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
@@ -301,6 +317,7 @@ public class UsersController : Controller
     /// 彻底删除用户（物理删除，不可恢复）
     /// </summary>
     [HttpPost]
+    [PanelPermission("data.harddelete")]
     public async Task<IActionResult> HardDelete(string id, string? tab)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
@@ -314,7 +331,7 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"删除失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { includeDeleted = true });
+        return RedirectToAction("Index", new { status = "deleted" });
     }
 
     /// <summary>
@@ -322,6 +339,7 @@ public class UsersController : Controller
     /// 改动说明：平台角色存 API RBAC（业务权限 API 一家管），Identity 角色列仅表认证中心
     /// 身份；浏览器无 API token，故经本控制器代理 by-auth 端点（键=Identity sub）
     /// </summary>
+    [PanelPermission("user.assign")]
     public async Task<IActionResult> PlatformRoles(string id)
     {
         var client = _factory.CreateClient("ApiClient");
@@ -369,6 +387,7 @@ public class UsersController : Controller
     /// 自锁守卫：不允许移除自己的 Admin 角色（防后台集体失联）
     /// </summary>
     [HttpPost]
+    [PanelPermission("user.assign")]
     public async Task<IActionResult> SavePlatformRoles(string id, List<string> roles, string? userName)
     {
         roles ??= new List<string>();

@@ -40,8 +40,10 @@
             </button>
             }
             <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
-                @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认 tab *@
-                <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
+                @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认页签；
+                   v1.31.1：本表单不加 status hidden——select 即 status 唯一来源，
+                   双 name 会让绑定取到 hidden 旧值导致筛选切换失效 *@
+                <input type="hidden" name="tab" value="@currentTab" />
                 <input type="text" name="search" value="@search" class="form-control" placeholder="搜索用户..." style="min-width:140px" />
                 @* 改动说明（v1.30.0）：状态下拉——黑名单（已禁用）与已删除各有独立视图，操作列照常给恢复/启用入口 *@
                 <select class="form-select form-select-sm" name="status" style="width:auto;white-space:nowrap" onchange="this.form.submit()">
@@ -294,7 +296,7 @@
 <div class="modal fade" id="resetPwdModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" asp-action="ResetPassword"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" /><input type="hidden" name="status" value="@status" />
+            <form method="post" asp-action="ResetPassword"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                 <input type="hidden" name="id" id="resetPwdId" />
                 <div class="modal-header">
                     <h6 class="modal-title">重置密码 - <span id="resetPwdName"></span></h6>

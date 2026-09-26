@@ -26,7 +26,7 @@ public class UsersController : Controller
     /// 改动说明（v1.30.0）：includeDeleted 勾选升级为状态下拉（正常/已禁用=黑名单/已锁定/已删除/全部）——
     /// 封禁处置与软删待恢复是两种生命周期阶段，各给独立视图快速定位
     /// </summary>
-    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, string status = "enabled", string tab = "panel")
+    public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, string status = "enabled", string tab = "all")
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -161,12 +161,12 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("user.manage")]
-    public async Task<IActionResult> Create(string userName, string? email, string? name, string? phoneNumber, List<string>? roles, string? tab)
+    public async Task<IActionResult> Create(string userName, string? email, string? name, string? phoneNumber, List<string>? roles, string? tab, string? status)
     {
         if (roles == null || roles.Count == 0)
         {
             TempData["Error"] = "后台用户必须至少分配一个平台角色（普通用户请在 app 端自助注册）";
-            return RedirectToAction("Index", new { tab });
+            return RedirectToAction("Index", new { tab, status });
         }
 
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:5001";
@@ -184,7 +184,7 @@ public class UsersController : Controller
             if (!resp.IsSuccessStatusCode)
             {
                 TempData["Error"] = $"创建失败: HTTP {(int)resp.StatusCode}";
-                return RedirectToAction("Index", new { tab });
+                return RedirectToAction("Index", new { tab, status });
             }
 
             // 解析 Identity 返回的新用户 id（data.id），作为 API provision 的 authUserId
@@ -210,7 +210,7 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"创建失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { tab });
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>
@@ -221,7 +221,8 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("user.ban")]
-    public async Task<IActionResult> ToggleStatus(string id, bool enable, string? tab)
+    // 改动说明（v1.31.1）：status 透传——操作回跳停在当前状态视图（黑名单里解禁不弹回正常页）
+    public async Task<IActionResult> ToggleStatus(string id, bool enable, string? tab, string? status)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -229,13 +230,13 @@ public class UsersController : Controller
         {
             var resp = await client.PatchAsync($"{identityBase}/api/account/admin/users/{id}/status",
                 new StringContent(System.Text.Json.JsonSerializer.Serialize(new { enable }), System.Text.Encoding.UTF8, "application/json"));
-            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? (enable ? "已启用" : "已禁用") : $"操作失败: {resp.StatusCode}";
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? (enable ? "已启用，用户回到「正常」视图" : "已禁用（黑名单），该用户将从「正常」视图消失，可在状态筛选「已禁用」中找到并删除/恢复") : $"操作失败: {resp.StatusCode}";
         }
         catch (Exception ex)
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { tab });
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>
@@ -243,7 +244,7 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("user.ban")]
-    public async Task<IActionResult> Unlock(string id, string? tab)
+    public async Task<IActionResult> Unlock(string id, string? tab, string? status)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -256,7 +257,7 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { tab });
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>
@@ -266,7 +267,7 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("user.ban")]
-    public async Task<IActionResult> ResetPassword(string id, string? tab)
+    public async Task<IActionResult> ResetPassword(string id, string? tab, string? status)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -289,7 +290,7 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"操作失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { tab });
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>
@@ -297,7 +298,7 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("user.manage")]
-    public async Task<IActionResult> Restore(string id, string? tab)
+    public async Task<IActionResult> Restore(string id, string? tab, string? status)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -310,7 +311,7 @@ public class UsersController : Controller
         {
             TempData["Error"] = $"恢复失败: {ex.Message}";
         }
-        return RedirectToAction("Index", new { tab });
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>
@@ -318,7 +319,7 @@ public class UsersController : Controller
     /// </summary>
     [HttpPost]
     [PanelPermission("data.harddelete")]
-    public async Task<IActionResult> HardDelete(string id, string? tab)
+    public async Task<IActionResult> HardDelete(string id, string? tab, string? status)
     {
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
@@ -332,6 +333,93 @@ public class UsersController : Controller
             TempData["Error"] = $"删除失败: {ex.Message}";
         }
         return RedirectToAction("Index", new { status = "deleted" });
+    }
+
+    /// <summary>
+    /// 软删除用户（v1.31.1 两步链路：正常→禁用→删除，删除按钮仅出现在已禁用行；
+    /// 已删除视图可恢复或彻底删除）
+    /// 守卫（fail-closed，删除属危险操作，验证不了就拒）：不能删自己；
+    /// 目标是 Admin 且无其他启用 Admin 时拒绝（防后台集体锁死）。
+    /// 注意：删除 app 用户不会级联清理其商户成员/积分/收藏等业务数据——
+    /// 常规注销应引导用户走 app 内注销（30 天冷静期+匿名化链），本删除是后台显权
+    /// </summary>
+    [HttpPost]
+    [PanelPermission("user.manage")]
+    public async Task<IActionResult> Delete(string id, string? tab, string? status)
+    {
+        var mySub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(mySub) && mySub == id)
+        {
+            TempData["Error"] = "不能删除自己的账号";
+            return RedirectToAction("Index", new { tab, status });
+        }
+
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        try
+        {
+            // 最后启用管理员守卫：目标挂 Admin 角色时，须存在其他启用 Admin
+            var apiClient = _factory.CreateClient("ApiClient");
+            var mapResp = await apiClient.GetAsync($"{apiBase}/api/admin/users/platform-roles");
+            if (!mapResp.IsSuccessStatusCode)
+            {
+                TempData["Error"] = "无法校验角色信息（API 不可达），删除已拒绝，请稍后重试";
+                return RedirectToAction("Index", new { tab, status });
+            }
+            using var mapDoc = System.Text.Json.JsonDocument.Parse(await mapResp.Content.ReadAsStringAsync());
+            var roleMap = mapDoc.RootElement.TryGetProperty("data", out var dd) ? dd : default;
+            var targetIsAdmin = roleMap.ValueKind == System.Text.Json.JsonValueKind.Object
+                && roleMap.TryGetProperty(id, out var tr)
+                && tr.EnumerateArray().Any(x => x.GetString() == "Admin");
+            if (targetIsAdmin)
+            {
+                var idClient = _factory.CreateClient("IdentityClient");
+                var listResp = await idClient.GetAsync($"{identityBase}/api/account/admin/users?page=1&pageSize=100&status=enabled");
+                if (!listResp.IsSuccessStatusCode)
+                {
+                    TempData["Error"] = "无法统计启用管理员（Identity 不可达），删除已拒绝，请稍后重试";
+                    return RedirectToAction("Index", new { tab, status });
+                }
+                using var listDoc = System.Text.Json.JsonDocument.Parse(await listResp.Content.ReadAsStringAsync());
+                var otherActiveAdmins = 0;
+                if (listDoc.RootElement.TryGetProperty("data", out var ld)
+                    && ld.TryGetProperty("items", out var items)
+                    && roleMap.ValueKind == System.Text.Json.JsonValueKind.Object)
+                {
+                    foreach (var u in items.EnumerateArray())
+                    {
+                        var uid = u.TryGetProperty("id", out var i) ? i.GetString() ?? "" : "";
+                        if (string.IsNullOrEmpty(uid) || uid.Equals(id, StringComparison.OrdinalIgnoreCase)) continue;
+                        if (roleMap.TryGetProperty(uid, out var rs)
+                            && rs.EnumerateArray().Any(x => x.GetString() == "Admin")) otherActiveAdmins++;
+                    }
+                }
+                if (otherActiveAdmins == 0)
+                {
+                    TempData["Error"] = "不能删除：该账号是唯一启用的管理员（防后台锁死，请先为其他账号分配管理员角色）";
+                    return RedirectToAction("Index", new { tab, status });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"删除前校验失败，已拒绝: {ex.Message}";
+            return RedirectToAction("Index", new { tab, status });
+        }
+
+        var client = _factory.CreateClient("IdentityClient");
+        try
+        {
+            var resp = await client.DeleteAsync($"{identityBase}/api/account/admin/users/{id}");
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+                ? "用户已删除（可在「已删除」筛选中恢复或彻底删除）"
+                : $"删除失败: {resp.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"删除失败: {ex.Message}";
+        }
+        return RedirectToAction("Index", new { tab, status });
     }
 
     /// <summary>

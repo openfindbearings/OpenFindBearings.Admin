@@ -35,26 +35,26 @@
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
             @* 改动说明（v1.30.0）：第二行四张待办卡数字用红色醒目呈现（待办语义），第一行存量统计不涂色 *@
-<div class="inner"><h3 class="text-danger" id="syncPendingCount">-</h3><p>同步数据审核</p></div>
+<div class="inner"><h3 class="stat-todo" id="syncPendingCount">-</h3><p>同步数据审核</p></div>
             <div class="icon"><i class="fas fa-sync"></i></div>
         </div>
     </div>
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
-            <div class="inner"><h3 class="text-danger" id="correctionPendingCount">-</h3><p>信息纠错审核</p></div>
+            <div class="inner"><h3 class="stat-todo" id="correctionPendingCount">-</h3><p>信息纠错审核</p></div>
             <div class="icon"><i class="fas fa-pen"></i></div>
         </div>
     </div>
     @* 改动说明：应运营要求调整审核卡片顺序——入驻申请审批前置于证照材料审核（入驻生效是主链路，材料变更是后置队列） *@
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
-            <div class="inner"><h3 class="text-danger" id="merchantApplicationPendingCount">-</h3><p>入驻申请审批</p></div>
+            <div class="inner"><h3 class="stat-todo" id="merchantApplicationPendingCount">-</h3><p>入驻申请审批</p></div>
             <div class="icon"><i class="fas fa-user-check"></i></div>
         </div>
     </div>
     <div class="col-lg-3 col-6">
         <div class="small-box bg-secondary">
-            <div class="inner"><h3 class="text-danger" id="documentPendingCount">-</h3><p>证照材料审核</p></div>
+            <div class="inner"><h3 class="stat-todo" id="documentPendingCount">-</h3><p>证照材料审核</p></div>
             <div class="icon"><i class="fas fa-file-alt"></i></div>
         </div>
     </div>
@@ -108,10 +108,17 @@
             el=document.getElementById('typeCount');if(el)el.textContent=tp.totalCount??'-';
             el=document.getElementById('merchantCount');if(el)el.textContent=(m.verifiedCount??'-')+'/'+(m.totalCount??'-');
 
-            el=document.getElementById('syncPendingCount');if(el)el.textContent=(sp.brandCount||0)+(sp.typeCount||0)+(sp.bearingCount||0)+(sp.merchantCount||0);
-            el=document.getElementById('correctionPendingCount');if(el)el.textContent=c.pendingCount??'-';
-            el=document.getElementById('documentPendingCount');if(el)el.textContent=(data.pending||{}).pendingDocuments??'-';
-            el=document.getElementById('merchantApplicationPendingCount');if(el)el.textContent=m.pendingApplicationCount??'-';
+            // 改动说明（v1.31.0）：待办数字条件红——>0 才挂 .todo-alert 显警报色，0 用主题默认色（原恒红且 0 也红是语义错误）
+            function setTodo(id, val) {
+                var e2 = document.getElementById(id);
+                if (!e2) return;
+                e2.textContent = val;
+                e2.classList.toggle('todo-alert', Number(val) > 0);
+            }
+            setTodo('syncPendingCount', (sp.brandCount||0)+(sp.typeCount||0)+(sp.bearingCount||0)+(sp.merchantCount||0));
+            setTodo('correctionPendingCount', c.pendingCount ?? 0);
+            setTodo('documentPendingCount', (data.pending||{}).pendingDocuments ?? 0);
+            setTodo('merchantApplicationPendingCount', m.pendingApplicationCount ?? 0);
 
             try {
                 var trendCanvas=document.getElementById('trendChart');

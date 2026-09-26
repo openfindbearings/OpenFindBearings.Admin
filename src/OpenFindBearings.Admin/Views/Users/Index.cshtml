@@ -15,7 +15,7 @@
     var totalPages = totalCount > 0 && pageSize > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
     // 改动说明（v1.29.2）：URL ?tab= 决定初始页签（all/panel/app，默认 panel），操作回跳与翻页保持
     var currentTab = (string?)ViewBag.Tab;
-    if (currentTab != "all" && currentTab != "app") currentTab = "panel";
+    if (currentTab != "panel" && currentTab != "app") currentTab = "all";
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}&status={status}&tab={currentTab}";
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "从未";
@@ -41,7 +41,7 @@
             }
             <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
                 @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认 tab *@
-                <input type="hidden" name="tab" value="@currentTab" />
+                <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                 <input type="text" name="search" value="@search" class="form-control" placeholder="搜索用户..." style="min-width:140px" />
                 @* 改动说明（v1.30.0）：状态下拉——黑名单（已禁用）与已删除各有独立视图，操作列照常给恢复/启用入口 *@
                 <select class="form-select form-select-sm" name="status" style="width:auto;white-space:nowrap" onchange="this.form.submit()">
@@ -134,13 +134,13 @@
                                 {
                                     @if (PanelPerms.Has(User, "user.manage"))
                                     {
-                                    <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" data-confirm="确认恢复该用户？"><input type="hidden" name="tab" value="@currentTab" />
+                                    <form method="post" asp-action="Restore" asp-route-id="@item.Id" class="d-inline" data-confirm="确认恢复该用户？"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                                         <button class="btn btn-sm btn-outline-success">恢复</button>
                                     </form>
                                     }
                                     @if (PanelPerms.Has(User, "data.harddelete"))
                                     {
-                                    <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" data-confirm="此操作不可恢复，确定要彻底删除该用户吗？" data-confirm-danger><input type="hidden" name="tab" value="@currentTab" />
+                                    <form method="post" asp-action="HardDelete" asp-route-id="@item.Id" data-confirm="此操作不可恢复，确定要彻底删除该用户吗？" data-confirm-danger><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                                         <button class="btn btn-sm btn-outline-danger">彻底删除</button>
                                     </form>
                                     }
@@ -152,7 +152,7 @@
                                     {
                                     <form method="post" asp-action="ToggleStatus" asp-route-id="@item.Id" class="d-inline">
                                         <input type="hidden" name="enable" value="@((!item.IsEnabled).ToString().ToLower())" />
-                                        <input type="hidden" name="tab" value="@currentTab" />
+                                        <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                                         <button class="btn btn-sm btn-outline-@(item.IsEnabled ? "danger" : "success")">@(item.IsEnabled ? "禁用" : "启用")</button>
                                     </form>
                                     }
@@ -164,6 +164,15 @@
                                     @if (PanelPerms.Has(User, "user.assign"))
                                     {
                                     <button class="btn btn-sm btn-outline-secondary btn-platform-roles" data-bs-toggle="modal" data-bs-target="#platformRolesModal" data-id="@item.Id" data-name="@item.UserName">分配角色</button>
+                                    }
+                                    @* 改动说明（v1.31.1）：两步式删除——删除按钮仅出现在"已禁用"行（先禁用再删除防误删），
+                                       软删可在「已删除」视图恢复；守卫（删自己/最后管理员）在控制器端 *@
+                                    @if (!item.IsEnabled && PanelPerms.Has(User, "user.manage"))
+                                    {
+                                    <form method="post" asp-action="Delete" asp-route-id="@item.Id" class="d-inline" data-confirm="确认删除该用户？删除后可在「已删除」筛选中恢复或彻底删除。注意：其商户成员/积分/收藏等业务数据不会级联清理。" data-confirm-danger>
+                                        <input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
+                                        <button class="btn btn-sm btn-outline-danger">删除</button>
+                                    </form>
                                     }
                                 }
                             </td>
@@ -226,7 +235,7 @@
 <div class="modal fade" id="createUserModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" asp-action="Create" onsubmit="return checkCreateRoles(this)"><input type="hidden" name="tab" value="@currentTab" />
+            <form method="post" asp-action="Create" onsubmit="return checkCreateRoles(this)"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" />
                 <div class="modal-header">
                     <h6 class="modal-title">新建后台用户</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -285,7 +294,7 @@
 <div class="modal fade" id="resetPwdModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" asp-action="ResetPassword"><input type="hidden" name="tab" value="@currentTab" />
+            <form method="post" asp-action="ResetPassword"><input type="hidden" name="tab" value="@currentTab" /><input type="hidden" name="status" value="@status" /><input type="hidden" name="status" value="@status" />
                 <input type="hidden" name="id" id="resetPwdId" />
                 <div class="modal-header">
                     <h6 class="modal-title">重置密码 - <span id="resetPwdName"></span></h6>

@@ -42,6 +42,7 @@
                         <th>商品键</th>
                         <th>名称</th>
                         <th class="d-none d-md-table-cell">类别</th>
+                        <th class="d-none d-lg-table-cell">置顶对象</th>
                         <th>常规价</th>
                         <th class="d-none d-md-table-cell">闪购价</th>
                         <th class="d-none d-md-table-cell">闪购窗口（本地时间）</th>
@@ -59,6 +60,8 @@
                             <td><code class="small">@m.Key</code></td>
                             <td>@m.Name</td>
                             <td class="d-none d-md-table-cell">@CategoryName(m.Category)</td>
+                            @* 改动说明（v2.10.0 寻货置顶）：置顶卡展示对象类型（商品/需求），非置顶卡显示 - *@
+                            <td class="d-none d-lg-table-cell">@(m.Category == 1 ? (m.TargetKind == 2 ? "寻货需求" : "商品") : "-")</td>
                             <td>@m.PointPrice</td>
                             <td class="d-none d-md-table-cell">@(m.FlashPrice?.ToString() ?? "-")</td>
                             <td class="d-none d-md-table-cell small">
@@ -91,6 +94,7 @@
                                             data-flashstart="@Iso(m.FlashStart)" data-flashend="@Iso(m.FlashEnd)"
                                             data-hours="@(m.DurationHours?.ToString() ?? "")"
                                             data-stock="@m.Stock" data-sort="@m.SortOrder"
+                                            data-targetkind="@m.TargetKind"
                                             data-enabled="@m.Enabled.ToString().ToLower()">
                                         <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
                                     </button>
@@ -231,7 +235,7 @@
                     </div>
                     <div class="row">
                         <div class="col-md-3 mb-2">
-                            <label class="form-label">常规价（积分）</label>
+                            <label class="form-label">常规价（积分；商品置顶卡=商家金）</label>
                             <input type="number" name="pointPrice" id="itPrice" class="form-control" min="0" required />
                         </div>
                         <div class="col-md-3 mb-2">
@@ -245,6 +249,16 @@
                         <div class="col-md-3 mb-2">
                             <label class="form-label">库存（-1=不限）</label>
                             <input type="number" name="stock" id="itStock" class="form-control" min="-1" />
+                        </div>
+                    </div>
+                    @* 改动说明（v2.10.0 寻货置顶）：置顶卡的对象类型可纠正（商品=商家金定价/需求=积分定价） *@
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">置顶对象（仅置顶卡生效）</label>
+                            <select name="targetKind" id="itTargetKind" class="form-select">
+                                <option value="1">商品（商家金定价）</option>
+                                <option value="2">寻货需求（积分定价）</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row">
@@ -304,6 +318,8 @@
             document.getElementById('itHours').value = btn.dataset.hours || '';
             document.getElementById('itStock').value = btn.dataset.stock || '-1';
             document.getElementById('itSort').value = btn.dataset.sort || '0';
+            // 改动说明（v2.10.0 寻货置顶）：回填置顶对象类型
+            document.getElementById('itTargetKind').value = btn.dataset.targetkind || '1';
             document.getElementById('itEnabled').checked = btn.dataset.enabled === 'true';
             document.getElementById('itStartLocal').value = utcToLocalInput(btn.dataset.flashstart);
             document.getElementById('itEndLocal').value = utcToLocalInput(btn.dataset.flashend);

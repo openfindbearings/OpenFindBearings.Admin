@@ -57,7 +57,9 @@ public class MallController : Controller
                         Stock = x.GetProperty("stock").GetInt32(),
                         SoldCount = x.GetProperty("soldCount").GetInt32(),
                         Enabled = x.GetProperty("enabled").GetBoolean(),
-                        SortOrder = x.GetProperty("sortOrder").GetInt32()
+                        SortOrder = x.GetProperty("sortOrder").GetInt32(),
+                        // 改动说明（v2.10.0 寻货置顶）：置顶对象类型透传（列表列+编辑下拉数据源）
+                        TargetKind = x.TryGetProperty("targetKind", out var tk) ? tk.GetInt32() : 1
                     }).ToList();
                 }
             }
@@ -192,7 +194,9 @@ public class MallController : Controller
     [PanelPermission("system.manage")]
     public async Task<IActionResult> Update(Guid id, string name, string description, string icon,
         int pointPrice, int? flashPrice, string? flashStartUtc, string? flashEndUtc,
-        int? durationHours, int stock, int sortOrder, bool enabled)
+        int? durationHours, int stock, int sortOrder, bool enabled,
+        // 改动说明（v2.10.0 寻货置顶）：置顶对象类型透传 API（1=商品/2=需求）
+        int targetKind = 1)
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
@@ -213,7 +217,8 @@ public class MallController : Controller
                 durationHours,
                 stock,
                 enabled,
-                sortOrder
+                sortOrder,
+                targetKind
             };
             var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/mall/items/{id}", payload);
             TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] =
@@ -300,4 +305,6 @@ public class MallItemRowVm
     public int SoldCount { get; set; }
     public bool Enabled { get; set; }
     public int SortOrder { get; set; }
+    // 改动说明（v2.10.0 寻货置顶）：置顶对象类型（1=商品/2=需求，非置顶卡恒 1）
+    public int TargetKind { get; set; } = 1;
 }

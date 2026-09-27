@@ -319,4 +319,19 @@ app.MapGet("/api/proxy/etl/tasks", async (IHttpClientFactory factory, IConfigura
     return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
 
+// 代理上传/替换勋章图（v2.6.0 勋章图片管线：Admin 传图 → API 存对象存储并回写 ImageKey）
+app.MapPost("/api/proxy/achievements/{id:guid}/image", async (Guid id, IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    using var form = new MultipartFormDataContent();
+    using var stream = file.OpenReadStream();
+    using var fileContent = new StreamContent(stream);
+    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
+    form.Add(fileContent, "file", file.FileName);
+    var response = await client.PostAsync($"{apiBase}/api/admin/achievements/{id}/image", form);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
 app.Run();

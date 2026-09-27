@@ -1,9 +1,12 @@
 @model List<AchievementRowVm>
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "勋章管理";
     // 改动说明（v2.1.0 成就子系统）：勋章目录管理页——列表按 范围/分类 分组，
     // 编辑走单一模态框（JS 填充），启停即时生效（API 实时读，不发版）
+    // 改动说明（v2.6.0）：新增勋章图列与模态内"上传/替换图片"（走 /api/proxy/achievements/{id}/image 代理上传）
     string ScopeName(int s) => s == 1 ? "个人" : "商户";
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz").TrimEnd('/');
 }
 
 <div class="card">
@@ -18,6 +21,7 @@
                     <tr>
                         <th>勋章键</th>
                         <th>名称</th>
+                        <th>图</th>
                         <th class="d-none d-md-table-cell">范围</th>
                         <th class="d-none d-md-table-cell">分类</th>
                         <th class="d-none d-md-table-cell">指标</th>
@@ -39,6 +43,17 @@
                                 @if (a.Rare) { <span class="badge bg-warning text-dark ms-1">稀有</span> }
                                 @if (a.Hidden) { <span class="badge bg-secondary ms-1">隐藏</span> }
                             </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(a.ImageKey))
+                                {
+                                    <img src="@mediaBase@a.ImageKey" alt="" class="rounded"
+                                         style="width:34px;height:34px;object-fit:cover;border:1px solid #eee;" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted">--</span>
+                                }
+                            </td>
                             <td class="d-none d-md-table-cell">@ScopeName(a.Scope)</td>
                             <td class="d-none d-md-table-cell">@a.Category</td>
                             <td class="d-none d-md-table-cell"><code class="small">@a.MetricKey</code></td>
@@ -56,6 +71,7 @@
                                         data-id="@a.Id" data-name="@a.Name" data-desc="@a.Description"
                                         data-target="@a.ProgressTarget" data-meta="@a.MetaPoints"
                                         data-reward="@a.RewardPoints" data-title="@(a.TitleReward ?? "")"
+                                        data-imagekey="@a.ImageKey"
                                         data-enabled="@a.Enabled.ToString().ToLower()">
                                     <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
                                 </button>
@@ -72,13 +88,30 @@
 <div class="modal fade" id="editAchModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" asp-action="Update">
-                <input type="hidden" name="id" id="achId" />
+<form method="post" asp-action="Update">
+                    <input type="hidden" name="id" id="achId" />
+                    <input type="hidden" name="imageKey" id="achImageKey" />
                 <div class="modal-header">
                     <h6 class="modal-title">编辑勋章</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="card mb-3">
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <img id="achImagePreview" alt="勋章图" class="rounded d-none"
+                                     style="width:48px;height:48px;object-fit:cover;border:1px solid #eee;" />
+                                <span id="achImageEmpty" class="text-muted small">暂无勋章图（使用图标占位）</span>
+                                <div class="ms-auto">
+                                    <input type="file" id="achImageFile" class="d-none" accept=".jpg,.jpeg,.png,.webp" />
+                                    <button type="button" id="btnUploadAchImage" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-upload"></i> 上传/替换图片
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-1" id="achImageStatus"></div>
+                        </div>
+                    </div>
                     <div class="mb-2">
                         <label class="form-label">名称</label>
                         <input type="text" name="name" id="achName" class="form-control" required />
@@ -121,6 +154,23 @@
 
 @section Scripts {
 <script>
+    // v2.6.0 勋章图：媒体 base 用于预览（与列表缩略图同源）
+    const ACH_MEDIA_BASE = '@(mediaBase)';
+    let achUploading = false;
+
+    function achRenderImage(imageKey) {
+        const preview = document.getElementById('achImagePreview');
+        const empty = document.getElementById('achImageEmpty');
+        if (imageKey) {
+            preview.src = ACH_MEDIA_BASE + imageKey;
+            preview.classList.remove('d-none');
+            empty.classList.add('d-none');
+        } else {
+            preview.classList.add('d-none');
+            empty.classList.remove('d-none');
+        }
+    }
+
     document.querySelectorAll('.btn-edit-ach').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.getElementById('achId').value = btn.dataset.id;
@@ -131,8 +181,48 @@
             document.getElementById('achReward').value = btn.dataset.reward || '0';
             document.getElementById('achTitle').value = btn.dataset.title || '';
             document.getElementById('achEnabled').checked = btn.dataset.enabled === 'true';
+            const ik = btn.dataset.imagekey || '';
+            document.getElementById('achImageKey').value = ik;
+            document.getElementById('achImageStatus').textContent = '';
+            document.getElementById('achImageFile').value = '';
+            achRenderImage(ik);
             new bootstrap.Modal(document.getElementById('editAchModal')).show();
         });
     });
+
+    // 上传/替换勋章图：走 Admin 代理端点（ApiClient 带 API token），成功后回填 imageKey 并刷新预览
+    document.getElementById('btnUploadAchImage').addEventListener('click', function () {
+        const fileInput = document.getElementById('achImageFile');
+        fileInput.onchange = function () { doAchUpload(fileInput.files[0]); };
+        fileInput.click();
+    });
+
+    function doAchUpload(file) {
+        const status = document.getElementById('achImageStatus');
+        if (!file) { status.textContent = '未选择文件'; return; }
+        const id = document.getElementById('achId').value;
+        status.textContent = '上传中...';
+        achUploading = true;
+        const formData = new FormData();
+        formData.append('file', file);
+        fetch('/api/proxy/achievements/' + id + '/image', { method: 'POST', body: formData })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (res) {
+                achUploading = false;
+                if (res.ok && res.data && res.data.data && res.data.data.imageKey) {
+                    const ik = res.data.data.imageKey;
+                    document.getElementById('achImageKey').value = ik;
+                    document.getElementById('achImageStatus').textContent = '上传成功';
+                    achRenderImage(ik);
+                } else {
+                    const msg = (res.data && res.data.message) || '上传失败';
+                    document.getElementById('achImageStatus').textContent = msg;
+                }
+            })
+            .catch(function () {
+                achUploading = false;
+                document.getElementById('achImageStatus').textContent = '上传失败，请重试';
+            });
+    }
 </script>
 }

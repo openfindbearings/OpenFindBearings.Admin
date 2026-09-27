@@ -26,9 +26,10 @@ public class MallController : Controller
         _logger = logger;
     }
 
-    /// <summary>商城目录列表页（含停用项与已售数量）</summary>
+    /// <summary>商城管理页（v2.4.0 三区：平台权益目录 / 商家挂礼待审 / 托管中礼品单）</summary>
     public async Task<IActionResult> Index()
     {
+        var vm = new MallIndexVm();
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         try
@@ -40,7 +41,7 @@ public class MallController : Controller
                 using var doc = JsonDocument.Parse(body);
                 if (doc.RootElement.TryGetProperty("data", out var d))
                 {
-                    var items = d.EnumerateArray().Select(x => new MallItemRowVm
+                    vm.Items = d.EnumerateArray().Select(x => new MallItemRowVm
                     {
                         Id = x.GetProperty("id").GetGuid(),
                         Key = x.GetProperty("key").GetString() ?? "",
@@ -58,17 +59,132 @@ public class MallController : Controller
                         Enabled = x.GetProperty("enabled").GetBoolean(),
                         SortOrder = x.GetProperty("sortOrder").GetInt32()
                     }).ToList();
-                    return View(items);
                 }
             }
-            TempData["Error"] = $"商城目录加载失败: {resp.StatusCode}";
+            else TempData["Error"] = $"商城目录加载失败: {resp.StatusCode}";
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "商城目录拉取异常");
             TempData["Error"] = $"商城目录拉取失败: {ex.Message}";
         }
-        return View(new List<MallItemRowVm>());
+
+        // v2.4.0：待审挂礼队列（merchant.verify）+ 托管中礼品单（merchant.manage）
+        vm.Gifts = await GetArrayAsync(apiBase, client, "/api/admin/mall/gifts/pending", x => new GiftRowVm
+        {
+            Id = x.GetProperty("id").GetGuid(),
+            Name = x.GetProperty("name").GetString() ?? "",
+            Description = x.GetProperty("description").GetString() ?? "",
+            ImageKey = x.GetProperty("imageKey").GetString() ?? "",
+            Stock = x.GetProperty("stock").GetInt32(),
+            OwnerMerchantName = x.GetProperty("ownerMerchantName").GetString() ?? "",
+            CreatedAt = ParseUtc(x.GetProperty("createdAt").GetString()) ?? DateTime.MinValue
+        });
+        vm.Orders = await GetArrayAsync(apiBase, client, "/api/admin/mall/orders/escrow", x => new EscrowOrderRowVm
+        {
+            Id = x.GetProperty("id").GetGuid(),
+            ItemName = x.GetProperty("itemName").GetString() ?? "",
+            PointsSpent = x.GetProperty("pointsSpent").GetInt32(),
+            ShipStatus = x.GetProperty("shipStatus").GetInt32(),
+            ReceiverName = x.GetProperty("receiverName").GetString() ?? "",
+            ReceiverPhone = x.GetProperty("receiverPhone").GetString() ?? "",
+            CreatedAt = ParseUtc(x.GetProperty("createdAt").GetString()) ?? DateTime.MinValue
+        });
+        return View(vm);
+    }
+
+    /// <summary>拉取并映射 API 数组载荷（失败回空表，不阻断整页——各区独立降级）</summary>
+    private static async Task<List<T>> GetArrayAsync<T>(string apiBase, HttpClient client, string path, Func<JsonElement, T> map)
+    {
+        var list = new List<T>();
+        try
+        {
+            var resp = await client.GetAsync(apiBase + path);
+            if (resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("data", out var d))
+                    list.AddRange(d.EnumerateArray().Select(map));
+            }
+        }
+        catch
+        {
+            // 降级空表：礼品审核/订单区无数据时给空态提示即可
+        }
+        return list;
+    }
+
+    /// <summary>挂礼审核通过并定档（平台统一定价）</summary>
+    [HttpPost]
+    [PanelPermission("merchant.verify")]
+    public async Task<IActionResult> ApproveGift(Guid id, int pointPrice)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsJsonAsync($"{apiBase}/api/admin/mall/gifts/{id}/approve", new { pointPrice });
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+                ? "已通过并定档"
+                : $"审核失败: {(int)resp.StatusCode}（价格超封顶或状态不符）";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"审核失败: {ex.Message}";
+        }
+        return RedirectToAction("Index");
+    }
+
+    /// <summary>挂礼审核驳回（原因商户可见）</summary>
+    [HttpPost]
+    [PanelPermission("merchant.verify")]
+    public async Task<IActionResult> RejectGift(Guid id, string? reason)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsJsonAsync($"{apiBase}/api/admin/mall/gifts/{id}/reject", new { reason });
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+                ? "已驳回" : $"驳回失败: {(int)resp.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"驳回失败: {ex.Message}";
+        }
+        return RedirectToAction("Index");
+    }
+
+    /// <summary>托管礼品单争议退款（原路退分给买家）</summary>
+    [HttpPost]
+    [PanelPermission("merchant.manage")]
+    public async Task<IActionResult> RefundOrder(Guid id, string? reason)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsJsonAsync($"{apiBase}/api/admin/mall/orders/{id}/refund", new { reason });
+            // API 用 Problem/BadRequest 承载业务拒绝原因，透传给管理员
+            if (resp.IsSuccessStatusCode)
+            {
+                TempData["Success"] = "已退款";
+            }
+            else
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                var msg = body.Contains("\"detail\"")
+                    ? System.Text.Json.JsonDocument.Parse(body).RootElement.GetProperty("detail").GetString()
+                    : $"退款失败: {(int)resp.StatusCode}";
+                TempData["Error"] = msg;
+            }
+        }
+        catch (Exception ex)
+        {
+            TempData["Error"] = $"退款失败: {ex.Message}";
+        }
+        return RedirectToAction("Index");
     }
 
     /// <summary>编辑商品（价格/闪购窗口/库存/时长/上下架/文案/排序）</summary>
@@ -127,6 +243,43 @@ public class MallController : Controller
         DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var dt)
             ? dt
             : (DateTime?)null;
+}
+
+/// <summary>商城管理页视图模型（三区数据）</summary>
+public class MallIndexVm
+{
+    /// <summary>平台权益目录行</summary>
+    public List<MallItemRowVm> Items { get; set; } = new();
+
+    /// <summary>待审商家挂礼</summary>
+    public List<GiftRowVm> Gifts { get; set; } = new();
+
+    /// <summary>托管中礼品单（争议退款队列）</summary>
+    public List<EscrowOrderRowVm> Orders { get; set; } = new();
+}
+
+/// <summary>待审挂礼行</summary>
+public class GiftRowVm
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string ImageKey { get; set; } = "";
+    public int Stock { get; set; }
+    public string OwnerMerchantName { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>托管中礼品单行</summary>
+public class EscrowOrderRowVm
+{
+    public Guid Id { get; set; }
+    public string ItemName { get; set; } = "";
+    public int PointsSpent { get; set; }
+    public int ShipStatus { get; set; }
+    public string ReceiverName { get; set; } = "";
+    public string ReceiverPhone { get; set; } = "";
+    public DateTime CreatedAt { get; set; }
 }
 
 /// <summary>商城商品行视图模型</summary>

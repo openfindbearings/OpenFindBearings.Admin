@@ -1,0 +1,198 @@
+@model List<MallItemRowVm>
+@{
+    ViewData["Title"] = "商城管理";
+    // 改动说明（v2.3.0 商城虚拟权益）：商城目录管理页——价格/闪购窗口/库存/上下架实时生效（API 不缓存）。
+    // 时区规则：闪购窗口以 UTC 存储，展示与录入的本地化转换全部交给浏览器 JS
+    //   （data-utc 输出 ISO 串 → datetime-local 本地值；提交前本地 → UTC 隐藏域），服务端不做时区转换
+    string CategoryName(int c) => c switch { 1 => "置顶卡", 2 => "寻货次数包（预留）", 3 => "实物礼品（预留）", _ => "未知" };
+    string Iso(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>商城目录（@Model.Count 个）</span>
+        <span class="text-muted small">价格由平台统一定价；改价与闪购窗口保存后即时生效</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>商品键</th>
+                        <th>名称</th>
+                        <th class="d-none d-md-table-cell">类别</th>
+                        <th>常规价</th>
+                        <th class="d-none d-md-table-cell">闪购价</th>
+                        <th class="d-none d-md-table-cell">闪购窗口（本地时间）</th>
+                        <th class="d-none d-md-table-cell">时长</th>
+                        <th>库存</th>
+                        <th class="d-none d-md-table-cell">已售</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in Model.OrderBy(x => x.SortOrder).ThenBy(x => x.Key))
+                    {
+                        <tr>
+                            <td><code class="small">@m.Key</code></td>
+                            <td>@m.Name</td>
+                            <td class="d-none d-md-table-cell">@CategoryName(m.Category)</td>
+                            <td>@m.PointPrice</td>
+                            <td class="d-none d-md-table-cell">@(m.FlashPrice?.ToString() ?? "-")</td>
+                            <td class="d-none d-md-table-cell small">
+                                @if (m.FlashStart.HasValue && m.FlashEnd.HasValue)
+                                {
+                                    <span data-utc="@Iso(m.FlashStart)">-</span>
+                                    <span> ~ </span>
+                                    <span data-utc="@Iso(m.FlashEnd)">-</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">无</span>
+                                }
+                            </td>
+                            <td class="d-none d-md-table-cell">@(m.DurationHours.HasValue ? m.DurationHours + " 小时" : "-")</td>
+                            <td>@(m.Stock < 0 ? "不限" : m.Stock.ToString())</td>
+                            <td class="d-none d-md-table-cell">@m.SoldCount</td>
+                            <td>
+                                @if (m.Enabled) { <span class="badge bg-success">上架</span> }
+                                else { <span class="badge bg-secondary">停用</span> }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary btn-edit-item"
+                                        title="编辑"
+                                        data-id="@m.Id" data-name="@m.Name" data-desc="@m.Description"
+                                        data-icon="@m.Icon" data-price="@m.PointPrice"
+                                        data-flashprice="@(m.FlashPrice?.ToString() ?? "")"
+                                        data-flashstart="@Iso(m.FlashStart)" data-flashend="@Iso(m.FlashEnd)"
+                                        data-hours="@(m.DurationHours?.ToString() ?? "")"
+                                        data-stock="@m.Stock" data-sort="@m.SortOrder"
+                                        data-enabled="@m.Enabled.ToString().ToLower()">
+                                    <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑商品模态框 -->
+<div class="modal fade" id="editItemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" asp-action="Update" id="itemForm">
+                <input type="hidden" name="id" id="itId" />
+                <input type="hidden" name="flashStartUtc" id="itStartUtc" />
+                <input type="hidden" name="flashEndUtc" id="itEndUtc" />
+                <div class="modal-header">
+                    <h6 class="modal-title">编辑商品</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">名称</label>
+                            <input type="text" name="name" id="itName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">图标键</label>
+                            <input type="text" name="icon" id="itIcon" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">描述（用户可见权益说明）</label>
+                        <input type="text" name="description" id="itDesc" class="form-control" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">常规价（积分）</label>
+                            <input type="number" name="pointPrice" id="itPrice" class="form-control" min="0" required />
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">闪购价（留空=无闪购）</label>
+                            <input type="number" name="flashPrice" id="itFlashPrice" class="form-control" min="0" />
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">时长（小时）</label>
+                            <input type="number" name="durationHours" id="itHours" class="form-control" min="1" />
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">库存（-1=不限）</label>
+                            <input type="number" name="stock" id="itStock" class="form-control" min="-1" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-5 mb-2">
+                            <label class="form-label">闪购开始（本地时间）</label>
+                            <input type="datetime-local" id="itStartLocal" class="form-control" />
+                        </div>
+                        <div class="col-md-5 mb-2">
+                            <label class="form-label">闪购结束（本地时间）</label>
+                            <input type="datetime-local" id="itEndLocal" class="form-control" />
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">排序</label>
+                            <input type="number" name="sortOrder" id="itSort" class="form-control" min="0" />
+                        </div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="enabled" value="true" id="itEnabled" />
+                        <label class="form-check-label" for="itEnabled">上架（停用后商城不展示，历史订单不受影响）</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 闪购窗口的本地化转换全部在浏览器完成（服务端只存 UTC）
+    function utcToLocalInput(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+            'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+    function localInputToUtc(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        if (isNaN(d.getTime())) return '';
+        return d.toISOString();
+    }
+
+    document.querySelectorAll('.btn-edit-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('itId').value = btn.dataset.id;
+            document.getElementById('itName').value = btn.dataset.name || '';
+            document.getElementById('itDesc').value = btn.dataset.desc || '';
+            document.getElementById('itIcon').value = btn.dataset.icon || '';
+            document.getElementById('itPrice').value = btn.dataset.price || '0';
+            document.getElementById('itFlashPrice').value = btn.dataset.flashprice || '';
+            document.getElementById('itHours').value = btn.dataset.hours || '';
+            document.getElementById('itStock').value = btn.dataset.stock || '-1';
+            document.getElementById('itSort').value = btn.dataset.sort || '0';
+            document.getElementById('itEnabled').checked = btn.dataset.enabled === 'true';
+            document.getElementById('itStartLocal').value = utcToLocalInput(btn.dataset.flashstart);
+            document.getElementById('itEndLocal').value = utcToLocalInput(btn.dataset.flashend);
+            new bootstrap.Modal(document.getElementById('editItemModal')).show();
+        });
+    });
+
+    // 提交前把本地时间转回 UTC 隐藏域
+    document.getElementById('itemForm').addEventListener('submit', function () {
+        document.getElementById('itStartUtc').value = localInputToUtc(document.getElementById('itStartLocal').value);
+        document.getElementById('itEndUtc').value = localInputToUtc(document.getElementById('itEndLocal').value);
+    });
+</script>
+}

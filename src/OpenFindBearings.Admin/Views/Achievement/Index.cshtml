@@ -1,0 +1,138 @@
+@model List<AchievementRowVm>
+@{
+    ViewData["Title"] = "成就管理";
+    // 改动说明（v2.1.0 成就子系统）：成就目录管理页——列表按 范围/分类 分组，
+    // 编辑走单一模态框（JS 填充），启停即时生效（API 实时读，不发版）
+    string ScopeName(int s) => s == 1 ? "个人" : "商户";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>成就目录（@Model.Count 个）</span>
+        <span class="text-muted small">成就点为只加不花的荣誉分；可花甜头在解锁时一次性发放</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>成就键</th>
+                        <th>名称</th>
+                        <th class="d-none d-md-table-cell">范围</th>
+                        <th class="d-none d-md-table-cell">分类</th>
+                        <th class="d-none d-md-table-cell">指标</th>
+                        <th>目标</th>
+                        <th>成就点</th>
+                        <th>甜头</th>
+                        <th class="d-none d-md-table-cell">称号</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model.OrderBy(x => x.Scope).ThenBy(x => x.Category).ThenBy(x => x.Key))
+                    {
+                        <tr>
+                            <td><code class="small">@a.Key</code></td>
+                            <td>
+                                @a.Name
+                                @if (a.Rare) { <span class="badge bg-warning text-dark ms-1">稀有</span> }
+                                @if (a.Hidden) { <span class="badge bg-secondary ms-1">隐藏</span> }
+                            </td>
+                            <td class="d-none d-md-table-cell">@ScopeName(a.Scope)</td>
+                            <td class="d-none d-md-table-cell">@a.Category</td>
+                            <td class="d-none d-md-table-cell"><code class="small">@a.MetricKey</code></td>
+                            <td>@a.ProgressTarget</td>
+                            <td>@a.MetaPoints</td>
+                            <td>@a.RewardPoints</td>
+                            <td class="d-none d-md-table-cell">@(a.TitleReward ?? "-")</td>
+                            <td>
+                                @if (a.Enabled) { <span class="badge bg-success">启用</span> }
+                                else { <span class="badge bg-secondary">停用</span> }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary btn-edit-ach"
+                                        title="编辑"
+                                        data-id="@a.Id" data-name="@a.Name" data-desc="@a.Description"
+                                        data-target="@a.ProgressTarget" data-meta="@a.MetaPoints"
+                                        data-reward="@a.RewardPoints" data-title="@(a.TitleReward ?? "")"
+                                        data-enabled="@a.Enabled.ToString().ToLower()">
+                                    <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑成就模态框 -->
+<div class="modal fade" id="editAchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-action="Update">
+                <input type="hidden" name="id" id="achId" />
+                <div class="modal-header">
+                    <h6 class="modal-title">编辑成就</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">名称</label>
+                        <input type="text" name="name" id="achName" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">描述 / 如何获得</label>
+                        <input type="text" name="description" id="achDesc" class="form-control" />
+                    </div>
+                    <div class="row">
+                        <div class="col-4 mb-2">
+                            <label class="form-label">目标</label>
+                            <input type="number" name="progressTarget" id="achTarget" class="form-control" min="1" />
+                        </div>
+                        <div class="col-4 mb-2">
+                            <label class="form-label">成就点</label>
+                            <input type="number" name="metaPoints" id="achMeta" class="form-control" min="0" />
+                        </div>
+                        <div class="col-4 mb-2">
+                            <label class="form-label">可花甜头</label>
+                            <input type="number" name="rewardPoints" id="achReward" class="form-control" min="0" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">解锁称号（可空）</label>
+                        <input type="text" name="titleReward" id="achTitle" class="form-control" />
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="enabled" value="true" id="achEnabled" />
+                        <label class="form-check-label" for="achEnabled">启用（停用后成就墙隐藏）</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.btn-edit-ach').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('achId').value = btn.dataset.id;
+            document.getElementById('achName').value = btn.dataset.name || '';
+            document.getElementById('achDesc').value = btn.dataset.desc || '';
+            document.getElementById('achTarget').value = btn.dataset.target || '1';
+            document.getElementById('achMeta').value = btn.dataset.meta || '0';
+            document.getElementById('achReward').value = btn.dataset.reward || '0';
+            document.getElementById('achTitle').value = btn.dataset.title || '';
+            document.getElementById('achEnabled').checked = btn.dataset.enabled === 'true';
+            new bootstrap.Modal(document.getElementById('editAchModal')).show();
+        });
+    });
+</script>
+}

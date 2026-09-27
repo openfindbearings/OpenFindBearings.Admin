@@ -1,16 +1,37 @@
-@model List<MallItemRowVm>
+@model MallIndexVm
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "商城管理";
-    // 改动说明（v2.3.0 商城虚拟权益）：商城目录管理页——价格/闪购窗口/库存/上下架实时生效（API 不缓存）。
+    // 改动说明（v2.3.0 商城虚拟权益 / v2.4.0 工会经济）：商城管理页三区——
+    //   平台权益目录（价格/闪购/库存实时生效）、商家挂礼待审（审核定档=平台定价权）、
+    //   托管中礼品单（争议退款队列）。
     // 时区规则：闪购窗口以 UTC 存储，展示与录入的本地化转换全部交给浏览器 JS
     //   （data-utc 输出 ISO 串 → datetime-local 本地值；提交前本地 → UTC 隐藏域），服务端不做时区转换
-    string CategoryName(int c) => c switch { 1 => "置顶卡", 2 => "寻货次数包（预留）", 3 => "实物礼品（预留）", _ => "未知" };
+    string CategoryName(int c) => c switch { 1 => "置顶卡", 2 => "寻货次数包（预留）", 3 => "实物礼品", _ => "未知" };
     string Iso(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "";
+    var items = Model.Items;
+    var canVerify = PanelPerms.Has(User, "merchant.verify");
+    var canManage = PanelPerms.Has(User, "merchant.manage");
+    var canEdit = PanelPerms.Has(User, "system.manage");
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz/media").TrimEnd('/');
 }
 
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-items" type="button">平台权益（@items.Count）</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-gifts" type="button">挂礼待审（@Model.Gifts.Count）</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-orders" type="button">托管订单（@Model.Orders.Count）</button>
+    </li>
+</ul>
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="pane-items" role="tabpanel">
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>商城目录（@Model.Count 个）</span>
+        <span>平台权益目录（@items.Count 个）</span>
         <span class="text-muted small">价格由平台统一定价；改价与闪购窗口保存后即时生效</span>
     </div>
     <div class="card-body p-0">
@@ -32,7 +53,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var m in Model.OrderBy(x => x.SortOrder).ThenBy(x => x.Key))
+                    @foreach (var m in items.OrderBy(x => x.SortOrder).ThenBy(x => x.Key))
                     {
                         <tr>
                             <td><code class="small">@m.Key</code></td>
@@ -60,22 +81,123 @@
                                 else { <span class="badge bg-secondary">停用</span> }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary btn-edit-item"
-                                        title="编辑"
-                                        data-id="@m.Id" data-name="@m.Name" data-desc="@m.Description"
-                                        data-icon="@m.Icon" data-price="@m.PointPrice"
-                                        data-flashprice="@(m.FlashPrice?.ToString() ?? "")"
-                                        data-flashstart="@Iso(m.FlashStart)" data-flashend="@Iso(m.FlashEnd)"
-                                        data-hours="@(m.DurationHours?.ToString() ?? "")"
-                                        data-stock="@m.Stock" data-sort="@m.SortOrder"
-                                        data-enabled="@m.Enabled.ToString().ToLower()">
-                                    <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
-                                </button>
+                                @if (canEdit)
+                                {
+                                    <button class="btn btn-sm btn-outline-primary btn-edit-item"
+                                            title="编辑"
+                                            data-id="@m.Id" data-name="@m.Name" data-desc="@m.Description"
+                                            data-icon="@m.Icon" data-price="@m.PointPrice"
+                                            data-flashprice="@(m.FlashPrice?.ToString() ?? "")"
+                                            data-flashstart="@Iso(m.FlashStart)" data-flashend="@Iso(m.FlashEnd)"
+                                            data-hours="@(m.DurationHours?.ToString() ?? "")"
+                                            data-stock="@m.Stock" data-sort="@m.SortOrder"
+                                            data-enabled="@m.Enabled.ToString().ToLower()">
+                                        <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+    </div>
+    <div class="tab-pane" id="pane-gifts" role="tabpanel">
+        @if (!canVerify)
+        {
+            <div class="alert alert-secondary">需要"商家审核"权限（merchant.verify）才能处理挂礼审核</div>
+        }
+        <div class="card">
+            <div class="card-header">商家挂礼待审（@Model.Gifts.Count 件）<span class="text-muted small ms-2">通过后由平台定积分价（封顶价防定向转移），商家不可自定价</span></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead><tr><th>礼品</th><th class="d-none d-md-table-cell">描述</th><th>归属商家</th><th>数量</th><th class="d-none d-md-table-cell">提交时间</th><th>操作</th></tr></thead>
+                        <tbody>
+                            @foreach (var g in Model.Gifts)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (!string.IsNullOrEmpty(g.ImageKey))
+                                            {
+                                                <a href="@mediaBase@g.ImageKey" target="_blank" rel="noopener"><img src="@mediaBase@g.ImageKey" style="width:40px;height:40px;object-fit:contain;background:#fff;border-radius:6px" alt=""></a>
+                                            }
+                                            <span>@g.Name</span>
+                                        </div>
+                                    </td>
+                                    <td class="d-none d-md-table-cell small text-muted">@g.Description</td>
+                                    <td>@g.OwnerMerchantName</td>
+                                    <td>@g.Stock</td>
+                                    <td class="d-none d-md-table-cell"><span data-utc="@g.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")">-</span></td>
+                                    <td>
+                                        @if (canVerify)
+                                        {
+                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                <form method="post" asp-action="ApproveGift" class="d-flex align-items-center gap-1">
+                                                    <input type="hidden" name="id" value="@g.Id" />
+                                                    <input type="number" name="pointPrice" class="form-control form-control-sm" style="width:90px" min="1" max="3000" placeholder="定档价" required />
+                                                    <button type="submit" class="btn btn-sm btn-success">通过定档</button>
+                                                </form>
+                                                <form method="post" asp-action="RejectGift" class="d-inline">
+                                                    <input type="hidden" name="id" value="@g.Id" />
+                                                    <input type="hidden" name="reason" value="" class="reject-reason" />
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-reject-gift" data-name="@g.Name">驳回</button>
+                                                </form>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (Model.Gifts.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-3">暂无待审挂礼</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane" id="pane-orders" role="tabpanel">
+        <div class="card">
+            <div class="card-header">托管中礼品单（@Model.Orders.Count 单）<span class="text-muted small ms-2">买家已托管扣分、尚未确认收货；争议时原路退分（已结算单不可退，需金库侧人工处理）</span></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead><tr><th>礼品</th><th>托管积分</th><th>物流态</th><th>收货人</th><th class="d-none d-md-table-cell">兑换时间</th><th>操作</th></tr></thead>
+                        <tbody>
+                            @foreach (var o in Model.Orders)
+                            {
+                                <tr>
+                                    <td>@o.ItemName</td>
+                                    <td>@o.PointsSpent</td>
+                                    <td>@(o.ShipStatus == 1 ? Html.Raw("<span class='badge bg-warning text-dark'>待发货</span>") : Html.Raw("<span class='badge bg-info'>已发货</span>"))</td>
+                                    <td class="small">@o.ReceiverName @o.ReceiverPhone</td>
+                                    <td class="d-none d-md-table-cell"><span data-utc="@o.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")">-</span></td>
+                                    <td>
+                                        @if (canManage)
+                                        {
+                                            <form method="post" asp-action="RefundOrder" class="d-inline">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <input type="hidden" name="reason" value="" class="refund-reason" />
+                                                <button type="button" class="btn btn-sm btn-outline-danger btn-refund-order" data-name="@o.ItemName">争议退款</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            @if (Model.Orders.Count == 0)
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-3">没有托管中的礼品订单</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -193,6 +315,30 @@
     document.getElementById('itemForm').addEventListener('submit', function () {
         document.getElementById('itStartUtc').value = localInputToUtc(document.getElementById('itStartLocal').value);
         document.getElementById('itEndUtc').value = localInputToUtc(document.getElementById('itEndLocal').value);
+    });
+
+    // v2.4.0 挂礼驳回：showPrompt 填原因后提交（原因商户可见）
+    document.querySelectorAll('.btn-reject-gift').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            showPrompt({ title: '驳回「' + btn.dataset.name + '」', message: '填写驳回原因（商家可见，可修改后重新申请）', placeholder: '例如：图片不清晰 / 描述含联系方式 / 库存证明不足' }).then(function (reason) {
+                if (reason === null) return;
+                var form = btn.closest('form');
+                form.querySelector('.reject-reason').value = reason || '不符合平台挂礼要求';
+                form.submit();
+            });
+        });
+    });
+
+    // v2.4.0 托管订单争议退款：二次确认 + 原因
+    document.querySelectorAll('.btn-refund-order').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            showPrompt({ title: '争议退款「' + btn.dataset.name + '」', message: '填写退款原因（买家可见），确认后积分原路退回', placeholder: '例如：商家缺货协商退款 / 未按时发货' }).then(function (reason) {
+                if (reason === null) return;
+                var form = btn.closest('form');
+                form.querySelector('.refund-reason').value = reason || '平台争议处理退款';
+                form.submit();
+            });
+        });
     });
 </script>
 }

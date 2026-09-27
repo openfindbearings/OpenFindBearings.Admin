@@ -4,6 +4,8 @@
     var groupedItems = ViewBag.GroupedItems as IEnumerable<IGrouping<string, SystemConfigDto>>;
     // 积分赚分规则（v1.28.0 由独立"积分任务"页并入本页"积分任务"tab）
     var pointRules = ViewBag.PointRules as List<OpenFindBearings.Admin.Models.DTOs.PointRuleDto> ?? new();
+    // 商家集体任务定义（v2.6.0 M3 新增"商家任务"tab）
+    var merchantTasks = ViewBag.MerchantTasks as List<OpenFindBearings.Admin.Models.DTOs.MerchantTaskDto> ?? new();
 
     // 分组名映射为中文
     // 改动说明：v1.28.0 补 Business 组映射（BusinessClock 时区偏移种子落此组）；
@@ -61,6 +63,13 @@
         <button class="nav-link" id="tab-points-tab" data-bs-toggle="tab" data-bs-target="#tab-points"
                 type="button" role="tab" data-tabkey="points">
             <i class="fas fa-coins me-1"></i>积分任务
+        </button>
+    </li>
+    @* v2.6.0 M3：商家集体任务定义管理页签 *@
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-merchattasks-tab" data-bs-toggle="tab" data-bs-target="#tab-merchattasks"
+                type="button" role="tab" data-tabkey="merchattasks">
+            <i class="fas fa-users me-1"></i>商家任务
         </button>
     </li>
 </ul>
@@ -180,6 +189,144 @@
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     <small class="text-muted">每日上限=当日该动作累计发放封顶（0 不限）；连续阶梯为 JSON 数组按连续天数取档、超出取末档（仅签到类动作生效）；留空阶梯=固定分值。</small>
                     <button type="submit" class="btn btn-primary btn-sm" title="保存全部"><i class="fas fa-save me-1"></i><span class="d-none d-sm-inline">保存全部</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* v2.6.0 M3：商家集体任务定义（全商家成员共同推进的周期目标，达标即结算；TaskKey 锚定台账不可改） *@
+    <div class="tab-pane fade" id="tab-merchattasks" role="tabpanel" aria-labelledby="tab-merchattasks-tab">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-users me-1"></i> 商家集体任务</h6>
+                <small class="text-muted">达标即结算（Job 每小时扫描）；目标/奖励/启停修改后实时生效</small>
+            </div>
+            <form method="post" asp-controller="Points" asp-action="SaveMerchantTasks">
+                @Html.AntiForgeryToken()
+                <div class="card-body p-0">
+                    <div class="table-responsive"><table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>任务键</th>
+                                <th style="width:130px">任务名</th>
+                                <th style="width:150px">描述</th>
+                                <th style="width:130px">指标</th>
+                                <th style="width:90px">目标值</th>
+                                <th style="width:100px">周期</th>
+                                <th style="width:110px">奖励对象</th>
+                                <th style="width:90px">奖励分值</th>
+                                <th style="width:70px">排序</th>
+                                <th style="width:70px">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < merchantTasks.Count; i++)
+                            {
+                                var item = merchantTasks[i];
+                                <tr>
+                                    <input type="hidden" name="items[@i].Id" value="@item.Id" />
+                                    <td><code class="small">@item.TaskKey</code></td>
+                                    <td><input type="text" name="items[@i].Name" value="@item.Name" class="form-control form-control-sm" maxlength="64" /></td>
+                                    <td><input type="text" name="items[@i].Description" value="@item.Description" class="form-control form-control-sm" maxlength="256" /></td>
+                                    <td>
+                                        <select name="items[@i].MetricKey" class="form-select form-select-sm">
+                                            <option value="corrections" selected="@(item.MetricKey == "corrections")">成员纠错采纳</option>
+                                            <option value="treasury" selected="@(item.MetricKey == "treasury")">金库入账额</option>
+                                            <option value="products" selected="@(item.MetricKey == "products")">新上架商品数</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="items[@i].TargetValue" value="@item.TargetValue" min="1" class="form-control form-control-sm" style="width:80px" /></td>
+                                    <td>
+                                        <select name="items[@i].Period" class="form-select form-select-sm">
+                                            <option value="1" selected="@(item.Period == 1)">每自然周</option>
+                                            <option value="2" selected="@(item.Period == 2)">每自然月</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select name="items[@i].RewardType" class="form-select form-select-sm">
+                                            <option value="1" selected="@(item.RewardType == 1)">全体成员</option>
+                                            <option value="2" selected="@(item.RewardType == 2)">商家金库</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="items[@i].RewardAmount" value="@item.RewardAmount" min="1" class="form-control form-control-sm" style="width:80px" /></td>
+                                    <td><input type="number" name="items[@i].SortOrder" value="@item.SortOrder" class="form-control form-control-sm" style="width:60px" /></td>
+                                    <td>
+                                        <input type="hidden" name="items[@i].Enabled" value="false" />
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" name="items[@i].Enabled" value="true" class="form-check-input" @(item.Enabled ? "checked" : "") />
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table></div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted">指标口径：成员纠错采纳=周期内在职成员 correction_adopted 流水条数；金库入账额=周期内金库全部入账；新上架商品数=周期内新建商品关联（含待审核）。@if (merchantTasks.Count == 0) { <span class="text-danger">当前无任务定义。</span> }</small>
+                    @if (merchantTasks.Count > 0)
+                    {
+                        <button type="submit" class="btn btn-primary btn-sm" title="保存全部"><i class="fas fa-save me-1"></i><span class="d-none d-sm-inline">保存全部</span></button>
+                    }
+                </div>
+            </form>
+        </div>
+        @* 新建任务表单（TaskKey 全局唯一、创建后不可变） *@
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-plus me-1"></i> 新建任务</h6></div>
+            <form method="post" asp-controller="Points" asp-action="CreateMerchantTask">
+                @Html.AntiForgeryToken()
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            <label class="form-label small">任务键（唯一，如 merchant_xxx_week）</label>
+                            <input type="text" name="TaskKey" class="form-control form-control-sm" maxlength="64" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">任务名</label>
+                            <input type="text" name="Name" class="form-control form-control-sm" maxlength="64" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">描述</label>
+                            <input type="text" name="Description" class="form-control form-control-sm" maxlength="256" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">指标</label>
+                            <select name="MetricKey" class="form-select form-select-sm">
+                                <option value="corrections">成员纠错采纳</option>
+                                <option value="treasury">金库入账额</option>
+                                <option value="products">新上架商品数</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">目标值</label>
+                            <input type="number" name="TargetValue" value="5" min="1" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">周期</label>
+                            <select name="Period" class="form-select form-select-sm">
+                                <option value="1">周</option>
+                                <option value="2">月</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">奖励对象</label>
+                            <select name="RewardType" class="form-select form-select-sm">
+                                <option value="1">成员</option>
+                                <option value="2">金库</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">奖励分值</label>
+                            <input type="number" name="RewardAmount" value="20" min="1" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small">排序</label>
+                            <input type="number" name="SortOrder" value="10" class="form-control form-control-sm" />
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>创建任务</button>
                 </div>
             </form>
         </div>

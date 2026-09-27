@@ -72,4 +72,133 @@ public class PointsController : Controller
         /// <summary>是否启用</summary>
         public bool IsEnabled { get; set; }
     }
+
+    /// <summary>
+    /// 批量保存商家集体任务定义（v2.6.0 M3：逐条代理 API PUT /api/admin/points/merchant-tasks/{id}；
+    /// TaskKey 不在提交字段内——锚定台账不可变）
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveMerchantTasks(List<MerchantTaskSave> items)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        var failed = 0;
+        try
+        {
+            foreach (var item in items)
+            {
+                var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/points/merchant-tasks/{item.Id}",
+                    new
+                    {
+                        name = item.Name,
+                        description = item.Description ?? "",
+                        metricKey = item.MetricKey,
+                        targetValue = item.TargetValue,
+                        period = item.Period,
+                        rewardType = item.RewardType,
+                        rewardAmount = item.RewardAmount,
+                        enabled = item.Enabled,
+                        sortOrder = item.SortOrder
+                    });
+                if (!resp.IsSuccessStatusCode) failed++;
+            }
+            TempData[failed == 0 ? "Success" : "Error"] =
+                failed == 0 ? "任务已保存，实时生效" : $"{failed} 条任务保存失败";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "保存商家集体任务失败");
+            TempData["Error"] = $"保存失败: {ex.Message}";
+        }
+        return RedirectToAction("Index", "Config", new { tab = "merchattasks" });
+    }
+
+    /// <summary>
+    /// 新建商家集体任务（v2.6.0 M3：代理 API POST /api/admin/points/merchant-tasks；TaskKey 唯一性由 API 校验）
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateMerchantTask(MerchantTaskCreate form)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsJsonAsync($"{apiBase}/api/admin/points/merchant-tasks",
+                new
+                {
+                    taskKey = form.TaskKey?.Trim(),
+                    name = form.Name?.Trim(),
+                    description = form.Description?.Trim() ?? "",
+                    metricKey = form.MetricKey,
+                    targetValue = form.TargetValue,
+                    period = form.Period,
+                    rewardType = form.RewardType,
+                    rewardAmount = form.RewardAmount,
+                    sortOrder = form.SortOrder
+                });
+            TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+                ? "任务已创建"
+                : $"创建失败: {resp.StatusCode}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "新建商家集体任务失败");
+            TempData["Error"] = $"创建失败: {ex.Message}";
+        }
+        return RedirectToAction("Index", "Config", new { tab = "merchattasks" });
+    }
+
+    /// <summary>
+    /// 任务保存表单行（Razor items[i].Xxx 绑定；TaskKey 只读展示不提交）
+    /// </summary>
+    public class MerchantTaskSave
+    {
+        /// <summary>任务 ID</summary>
+        public Guid Id { get; set; }
+        /// <summary>任务名</summary>
+        public string? Name { get; set; }
+        /// <summary>任务描述</summary>
+        public string? Description { get; set; }
+        /// <summary>指标键（corrections/treasury/products）</summary>
+        public string? MetricKey { get; set; }
+        /// <summary>达标目标值</summary>
+        public int TargetValue { get; set; }
+        /// <summary>周期（1 周 / 2 月）</summary>
+        public int Period { get; set; }
+        /// <summary>奖励对象（1 成员 / 2 金库）</summary>
+        public int RewardType { get; set; }
+        /// <summary>奖励分值</summary>
+        public int RewardAmount { get; set; }
+        /// <summary>是否启用</summary>
+        public bool Enabled { get; set; }
+        /// <summary>排序权重</summary>
+        public int SortOrder { get; set; }
+    }
+
+    /// <summary>
+    /// 任务新建表单（单条提交，字段与批量保存行一致外加 TaskKey）
+    /// </summary>
+    public class MerchantTaskCreate
+    {
+        /// <summary>任务键（全局唯一，创建后不可变）</summary>
+        public string? TaskKey { get; set; }
+        /// <summary>任务名</summary>
+        public string? Name { get; set; }
+        /// <summary>任务描述</summary>
+        public string? Description { get; set; }
+        /// <summary>指标键</summary>
+        public string? MetricKey { get; set; }
+        /// <summary>达标目标值</summary>
+        public int TargetValue { get; set; }
+        /// <summary>周期</summary>
+        public int Period { get; set; } = 1;
+        /// <summary>奖励对象</summary>
+        public int RewardType { get; set; } = 1;
+        /// <summary>奖励分值</summary>
+        public int RewardAmount { get; set; }
+        /// <summary>排序权重</summary>
+        public int SortOrder { get; set; }
+    }
 }

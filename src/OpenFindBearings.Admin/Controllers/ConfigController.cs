@@ -27,13 +27,15 @@ public class ConfigController : Controller
 
     /// <summary>
     /// 配置列表页，按 Group 分组以 tab 页签展示（v1.28.0：末位 tab 为积分赚分规则，
-    /// 原独立"积分任务"页并入；规则拉取失败不阻塞配置 tab，单独提示）
+    /// 原独立"积分任务"页并入；规则拉取失败不阻塞配置 tab，单独提示；
+    /// v2.6.0 M3 追加"商家任务"tab——集体任务定义管理）
     /// </summary>
     public async Task<IActionResult> Index()
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         await LoadPointRulesAsync(client, apiBase);
+        await LoadMerchantTasksAsync(client, apiBase);
         try
         {
             var resp = await client.GetAsync($"{apiBase}/api/admin/config");
@@ -96,6 +98,35 @@ public class ConfigController : Controller
             _logger.LogWarning(ex, "获取积分规则失败");
         }
         ViewBag.PointRules = new List<PointRuleDto>();
+    }
+
+    /// <summary>
+    /// 拉取商家集体任务定义供"商家任务"tab 渲染（v2.6.0 M3；失败不阻塞其他 tab）
+    /// </summary>
+    private async Task LoadMerchantTasksAsync(HttpClient client, string apiBase)
+    {
+        try
+        {
+            var resp = await client.GetAsync($"{apiBase}/api/admin/points/merchant-tasks");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                {
+                    ViewBag.MerchantTasks = JsonSerializer.Deserialize<List<MerchantTaskDto>>(data.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    return;
+                }
+            }
+            _logger.LogWarning("获取商家集体任务返回非成功状态: {StatusCode}", (int)resp.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            // 任务定义拉取失败仅影响商家任务 tab，不阻塞配置管理主功能
+            _logger.LogWarning(ex, "获取商家集体任务失败");
+        }
+        ViewBag.MerchantTasks = new List<MerchantTaskDto>();
     }
 
     /// <summary>

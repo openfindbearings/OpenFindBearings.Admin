@@ -51,6 +51,7 @@ public class AchievementController : Controller
                         MetaPoints = x.GetProperty("metaPoints").GetInt32(),
                         RewardPoints = x.GetProperty("rewardPoints").GetInt32(),
                         TitleReward = x.TryGetProperty("titleReward", out var tr) && tr.ValueKind == JsonValueKind.String ? tr.GetString() : null,
+                        ImageKey = x.TryGetProperty("imageKey", out var ik) && ik.ValueKind == JsonValueKind.String ? ik.GetString() : null,
                         Rare = x.GetProperty("rare").GetBoolean(),
                         Hidden = x.GetProperty("hidden").GetBoolean(),
                         Enabled = x.GetProperty("enabled").GetBoolean()
@@ -68,17 +69,17 @@ public class AchievementController : Controller
         return View(new List<AchievementRowVm>());
     }
 
-    /// <summary>编辑成就（分值/阈值/称号/启停）</summary>
+    /// <summary>编辑成就（分值/阈值/称号/启停/勋章图键）</summary>
     [HttpPost]
     [PanelPermission("system.manage")]
     public async Task<IActionResult> Update(Guid id, string name, string description, int progressTarget,
-        int metaPoints, int rewardPoints, string? titleReward, bool enabled)
+        int metaPoints, int rewardPoints, string? titleReward, bool enabled, string? imageKey)
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var payload = new { name, description, progressTarget, metaPoints, rewardPoints, titleReward, enabled };
+            var payload = new { name, description, progressTarget, metaPoints, rewardPoints, titleReward, enabled, imageKey };
             var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/achievements/{id}", payload);
             TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] =
                 resp.IsSuccessStatusCode ? "成就已更新" : $"更新失败: {resp.StatusCode}";
@@ -105,6 +106,7 @@ public class AchievementRowVm
     public int MetaPoints { get; set; }
     public int RewardPoints { get; set; }
     public string? TitleReward { get; set; }
+    public string? ImageKey { get; set; }
     public bool Rare { get; set; }
     public bool Hidden { get; set; }
     public bool Enabled { get; set; }

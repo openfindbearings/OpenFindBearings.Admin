@@ -154,6 +154,21 @@
                     </ul>
                 </li>
                 }
+                @if (HasPerm("system.view"))
+                {
+                @* 改动说明（v2.6.0 菜单次序）：勋章管理/商城管理提到审计日志前，
+                   审计日志与系统配置恒居末尾（业务功能优先、审计与配置殿后） *@
+                <li>
+                    <a asp-controller="Achievement" asp-action="Index" class="nav-link" data-page="achievement">
+                        <i class="fas fa-trophy"></i><span>勋章管理</span>
+                    </a>
+                </li>
+                <li>
+                    <a asp-controller="Mall" asp-action="Index" class="nav-link" data-page="mall">
+                        <i class="fas fa-store"></i><span>商城管理</span>
+                    </a>
+                </li>
+                }
                 @if (HasPerm("audit.view"))
                 {
                 <li class="has-sub">
@@ -172,16 +187,6 @@
                 <li>
                     <a asp-controller="Config" asp-action="Index" class="nav-link" data-page="config">
                         <i class="fas fa-cog"></i><span>系统配置</span>
-                    </a>
-                </li>
-                <li>
-                    <a asp-controller="Achievement" asp-action="Index" class="nav-link" data-page="achievement">
-                        <i class="fas fa-trophy"></i><span>勋章管理</span>
-                    </a>
-                </li>
-                <li>
-                    <a asp-controller="Mall" asp-action="Index" class="nav-link" data-page="mall">
-                        <i class="fas fa-store"></i><span>商城管理</span>
                     </a>
                 </li>
                 }

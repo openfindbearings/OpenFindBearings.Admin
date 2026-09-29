@@ -15,6 +15,9 @@
     var permSet = User.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToHashSet();
     bool HasPerm(params string[] perms) =>
         User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
+    // 改动说明（v1.34.0 open-core 门控）：Features:SyncIntegration=false（公开版无 Sync 数据管线部署）时，
+    //   隐藏"同步数据审核 / ETL 同步 / 数据爬虫"三个 Sync 依赖菜单；对应控制器 action 同步 404，双侧收口
+    var syncOn = Config.GetValue("Features:SyncIntegration", true);
 }
 <!DOCTYPE html>
 <html lang="zh-CN" data-bs-theme="light">
@@ -76,10 +79,13 @@
                         {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
                         }
+                        @if (syncOn)
+                        {
                         <li class="sub-header">库存管理</li>
                         @if (HasPerm("merchant.import"))
                         {
                         <li><a asp-controller="Data" asp-action="ImportInventory" class="nav-link" data-page="data-import-inventory"><i class="fas fa-circle"></i><span>库存导入</span></a></li>
+                        }
                         }
                         @if (HasPerm("mapping.view"))
                         {
@@ -90,14 +96,14 @@
                     </ul>
                 </li>
                 }
-                @if (HasPerm("review.sync", "correction.review", "merchant.verify", "sourcing.view"))
+                @if ((syncOn && HasPerm("review.sync")) || HasPerm("correction.review", "merchant.verify", "sourcing.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-review">
                         <i class="fas fa-check-double"></i><span>审核管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-review">
-                        @if (HasPerm("review.sync"))
+                        @if (syncOn && HasPerm("review.sync"))
                         {
                         <li><a asp-controller="Review" asp-action="Index" class="nav-link" data-page="review"><i class="fas fa-circle"></i><span>同步数据审核</span></a></li>
                         }
@@ -136,14 +142,14 @@
                     </ul>
                 </li>
                 }
-                @if (HasPerm("sync.run"))
+                @if (syncOn && HasPerm("sync.run"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-task">
                         <i class="fas fa-tasks"></i><span>任务管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-task">
-                        @if (HasPerm("sync.run"))
+                        @if (syncOn && HasPerm("sync.run"))
                         {
                         <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>ETL 同步</span></a></li>
                         }

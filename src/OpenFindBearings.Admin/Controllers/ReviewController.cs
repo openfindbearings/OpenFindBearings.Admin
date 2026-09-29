@@ -2,6 +2,7 @@ using OpenFindBearings.Admin.Authorization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using OpenFindBearings.Admin.Models.ViewModels;
 
 namespace OpenFindBearings.Admin.Controllers;
@@ -13,6 +14,20 @@ public class ReviewController : Controller
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
     private readonly ILogger<ReviewController> _logger;
+
+    /// <summary>
+    /// open-core 门控（v1.34.0）：Sync 集成关闭时整控制器 404（同步数据审核依赖 Sync 队列），
+    /// 与 _Layout 菜单隐藏同口径
+    /// </summary>
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!_config.GetValue("Features:SyncIntegration", true))
+        {
+            context.Result = NotFound();
+            return;
+        }
+        base.OnActionExecuting(context);
+    }
 
     public ReviewController(IHttpClientFactory factory, IConfiguration config, ILogger<ReviewController> logger)
     {

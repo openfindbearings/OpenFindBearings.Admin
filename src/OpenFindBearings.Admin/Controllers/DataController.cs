@@ -491,10 +491,17 @@ public class DataController : Controller
     #region 库存导入
 
     /// <summary>
+    /// open-core 门控（v1.34.0）：库存导入的三个动作都直连 Sync（模板/上传/结果），
+    /// Sync 集成关闭时 404，与 _Layout 菜单隐藏同口径
+    /// </summary>
+    private bool SyncIntegrationEnabled => _config.GetValue("Features:SyncIntegration", true);
+
+    /// <summary>
     /// 库存导入页面
     /// </summary>
     public async Task<IActionResult> ImportInventory(Guid? selectedMerchantId = null)
     {
+        if (!SyncIntegrationEnabled) return NotFound();
         var apiClient = _factory.CreateClient("ApiClient");
         var apiBase = ApiBase();
         var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
@@ -527,6 +534,7 @@ public class DataController : Controller
     [HttpGet]
     public async Task<IActionResult> DownloadInventoryTemplate()
     {
+        if (!SyncIntegrationEnabled) return NotFound();
         var syncClient = _factory.CreateClient("SyncClient");
         var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
 
@@ -553,6 +561,7 @@ public class DataController : Controller
     [HttpPost]
     public async Task<IActionResult> ImportInventory(Guid merchantId, IFormFile? file)
     {
+        if (!SyncIntegrationEnabled) return NotFound();
         var syncClient = _factory.CreateClient("SyncClient");
         var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
 

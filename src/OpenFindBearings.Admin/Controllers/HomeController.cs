@@ -37,6 +37,11 @@ public class HomeController : Controller
     [Authorize]
     public async Task<IActionResult> DataSources()
     {
+        // 改动说明（v1.34.0 open-core 门控）：旧实现把"Sync 不可达"catch 成空数组，前端误显示
+        //   "暂无数据源"。现三态区分：门控关闭=503 sync_disabled；网络失败/非2xx=502 sync_unreachable；
+        //   成功=透传数据数组（真空列表也如实为空）
+        if (!SyncIntegrationEnabled)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "sync_disabled" });
         var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
         var client = _factory.CreateClient("SyncClient");
         try
@@ -50,13 +55,22 @@ public class HomeController : Controller
             }
         }
         catch { }
-        return Json(Array.Empty<object>());
+        return StatusCode(StatusCodes.Status502BadGateway, new { error = "sync_unreachable" });
     }
+
+    /// <summary>
+    /// Sync 集成功能开关（open-core 门控）：false=部署未含 FindBearings.Sync 数据管线，
+    /// 相关菜单/页面/接口整体关闭；默认 true 保持内部版行为不变
+    /// </summary>
+    private bool SyncIntegrationEnabled =>
+        _config.GetValue("Features:SyncIntegration", true);
 
     [Authorize]
     [PanelPermission("sync.run")]  // 改动说明（v1.30.0）：爬虫触发页由借用的 dashboard.view 改独立 sync.run
     public IActionResult Crawler()
     {
+        // 改动说明（v1.34.0）：门控关闭时直接 404，防止绕过菜单直达 URL
+        if (!SyncIntegrationEnabled) return NotFound();
         return View("~/Views/Crawler/Index.cshtml");
     }
 

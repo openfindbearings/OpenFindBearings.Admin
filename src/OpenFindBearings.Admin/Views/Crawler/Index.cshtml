@@ -117,12 +117,23 @@
     }
 
     // 加载数据源列表（从 Sync /api/datasources）
+    // 改动说明（v1.34.0 open-core 门控）：后端已三态化（成功=数组 / sync_unreachable=502 / sync_disabled=503），
+    //   Sync 宕机不再被伪装成"暂无数据源"空态，给出故障提示与重试入口
     function loadDataSourceList() {
         fetch('/Home/DataSources')
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return r.json().catch(function () { return null; }); })
             .then(function (data) {
-                var rows = data && data.length ? data : [];
                 var tbody = document.getElementById('crawlerTableBody');
+                if (data && data.error === 'sync_disabled') {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">本部署未启用 Sync 集成，相关功能不可用</td></tr>';
+                    return;
+                }
+                if (data && data.error === 'sync_unreachable') {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><span class="text-danger">Sync 服务不可用</span>'
+                        + ' <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="loadDataSourceList()">重试</button></td></tr>';
+                    return;
+                }
+                var rows = data && data.length ? data : [];
                 if (rows.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">暂未接入爬虫数据源</td></tr>';
                     return;

@@ -172,7 +172,9 @@
                                         <button class="btn btn-sm btn-outline-info" title="解锁"><i class="fas fa-lock-open"></i><span class="d-none d-sm-inline">解锁</span></button>
                                     </form>
                                     }
-                                    @if (PanelPerms.Has(User, "user.ban"))
+                                    @* 改动说明（前端用户免重置）：纯前端用户（utype=app）无密码可言——验证码登录
+                                       永久可用、密码在 app 内自助设置，重置成公共初始密码反而开后门，按钮不渲染 *@
+                                    @if (utype != "app" && PanelPerms.Has(User, "user.ban"))
                                     {
                                     <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#resetPwdModal" data-id="@item.Id" data-name="@item.UserName" title="重置密码"><i class="fas fa-key"></i><span class="d-none d-sm-inline">重置密码</span></button>
                                     }

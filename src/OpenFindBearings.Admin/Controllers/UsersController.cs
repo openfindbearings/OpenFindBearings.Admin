@@ -269,6 +269,35 @@ public class UsersController : Controller
     [PanelPermission("user.ban")]
     public async Task<IActionResult> ResetPassword(string id, string? tab, string? status)
     {
+        // 改动说明（前端用户免重置守卫）：纯前端用户（挂 Individual 且无后台角色）没有密码——
+        // 验证码登录永久可用、密码可在 app 内自助设置；重置为公共已知的系统初始密码反而给
+        // 账号装上"人尽皆知"的密码开后门。视图层已隐藏按钮，此处服务端再挡一层防绕过 UI 直发。
+        // 角色查询按既有模式降级不阻塞主流程（404=未 JIT 建档必无 Individual，正常放行）
+        try
+        {
+            var guardApiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var guardClient = _factory.CreateClient("ApiClient");
+            var rolesResp = await guardClient.GetAsync($"{guardApiBase}/api/admin/users/by-auth/{id}/roles");
+            if (rolesResp.IsSuccessStatusCode)
+            {
+                var rolesJson = await rolesResp.Content.ReadAsStringAsync();
+                using var rolesDoc = System.Text.Json.JsonDocument.Parse(rolesJson);
+                var targetRoles = new List<string>();
+                if (rolesDoc.RootElement.TryGetProperty("data", out var rd) && rd.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    targetRoles = rd.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
+                var panelRoles = new[] { "Admin", "Operator", "Auditor" };
+                if (targetRoles.Contains("Individual") && !targetRoles.Any(r => panelRoles.Contains(r)))
+                {
+                    TempData["Error"] = "前端用户无密码，无需重置（可验证码登录，密码可在 app 内自助设置）";
+                    return RedirectToAction("Index", new { tab, status });
+                }
+            }
+        }
+        catch
+        {
+            // 守卫查询异常不阻塞重置主流程
+        }
+
         var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
         var client = _factory.CreateClient("IdentityClient");
         try

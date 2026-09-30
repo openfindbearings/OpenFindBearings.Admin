@@ -376,10 +376,12 @@
                 const held = new Set(d.roles || []);
                 // 改动说明（v1.30.0）：复选可并存（如 注册用户+操作员=app身份+后台职责）；
                 // 目录恢复 Individual 供转正/降职；"无"为特殊项——勾上即卸任所有角色
+                // 改动说明（页签失效修复）：内置徽章 false 分支原写作 ': ') 缺收尾引号，
+                // 字符串吞掉后续代码致整个 Scripts 区语法错误、本页监听全部未绑定，已补回 ''
                 const item = (name, label, desc, isChecked, sys) =>
                     '<label class="list-group-item d-flex align-items-center gap-2">' +
                     '<input type="checkbox" class="form-check-input pr-role" value="' + name + '"' + (isChecked ? ' checked' : '') + ' />' +
-                    '<span>' + label + (sys ? ' <span class="badge bg-secondary ms-1">内置</span>' : ') + (desc ? ' <span class="text-muted small">' + desc + '</span>' : '') + '</span></label>';
+                    '<span>' + label + (sys ? ' <span class="badge bg-secondary ms-1">内置</span>' : '') + (desc ? ' <span class="text-muted small">' + desc + '</span>' : '') + '</span></label>';
                 document.getElementById('prList').innerHTML = (d.catalog || []).map(r =>
                     item(r.name, (r.displayName || r.name) + (r.displayName && r.displayName !== r.name ? ' <span class="text-muted small">' + r.name + '</span>' : ''), r.description, held.has(r.name), r.isSystemRole)
                 ).join('') + item('', '无（卸任所有角色）', '', held.size === 0) || '<div class="text-muted small">无可用角色</div>';

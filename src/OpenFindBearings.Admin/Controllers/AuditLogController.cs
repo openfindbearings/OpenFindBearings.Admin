@@ -22,6 +22,13 @@ public class AuditLogController : Controller
 
     public async Task<IActionResult> Index(string source = "identity", int page = 1, int pageSize = 30)
     {
+        // 改动说明（open-core 门控）：sync 审计源依赖 Sync 服务，Features:SyncIntegration=false（开源版）时返回 404；
+        //   identity/api 源不受影响，照常可查
+        if (source == "sync" && !_config.GetValue("Features:SyncIntegration", false))
+        {
+            return NotFound();
+        }
+
         ViewBag.Source = source;
         ViewBag.Page = page;
         ViewBag.PageSize = pageSize;

@@ -21,7 +21,7 @@ public class ReviewController : Controller
     /// </summary>
     public override void OnActionExecuting(ActionExecutingContext context)
     {
-        if (!_config.GetValue("Features:SyncIntegration", true))
+        if (!_config.GetValue("Features:SyncIntegration", false))
         {
             context.Result = NotFound();
             return;

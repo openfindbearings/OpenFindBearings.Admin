@@ -63,7 +63,7 @@ public class HomeController : Controller
     /// 相关菜单/页面/接口整体关闭；默认 true 保持内部版行为不变
     /// </summary>
     private bool SyncIntegrationEnabled =>
-        _config.GetValue("Features:SyncIntegration", true);
+        _config.GetValue("Features:SyncIntegration", false);
 
     [Authorize]
     [PanelPermission("sync.run")]  // 改动说明（v1.30.0）：爬虫触发页由借用的 dashboard.view 改独立 sync.run

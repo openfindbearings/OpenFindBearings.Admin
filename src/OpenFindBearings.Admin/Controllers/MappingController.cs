@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Controllers;
@@ -20,6 +21,20 @@ public class MappingController : Controller
         _factory = factory;
         _config = config;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// open-core 门控：Features:SyncIntegration=false（开源版无 Sync 数据管线部署）时，
+    /// 映射维护依赖 Sync 配置接口，整控制器 404，与 _Layout 菜单隐藏同口径
+    /// </summary>
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!_config.GetValue("Features:SyncIntegration", false))
+        {
+            context.Result = NotFound();
+            return;
+        }
+        base.OnActionExecuting(context);
     }
 
     private string SyncBase => _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";

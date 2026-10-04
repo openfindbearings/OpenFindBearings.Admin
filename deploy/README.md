@@ -1,9 +1,17 @@
-# deploy
+# deploy（OpenFindBearings.Admin 部署模板）
 
-本服务的集群部署清单统一收拢在私有仓库 **FindBearings.Infra**：
+本目录是 Admin 的 K8s 部署清单模板，供自部署使用。部署时请将占位符替换为真实域名。
 
-- K3s 清单：`apps/<服务名>/`
-- 密钥模板：`secrets/templates/`（真实值在 `secrets/real/`，不入库）
-- 部署手册：`runbooks/`
+## 步骤
 
-本仓库只保留代码、Dockerfile 与镜像构建/推送 CI（`.github/workflows/deploy.yml` 经 `kubectl set image` 滚动更新，不读本目录清单）。
+1. **创建 Secret**：`secrets/admin-secret-template.yml` 填真实值（连接串、Identity ClientSecret）后 apply
+2. **替换占位符**：`<your-admin-domain>` → 你的管理后台域名（ingress.yaml，TLS 由 cert-manager 自动签发）
+3. **依赖**：Identity（OAuth 登录）、API（业务代理）；镜像 `ghcr.io/openfindbearings/openfindbearings-admin`（公开）
+
+## apply
+
+```
+secrets/admin-secret-template.yml → deployment.yaml → ingress.yaml
+```
+
+> 完整运维清单（真实域名/密钥）在私有运维库，本目录只提供模板，占位符请在部署时替换为真实值。

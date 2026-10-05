@@ -6,7 +6,7 @@
     // 编辑走单一模态框（JS 填充），启停即时生效（API 实时读，不发版）
     // 改动说明（v2.6.0）：新增勋章图列与模态内"上传/替换图片"（走 /api/proxy/achievements/{id}/image 代理上传）
     string ScopeName(int s) => s == 1 ? "个人" : "商户";
-    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz").TrimEnd('/');
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://<your-bff-domain>").TrimEnd('/');
 }
 
 <div class="card">

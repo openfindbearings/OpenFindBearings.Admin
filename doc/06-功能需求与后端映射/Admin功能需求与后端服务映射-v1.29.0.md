@@ -25,7 +25,7 @@
 
 ### v1.21.0 → v1.21.1 更新内容
 
-1. **材料图片基址修复（真机验证暴露）**：新增配置 `Media:PublicBaseUrl`（默认 `https://bff.515813.xyz/media`，K8s env 可覆盖）。证照材料队列"查看原件"与入驻抽屉 `DOC_BASE`/`dLogo` 原拼 `ApiUrls:OpenFindBearingsApi`（K8s 内为集群内 svc 地址，浏览器不可达 → 图片 404 且 onerror 隐藏后卡片呈"不可点"），统一改公网媒体基址。
+1. **材料图片基址修复（真机验证暴露）**：新增配置 `Media:PublicBaseUrl`（默认 `https://<your-bff-domain>/media`，K8s env 可覆盖）。证照材料队列"查看原件"与入驻抽屉 `DOC_BASE`/`dLogo` 原拼 `ApiUrls:OpenFindBearingsApi`（K8s 内为集群内 svc 地址，浏览器不可达 → 图片 404 且 onerror 隐藏后卡片呈"不可点"），统一改公网媒体基址。
 2. **抽屉材料卡重构**：缩略图主导（110px cover 裁切）、PDF 显文件图标、点缩略图弹 **lightbox** 大图；加载失败显示占位文案不再隐身。lightbox 为**自绘全屏遮罩**（非 BS modal——modal 与 offcanvas 各有焦点陷阱，抽屉上叠加时互相抢焦点导致 `data-bs-dismiss` 失灵关不掉）；点空白/✕/ESC 关闭，PDF 用 iframe 内嵌预览。
 3. **抽屉状态/渠道映射大小写归一**：API 输出 status 为 PascalCase、applicationMode 为小写，原查表只匹配一种形态导致"状态 -"；归一后查表修复。**商家类型中文化**：列表与抽屉的类型列/行由英文枚举名改显中文（Manufacturer 生产厂家 / AuthorizedDealer 授权经销商 / Distributor 分销商 / Trader 贸易商）。
 4. **队列数据完整性（对齐 API v1.5.1）**：商家列/提交人列正常显示（API `GetPendingAsync` 补 Include）；入驻审核中商户的随单材料不再混入变更队列（队列与仪表盘角标同口径排除），双入口重复审核问题消除。

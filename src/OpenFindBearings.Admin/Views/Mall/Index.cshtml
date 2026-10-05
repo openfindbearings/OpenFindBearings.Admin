@@ -13,7 +13,7 @@
     var canVerify = PanelPerms.Has(User, "merchant.verify");
     var canManage = PanelPerms.Has(User, "merchant.manage");
     var canEdit = PanelPerms.Has(User, "system.manage");
-    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://bff.515813.xyz/media").TrimEnd('/');
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://<your-bff-domain>/media").TrimEnd('/');
 }
 
 <ul class="nav nav-tabs mb-3" role="tablist">

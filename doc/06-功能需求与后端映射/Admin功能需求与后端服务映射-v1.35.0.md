@@ -6,16 +6,16 @@
 
 ## 变更日志
 
-### v1.34.0 → v1.35.0（2026-10 open-core 门控默认关闭）
+### v1.34.0 → v1.35.0（2026-10 Sync 集成门控默认关闭）
 
 1. **`Features:SyncIntegration` 默认值改 `false`**（v1.34.0 起为 true 默认、靠部署置 false 门控）：开源版部署（不含 Sync 数据管线）开箱即无 Sync 痕迹——
    - 菜单隐藏（_Layout syncOn 判定）与控制器 404 门控全覆盖：SyncController/ReviewController 整控制器、HomeController.Crawler、DataController 库存导入三动作；**本轮补漏**：MappingController 整控制器（品牌/型号映射维护）、AuditLogController 的 `source=sync` 审计源（404，identity/api 源不受影响）。
    - 至此 Sync 数据审核 / ETL 同步 / 数据爬虫 / 库存导入全链路在开源部署不可见、不可达。
 2. **自用部署显式启用**：infra `apps/admin/deployment.yaml` env 注入 `Features__SyncIntegration: "true"`，测试服务器行为不变。
 
-### v1.33.0 → v1.34.0（2026-09-29 open-core Sync 集成门控）
+### v1.33.0 → v1.34.0（2026-09-29  Sync 集成门控）
 
-1. **`Features:SyncIntegration` 功能开关（appsettings 默认 true，内部版零变化）**：公开版部署（无 FindBearings.Sync 数据管线）置 false 后——
+1. **`Features:SyncIntegration` 功能开关（appsettings 默认 true，内部版零变化）**：公开版部署（无 Sync 数据管线）置 false 后——
    - 菜单隐藏："同步数据审核 / ETL 同步 / 数据爬虫 / 库存导入（含"库存管理"子标题）"（_Layout `syncOn` 判定，与权限并行）；
    - 控制器 404 门控：`SyncController`/`ReviewController` `OnActionExecuting` 整控制器 404，`HomeController.Crawler` 与 `DataController` 库存导入三动作（页面/模板下载/提交）404——防绕过菜单直达 URL。
 2. **DataSources 三态化（修"Sync 宕机伪装暂无数据源"老缺陷）**：成功=数据数组；不可达/非2xx=**502 `sync_unreachable`**；门控关闭=**503 `sync_disabled`**。爬虫视图按错误码分支：unreachable 显示"Sync 服务不可用 + 重试按钮"，disabled 显示"本部署未启用 Sync 集成"。

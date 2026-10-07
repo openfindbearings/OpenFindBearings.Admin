@@ -24,7 +24,7 @@ public class MappingController : Controller
     }
 
     /// <summary>
-    /// open-core 门控：Features:SyncIntegration=false（开源版无 Sync 数据管线部署）时，
+    /// 功能门控：Features:SyncIntegration=false（开源版无 Sync 数据管线部署）时，
     /// 映射维护依赖 Sync 配置接口，整控制器 404，与 _Layout 菜单隐藏同口径
     /// </summary>
     public override void OnActionExecuting(ActionExecutingContext context)

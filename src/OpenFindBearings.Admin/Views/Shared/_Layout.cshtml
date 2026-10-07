@@ -15,7 +15,7 @@
     var permSet = User.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToHashSet();
     bool HasPerm(params string[] perms) =>
         User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
-    // 改动说明（v1.34.0 open-core 门控）：Features:SyncIntegration=false（公开版无 Sync 数据管线部署）时，
+    // 改动说明（v1.34.0 功能门控）：Features:SyncIntegration=false（公开版无 Sync 数据管线部署）时，
     //   隐藏"同步数据审核 / ETL 同步 / 数据爬虫"三个 Sync 依赖菜单；对应控制器 action 同步 404，双侧收口
     var syncOn = Config.GetValue("Features:SyncIntegration", false);
 }

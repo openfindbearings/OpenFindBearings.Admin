@@ -16,7 +16,7 @@ public class ReviewController : Controller
     private readonly ILogger<ReviewController> _logger;
 
     /// <summary>
-    /// open-core 门控（v1.34.0）：Sync 集成关闭时整控制器 404（同步数据审核依赖 Sync 队列），
+    /// 功能门控（v1.34.0）：Sync 集成关闭时整控制器 404（同步数据审核依赖 Sync 队列），
     /// 与 _Layout 菜单隐藏同口径
     /// </summary>
     public override void OnActionExecuting(ActionExecutingContext context)

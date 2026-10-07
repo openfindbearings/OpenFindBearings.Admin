@@ -37,7 +37,7 @@ public class HomeController : Controller
     [Authorize]
     public async Task<IActionResult> DataSources()
     {
-        // 改动说明（v1.34.0 open-core 门控）：旧实现把"Sync 不可达"catch 成空数组，前端误显示
+        // 改动说明（v1.34.0 功能门控）：旧实现把"Sync 不可达"catch 成空数组，前端误显示
         //   "暂无数据源"。现三态区分：门控关闭=503 sync_disabled；网络失败/非2xx=502 sync_unreachable；
         //   成功=透传数据数组（真空列表也如实为空）
         if (!SyncIntegrationEnabled)
@@ -59,7 +59,7 @@ public class HomeController : Controller
     }
 
     /// <summary>
-    /// Sync 集成功能开关（open-core 门控）：false=部署未含 FindBearings.Sync 数据管线，
+    /// Sync 集成功能开关（功能门控）：false=部署未含 Sync 数据管线，
     /// 相关菜单/页面/接口整体关闭；默认 true 保持内部版行为不变
     /// </summary>
     private bool SyncIntegrationEnabled =>

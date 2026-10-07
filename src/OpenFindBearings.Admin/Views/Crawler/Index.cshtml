@@ -117,7 +117,7 @@
     }
 
     // 加载数据源列表（从 Sync /api/datasources）
-    // 改动说明（v1.34.0 open-core 门控）：后端已三态化（成功=数组 / sync_unreachable=502 / sync_disabled=503），
+    // 改动说明（v1.34.0 功能门控）：后端已三态化（成功=数组 / sync_unreachable=502 / sync_disabled=503），
     //   Sync 宕机不再被伪装成"暂无数据源"空态，给出故障提示与重试入口
     function loadDataSourceList() {
         fetch('/Home/DataSources')

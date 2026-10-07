@@ -13,7 +13,7 @@ public class SyncController : Controller
     private readonly IConfiguration _config;
 
     /// <summary>
-    /// open-core 门控（v1.34.0）：Features:SyncIntegration=false（公开版未配 Sync 数据管线）时
+    /// 功能门控（v1.34.0）：Features:SyncIntegration=false（公开版未配 Sync 数据管线）时
     /// 整控制器 404，与 _Layout 菜单隐藏同口径，防止绕过菜单直达 URL
     /// </summary>
     public override void OnActionExecuting(ActionExecutingContext context)

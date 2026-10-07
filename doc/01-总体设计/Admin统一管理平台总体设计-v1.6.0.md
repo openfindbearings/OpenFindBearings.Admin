@@ -17,7 +17,7 @@ OpenFindBearings.Admin（ASP.NET Core MVC）
   │ BearerTokenHandler 从 cookie 提取 JWT 注入 ApiClient
   │
   ├──→ OpenFindBearings.Api（:7183）  — 品牌/类型/轴承/商家 CRUD、纠错、配置、仪表盘统计
-  ├──→ FindBearings.Sync（:7206）     — ETL 触发、状态、同步审核、映射管理、数据源清单
+  ├──→ Sync（:7206）     — ETL 触发、状态、同步审核、映射管理、数据源清单
   ├──→ OpenFindBearings.Identity（:7201）— 用户管理、审计日志、系统配置
   │
   └── db_admin（PostgreSQL）          — RBAC 角色权限、审计日志

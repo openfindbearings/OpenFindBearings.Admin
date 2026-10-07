@@ -491,7 +491,7 @@ public class DataController : Controller
     #region 库存导入
 
     /// <summary>
-    /// open-core 门控（v1.34.0）：库存导入的三个动作都直连 Sync（模板/上传/结果），
+    /// 功能门控（v1.34.0）：库存导入的三个动作都直连 Sync（模板/上传/结果），
     /// Sync 集成关闭时 404，与 _Layout 菜单隐藏同口径
     /// </summary>
     private bool SyncIntegrationEnabled => _config.GetValue("Features:SyncIntegration", false);

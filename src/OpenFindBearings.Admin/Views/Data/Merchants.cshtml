@@ -39,9 +39,6 @@
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">商家列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal" title="Excel 导入库存">
-                <i class="fas fa-file-excel"></i><span class="d-none d-sm-inline"> Excel 导入</span>
-            </button>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createMerchantModal" title="新建商家">
                 <i class="fas fa-plus"></i><span class="d-none d-sm-inline"> 新建</span>
             </button>
@@ -291,40 +288,6 @@
     </div></div>
 </div>
 
-<!-- Excel 批量导入弹窗 -->
-<div class="modal fade" id="importExcelModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="importExcelForm" enctype="multipart/form-data">
-                <div class="modal-header">
-                    <h6 class="modal-title">Excel 批量导入在售轴承</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">上传 Excel 文件，系统将自动解析并导入在售轴承数据。</p>
-                    <div class="mb-3">
-                        <label class="form-label">选择文件 <span class="text-danger">*</span></label>
-                        <input type="file" name="file" id="importExcelFile" class="form-control" accept=".xlsx,.xls" required />
-                    </div>
-                    <div class="mb-3">
-                        <a href="/api/proxy/excel/template" class="btn btn-outline-secondary btn-sm" target="_blank">
-                            <i class="fas fa-download"></i> 下载导入模板
-                        </a>
-                    </div>
-                    <div id="importResult" class="d-none">
-                        <div class="alert" id="importResultAlert"></div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary" id="importExcelBtn">
-                        <i class="fas fa-upload"></i> 开始导入
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 @section Scripts {
 <script>
@@ -426,39 +389,6 @@ function loadOnSalePage(merchantId, page) {
         } else { pager.style.display='none'; }
     }).catch(function(){body.innerHTML='<tr><td colspan="7" class="text-center text-danger">加载失败</td></tr>';});
 }
-document.getElementById('importExcelForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var fileInput = document.getElementById('importExcelFile');
-    var btn = document.getElementById('importExcelBtn');
-    var resultDiv = document.getElementById('importResult');
-    var resultAlert = document.getElementById('importResultAlert');
-    if (!fileInput.files.length) { showToast('warning', '请选择文件'); return; }
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导入中...';
-    var formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    fetch('/api/proxy/excel/import-bearing', { method: 'POST', body: formData })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            resultDiv.classList.remove('d-none');
-            if (d.success) {
-                resultAlert.className = 'alert alert-success';
-                resultAlert.textContent = d.message || '导入完成';
-            } else {
-                resultAlert.className = 'alert alert-danger';
-                resultAlert.textContent = d.message || '导入失败';
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-upload"></i> 开始导入';
-        })
-        .catch(function(err) {
-            resultDiv.classList.remove('d-none');
-            resultAlert.className = 'alert alert-danger';
-            resultAlert.textContent = '请求失败: ' + err.message;
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-upload"></i> 开始导入';
-        });
-});
 
 // 从轴承“在售商家”页跳转过来时，自动打开对应商家的“在售商品”弹窗（复用现有弹窗）
 (function(){

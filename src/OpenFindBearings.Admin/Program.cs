@@ -139,15 +139,6 @@ builder.Services.AddHttpClient("ApiClient", c =>
 #endif
 }).AddHttpMessageHandler<BearerTokenHandler>();
 
-builder.Services.AddHttpClient("SyncClient", c =>
-{
-    c.Timeout = TimeSpan.FromSeconds(30);
-}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-#if DEBUG
-    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-#endif
-}).AddHttpMessageHandler<BearerTokenHandler>();
 
 builder.Services.AddHttpClient("IdentityClient", c =>
 {
@@ -267,56 +258,6 @@ app.MapGet("/api/proxy/bearing-merchants/{bearingId:guid}", async (Guid bearingI
     var response = await client.GetAsync(url);
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json");
-}).RequireAuthorization();
-
-// 代理 Excel 批量导入在售轴承（转发到 Sync API）
-app.MapPost("/api/proxy/excel/import-bearing", async (IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
-{
-    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-    var client = factory.CreateClient("SyncClient");
-    using var form = new MultipartFormDataContent();
-    using var stream = file.OpenReadStream();
-    using var fileContent = new StreamContent(stream);
-    fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
-    form.Add(fileContent, "file", file.FileName);
-    var response = await client.PostAsync($"{syncBase}/api/sync/excel/bearing", form);
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
-
-// 代理下载 Excel 导入模板
-app.MapGet("/api/proxy/excel/template", async (IHttpClientFactory factory, IConfiguration config) =>
-{
-    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-    var client = factory.CreateClient("SyncClient");
-    var response = await client.GetAsync($"{syncBase}/api/sync/excel/template");
-    var bytes = await response.Content.ReadAsByteArrayAsync();
-    return Results.File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "bearings_import_template.xlsx");
-}).RequireAuthorization();
-
-// 代理 ETL 任务管理总览（各阶段运行态 + 最近任务 + 爬虫最近执行情况）
-app.MapGet("/api/proxy/etl/summary", async (IHttpClientFactory factory, IConfiguration config) =>
-{
-    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-    var client = factory.CreateClient("SyncClient");
-    var response = await client.GetAsync($"{syncBase}/api/etl/summary");
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
-
-// 代理 ETL 任务历史列表（支持分页与过滤）
-app.MapGet("/api/proxy/etl/tasks", async (IHttpClientFactory factory, IConfiguration config,
-    [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-    [FromQuery] string? commandType = null, [FromQuery] string? status = null) =>
-{
-    var syncBase = config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-    var client = factory.CreateClient("SyncClient");
-    var url = $"{syncBase}/api/etl/tasks?page={page}&pageSize={pageSize}";
-    if (!string.IsNullOrEmpty(commandType)) url += $"&commandType={commandType}";
-    if (!string.IsNullOrEmpty(status)) url += $"&status={status}";
-    var response = await client.GetAsync(url);
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
 
 // 代理上传/替换勋章图（v2.6.0 勋章图片管线：Admin 传图 → API 存对象存储并回写 ImageKey）

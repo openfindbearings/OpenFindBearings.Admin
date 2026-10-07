@@ -15,9 +15,6 @@
     var permSet = User.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToHashSet();
     bool HasPerm(params string[] perms) =>
         User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
-    // 改动说明（v1.34.0 功能门控）：Features:SyncIntegration=false（公开版无 Sync 数据管线部署）时，
-    //   隐藏"同步数据审核 / ETL 同步 / 数据爬虫"三个 Sync 依赖菜单；对应控制器 action 同步 404，双侧收口
-    var syncOn = Config.GetValue("Features:SyncIntegration", false);
 }
 <!DOCTYPE html>
 <html lang="zh-CN" data-bs-theme="light">
@@ -54,7 +51,7 @@
                     </a>
                 </li>
                 }
-                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.import", "mapping.view"))
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
@@ -62,7 +59,6 @@
                     </a>
                     <ul class="sub-menu" id="sub-info">
                         <li class="sub-header">基础信息</li>
-                        @* 改动说明（v1.30.0 权限目录重排）：子页逐项独立 view 键，映射改 mapping.view *@
                         @if (HasPerm("brand.view"))
                         {
                         <li><a asp-controller="Data" asp-action="Brands" class="nav-link" data-page="data-brands"><i class="fas fa-circle"></i><span>品牌列表</span></a></li>
@@ -79,34 +75,16 @@
                         {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
                         }
-                        @if (syncOn)
-                        {
-                        <li class="sub-header">库存管理</li>
-                        @if (HasPerm("merchant.import"))
-                        {
-                        <li><a asp-controller="Data" asp-action="ImportInventory" class="nav-link" data-page="data-import-inventory"><i class="fas fa-circle"></i><span>库存导入</span></a></li>
-                        }
-                        }
-                        @if (HasPerm("mapping.view"))
-                        {
-                        <li class="sub-header">映射信息</li>
-                        <li><a asp-controller="Mapping" asp-action="Index" asp-route-type="brand" class="nav-link" data-page="mapping-brand"><i class="fas fa-circle"></i><span>品牌映射</span></a></li>
-                        <li><a asp-controller="Mapping" asp-action="Index" asp-route-type="type" class="nav-link" data-page="mapping-type"><i class="fas fa-circle"></i><span>类型映射</span></a></li>
-                        }
                     </ul>
                 </li>
                 }
-                @if ((syncOn && HasPerm("review.sync")) || HasPerm("correction.review", "merchant.verify", "sourcing.view"))
+                @if (HasPerm("correction.review", "merchant.verify", "sourcing.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-review">
                         <i class="fas fa-check-double"></i><span>审核管理</span><i class="fas fa-chevron-right arrow"></i>
                     </a>
                     <ul class="sub-menu" id="sub-review">
-                        @if (syncOn && HasPerm("review.sync"))
-                        {
-                        <li><a asp-controller="Review" asp-action="Index" class="nav-link" data-page="review"><i class="fas fa-circle"></i><span>同步数据审核</span></a></li>
-                        }
                         @if (HasPerm("correction.review"))
                         {
                         <li><a asp-controller="Correction" asp-action="Index" class="nav-link" data-page="correction"><i class="fas fa-circle"></i><span>信息纠错审核</span></a></li>
@@ -138,24 +116,6 @@
                         @if (HasPerm("permission.view"))
                         {
                         <li><a asp-controller="Permission" asp-action="Index" class="nav-link" data-page="permission"><i class="fas fa-circle"></i><span>权限管理</span></a></li>
-                        }
-                    </ul>
-                </li>
-                }
-                @if (syncOn && HasPerm("sync.run"))
-                {
-                <li class="has-sub">
-                    <a href="#" class="nav-link toggle-sub" data-target="sub-task">
-                        <i class="fas fa-tasks"></i><span>任务管理</span><i class="fas fa-chevron-right arrow"></i>
-                    </a>
-                    <ul class="sub-menu" id="sub-task">
-                        @if (syncOn && HasPerm("sync.run"))
-                        {
-                        <li><a asp-controller="Sync" asp-action="Index" class="nav-link" data-page="sync"><i class="fas fa-circle"></i><span>ETL 同步</span></a></li>
-                        }
-                        @if (HasPerm("sync.run"))
-                        {
-                        <li><a asp-controller="Home" asp-action="Crawler" class="nav-link" data-page="crawler"><i class="fas fa-circle"></i><span>数据爬虫</span></a></li>
                         }
                     </ul>
                 </li>

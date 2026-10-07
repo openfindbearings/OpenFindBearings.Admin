@@ -22,13 +22,6 @@ public class AuditLogController : Controller
 
     public async Task<IActionResult> Index(string source = "identity", int page = 1, int pageSize = 30)
     {
-        // 改动说明（功能门控）：sync 审计源依赖 Sync 服务，Features:SyncIntegration=false（开源版）时返回 404；
-        //   identity/api 源不受影响，照常可查
-        if (source == "sync" && !_config.GetValue("Features:SyncIntegration", false))
-        {
-            return NotFound();
-        }
-
         ViewBag.Source = source;
         ViewBag.Page = page;
         ViewBag.PageSize = pageSize;
@@ -40,7 +33,6 @@ public class AuditLogController : Controller
             {
                 "identity" => await LoadIdentityLogsAsync(page, pageSize),
                 "api" => await LoadApiLogsAsync(page, pageSize),
-                "sync" => await LoadSyncLogsAsync(page, pageSize),
                 _ => ([], 0)
             };
 
@@ -74,18 +66,6 @@ public class AuditLogController : Controller
         var baseUrl = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         var resp = await client.GetAsync($"{baseUrl}/api/admin/audit-logs?page={page}&pageSize={pageSize}");
-
-        if (!resp.IsSuccessStatusCode) return ([], 0);
-
-        var json = await resp.Content.ReadAsStringAsync();
-        return ParsePagedResponse(json);
-    }
-
-    private async Task<(List<AuditLogItemDto>, int)> LoadSyncLogsAsync(int page, int pageSize)
-    {
-        var baseUrl = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-        var client = _factory.CreateClient("SyncClient");
-        var resp = await client.GetAsync($"{baseUrl}/api/audit-log?page={page}&pageSize={pageSize}");
 
         if (!resp.IsSuccessStatusCode) return ([], 0);
 

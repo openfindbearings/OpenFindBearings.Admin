@@ -34,57 +34,15 @@ public class HomeController : Controller
         return Json(result);
     }
 
-    [Authorize]
-    public async Task<IActionResult> DataSources()
-    {
-        // 改动说明（v1.34.0 功能门控）：旧实现把"Sync 不可达"catch 成空数组，前端误显示
-        //   "暂无数据源"。现三态区分：门控关闭=503 sync_disabled；网络失败/非2xx=502 sync_unreachable；
-        //   成功=透传数据数组（真空列表也如实为空）
-        if (!SyncIntegrationEnabled)
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "sync_disabled" });
-        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
-        var client = _factory.CreateClient("SyncClient");
-        try
-        {
-            var resp = await client.GetAsync($"{syncBase}/api/datasources");
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync();
-                var obj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(json);
-                return Json(obj.TryGetProperty("data", out var data) ? data : obj);
-            }
-        }
-        catch { }
-        return StatusCode(StatusCodes.Status502BadGateway, new { error = "sync_unreachable" });
-    }
-
-    /// <summary>
-    /// Sync 集成功能开关（功能门控）：false=部署未含 Sync 数据管线，
-    /// 相关菜单/页面/接口整体关闭；默认 true 保持内部版行为不变
-    /// </summary>
-    private bool SyncIntegrationEnabled =>
-        _config.GetValue("Features:SyncIntegration", false);
-
-    [Authorize]
-    [PanelPermission("sync.run")]  // 改动说明（v1.30.0）：爬虫触发页由借用的 dashboard.view 改独立 sync.run
-    public IActionResult Crawler()
-    {
-        // 改动说明（v1.34.0）：门控关闭时直接 404，防止绕过菜单直达 URL
-        if (!SyncIntegrationEnabled) return NotFound();
-        return View("~/Views/Crawler/Index.cshtml");
-    }
-
+    // 改动说明：数据源页/爬虫触发页与 DashboardStats 的外部 ETL 统计聚合已移除，
+    //   仪表盘仅呈现本 API 自身统计。
     [AllowAnonymous]
     public async Task<IActionResult> DashboardStats()
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
-        var syncBase = _config["ApiUrls:FindBearingsSync"] ?? "https://localhost:7206";
         var apiClient = _factory.CreateClient("ApiClient");
-        var syncClient = _factory.CreateClient("SyncClient");
         apiClient.Timeout = TimeSpan.FromSeconds(10);
-        syncClient.Timeout = TimeSpan.FromSeconds(5);
 
-        string apiJson;
         try
         {
             var apiResp = await apiClient.GetAsync($"{apiBase}/api/admin/dashboard/stats");
@@ -92,51 +50,13 @@ public class HomeController : Controller
             {
                 return Content(FallbackJson, "application/json");
             }
-            apiJson = await apiResp.Content.ReadAsStringAsync();
+            var apiJson = await apiResp.Content.ReadAsStringAsync();
+            return Content(apiJson, "application/json");
         }
         catch
         {
             return Content(FallbackJson, "application/json");
         }
-
-        int syncBrandCount = 0, syncTypeCount = 0, syncBearingCount = 0, syncMerchantCount = 0;
-        try
-        {
-            var syncResp = await syncClient.GetAsync($"{syncBase}/api/audit/stats");
-            if (syncResp.IsSuccessStatusCode)
-            {
-                var syncJson = await syncResp.Content.ReadAsStringAsync();
-                var syncObj = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(syncJson);
-                if (syncObj.TryGetProperty("data", out var data))
-                {
-                    syncBrandCount = data.TryGetProperty("brandCount", out var bc) ? bc.GetInt32() : 0;
-                    syncTypeCount = data.TryGetProperty("typeCount", out var tc) ? tc.GetInt32() : 0;
-                    syncBearingCount = data.TryGetProperty("bearingCount", out var be) ? be.GetInt32() : 0;
-                    syncMerchantCount = data.TryGetProperty("merchantCount", out var mc) ? mc.GetInt32() : 0;
-                }
-            }
-        }
-        catch { }
-
-        // 在 API JSON 的 data 对象中追加 syncPendingReviews，保持结构精确不变
-        using var doc = System.Text.Json.JsonDocument.Parse(apiJson);
-        var root = doc.RootElement;
-        var syncJsonStr = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            brandCount = syncBrandCount,
-            typeCount = syncTypeCount,
-            bearingCount = syncBearingCount,
-            merchantCount = syncMerchantCount
-        });
-
-        if (root.TryGetProperty("data", out var dataElem) && dataElem.ValueKind == System.Text.Json.JsonValueKind.Object)
-        {
-            var inner = dataElem.GetRawText();
-            var merged = inner[..^1] + ",\"syncPendingReviews\":" + syncJsonStr + "}";
-            return Content("{\"data\":" + merged + "}", "application/json");
-        }
-
-        return Content(apiJson, "application/json");
     }
 
     private static readonly string FallbackJson = System.Text.Json.JsonSerializer.Serialize(new

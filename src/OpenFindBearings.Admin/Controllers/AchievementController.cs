@@ -49,7 +49,7 @@ public class AchievementController : Controller
                         MetricKey = x.GetProperty("metricKey").GetString() ?? "",
                         ProgressTarget = x.GetProperty("progressTarget").GetInt32(),
                         MetaPoints = x.GetProperty("metaPoints").GetInt32(),
-                        RewardPoints = x.GetProperty("rewardPoints").GetInt32(),
+                        // 改动说明（API v2.12.0 等级玩法）：成就纯荣誉化，rewardPoints 字段已从 API 删除
                         TitleReward = x.TryGetProperty("titleReward", out var tr) && tr.ValueKind == JsonValueKind.String ? tr.GetString() : null,
                         ImageKey = x.TryGetProperty("imageKey", out var ik) && ik.ValueKind == JsonValueKind.String ? ik.GetString() : null,
                         Rare = x.GetProperty("rare").GetBoolean(),
@@ -69,17 +69,17 @@ public class AchievementController : Controller
         return View(new List<AchievementRowVm>());
     }
 
-    /// <summary>编辑成就（分值/阈值/称号/启停/勋章图键）</summary>
+    /// <summary>编辑成就（阈值/称号/启停/勋章图键；v2.12.0 起不含发币字段——成就纯荣誉化）</summary>
     [HttpPost]
     [PanelPermission("system.manage")]
     public async Task<IActionResult> Update(Guid id, string name, string description, int progressTarget,
-        int metaPoints, int rewardPoints, string? titleReward, bool enabled, string? imageKey)
+        int metaPoints, string? titleReward, bool enabled, string? imageKey)
     {
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var payload = new { name, description, progressTarget, metaPoints, rewardPoints, titleReward, enabled, imageKey };
+            var payload = new { name, description, progressTarget, metaPoints, titleReward, enabled, imageKey };
             var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/achievements/{id}", payload);
             TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] =
                 resp.IsSuccessStatusCode ? "成就已更新" : $"更新失败: {resp.StatusCode}";
@@ -104,7 +104,6 @@ public class AchievementRowVm
     public string MetricKey { get; set; } = "";
     public int ProgressTarget { get; set; }
     public int MetaPoints { get; set; }
-    public int RewardPoints { get; set; }
     public string? TitleReward { get; set; }
     public string? ImageKey { get; set; }
     public bool Rare { get; set; }

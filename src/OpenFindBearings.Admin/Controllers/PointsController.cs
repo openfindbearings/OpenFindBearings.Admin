@@ -74,6 +74,59 @@ public class PointsController : Controller
     }
 
     /// <summary>
+    /// 批量保存段位档位（v2.12.0 等级玩法：逐条代理 API PUT /api/admin/points/levels/{id}；
+    /// Level 号不在提交字段内——落档与升档礼幂等键锚定它不可改）
+    /// </summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveLevels(List<PointLevelSave> items)
+    {
+        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var client = _factory.CreateClient("ApiClient");
+        var failed = 0;
+        try
+        {
+            foreach (var item in items)
+            {
+                var resp = await client.PutAsJsonAsync($"{apiBase}/api/admin/points/levels/{item.Id}",
+                    new
+                    {
+                        minTotalEarned = item.MinTotalEarned,
+                        name = item.Name?.Trim(),
+                        levelUpBonus = item.LevelUpBonus,
+                        enabled = item.Enabled
+                    });
+                if (!resp.IsSuccessStatusCode) failed++;
+            }
+            TempData[failed == 0 ? "Success" : "Error"] =
+                failed == 0 ? "档位已保存，实时生效" : $"{failed} 条档位保存失败";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "保存段位档位失败");
+            TempData["Error"] = $"保存失败: {ex.Message}";
+        }
+        return RedirectToAction("Index", "Config", new { tab = "levels" });
+    }
+
+    /// <summary>
+    /// 段位档位保存表单行（Razor items[i].Xxx 绑定；Level 号只读展示不提交）
+    /// </summary>
+    public class PointLevelSave
+    {
+        /// <summary>档位 ID</summary>
+        public Guid Id { get; set; }
+        /// <summary>进入该档最低累计获得轴承币</summary>
+        public int MinTotalEarned { get; set; }
+        /// <summary>段位名</summary>
+        public string? Name { get; set; }
+        /// <summary>升档礼轴承币（0=不发）</summary>
+        public int LevelUpBonus { get; set; }
+        /// <summary>是否启用</summary>
+        public bool Enabled { get; set; }
+    }
+
+    /// <summary>
     /// 批量保存商家集体任务定义（v2.6.0 M3：逐条代理 API PUT /api/admin/points/merchant-tasks/{id}；
     /// TaskKey 不在提交字段内——锚定台账不可变）
     /// </summary>

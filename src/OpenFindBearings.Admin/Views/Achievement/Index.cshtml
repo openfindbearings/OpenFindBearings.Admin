@@ -12,7 +12,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span>勋章目录（@Model.Count 个）</span>
-        <span class="text-muted small">勋章点为只加不花的荣誉分；可花甜头在解锁时一次性发放</span>
+        <span class="text-muted small">勋章点为只加不花的荣誉分；解锁只点亮不发币（纯荣誉，货币激励见"等级段位"tab 升档礼）</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -27,7 +27,6 @@
                         <th class="d-none d-md-table-cell">指标</th>
                         <th>目标</th>
                         <th>勋章点</th>
-                        <th>甜头</th>
                         <th class="d-none d-md-table-cell">称号</th>
                         <th>状态</th>
                         <th>操作</th>
@@ -59,7 +58,6 @@
                             <td class="d-none d-md-table-cell"><code class="small">@a.MetricKey</code></td>
                             <td>@a.ProgressTarget</td>
                             <td>@a.MetaPoints</td>
-                            <td>@a.RewardPoints</td>
                             <td class="d-none d-md-table-cell">@(a.TitleReward ?? "-")</td>
                             <td>
                                 @if (a.Enabled) { <span class="badge bg-success">启用</span> }
@@ -70,7 +68,7 @@
                                         title="编辑"
                                         data-id="@a.Id" data-name="@a.Name" data-desc="@a.Description"
                                         data-target="@a.ProgressTarget" data-meta="@a.MetaPoints"
-                                        data-reward="@a.RewardPoints" data-title="@(a.TitleReward ?? "")"
+                                        data-title="@(a.TitleReward ?? "")"
                                         data-imagekey="@a.ImageKey"
                                         data-enabled="@a.Enabled.ToString().ToLower()">
                                     <i class="fas fa-pen"></i><span class="d-none d-sm-inline"> 编辑</span>
@@ -121,17 +119,13 @@
                         <input type="text" name="description" id="achDesc" class="form-control" />
                     </div>
                     <div class="row">
-                        <div class="col-4 mb-2">
+                        <div class="col-6 mb-2">
                             <label class="form-label">目标</label>
                             <input type="number" name="progressTarget" id="achTarget" class="form-control" min="1" />
                         </div>
-                        <div class="col-4 mb-2">
-                            <label class="form-label">勋章点</label>
+                        <div class="col-6 mb-2">
+                            <label class="form-label">勋章点（只加不花）</label>
                             <input type="number" name="metaPoints" id="achMeta" class="form-control" min="0" />
-                        </div>
-                        <div class="col-4 mb-2">
-                            <label class="form-label">可花甜头</label>
-                            <input type="number" name="rewardPoints" id="achReward" class="form-control" min="0" />
                         </div>
                     </div>
                     <div class="mb-2">
@@ -178,7 +172,6 @@
             document.getElementById('achDesc').value = btn.dataset.desc || '';
             document.getElementById('achTarget').value = btn.dataset.target || '1';
             document.getElementById('achMeta').value = btn.dataset.meta || '0';
-            document.getElementById('achReward').value = btn.dataset.reward || '0';
             document.getElementById('achTitle').value = btn.dataset.title || '';
             document.getElementById('achEnabled').checked = btn.dataset.enabled === 'true';
             const ik = btn.dataset.imagekey || '';

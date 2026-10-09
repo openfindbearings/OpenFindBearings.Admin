@@ -6,6 +6,8 @@
     var pointRules = ViewBag.PointRules as List<OpenFindBearings.Admin.Models.DTOs.PointRuleDto> ?? new();
     // 商家集体任务定义（v2.6.0 M3 新增"商家任务"tab）
     var merchantTasks = ViewBag.MerchantTasks as List<OpenFindBearings.Admin.Models.DTOs.MerchantTaskDto> ?? new();
+    // 段位档位表（v2.12.0 等级玩法新增"等级段位"tab）
+    var pointLevels = ViewBag.PointLevels as List<OpenFindBearings.Admin.Models.DTOs.PointLevelDto> ?? new();
 
     // 分组名映射为中文
     // 改动说明：v1.28.0 补 Business 组映射（BusinessClock 时区偏移种子落此组）；
@@ -63,6 +65,13 @@
         <button class="nav-link" id="tab-points-tab" data-bs-toggle="tab" data-bs-target="#tab-points"
                 type="button" role="tab" data-tabkey="points">
             <i class="fas fa-coins me-1"></i>积分任务
+        </button>
+    </li>
+    @* v2.12.0 等级玩法：段位档位表管理页签 *@
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-levels-tab" data-bs-toggle="tab" data-bs-target="#tab-levels"
+                type="button" role="tab" data-tabkey="levels">
+            <i class="fas fa-medal me-1"></i>等级段位
         </button>
     </li>
     @* v2.6.0 M3：商家集体任务定义管理页签 *@
@@ -189,6 +198,58 @@
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     <small class="text-muted">每日上限=当日该动作累计发放封顶（0 不限）；连续阶梯为 JSON 数组按连续天数取档、超出取末档（仅签到类动作生效）；留空阶梯=固定分值。</small>
                     <button type="submit" class="btn btn-primary btn-sm" title="保存全部"><i class="fas fa-save me-1"></i><span class="d-none d-sm-inline">保存全部</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* v2.12.0 等级玩法：段位档位表（阈值/段位名/升档礼/启停，实时生效；Level 号锚定落档与幂等不可改） *@
+    <div class="tab-pane fade" id="tab-levels" role="tabpanel" aria-labelledby="tab-levels-tab">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-medal me-1"></i> 段位档位表</h6>
+                <small class="text-muted">用户按累计获得轴承币落档；跨档一次性发升档礼（每用户每档终身一次）；改后实时生效</small>
+            </div>
+            <form method="post" asp-controller="Points" asp-action="SaveLevels">
+                @Html.AntiForgeryToken()
+                <div class="card-body p-0">
+                    <div class="table-responsive"><table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width:70px">等级</th>
+                                <th style="width:170px">段位名</th>
+                                <th style="width:150px">累计获得阈值</th>
+                                <th style="width:120px">升档礼（币）</th>
+                                <th style="width:80px">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < pointLevels.Count; i++)
+                            {
+                                var item = pointLevels[i];
+                                <tr>
+                                    <input type="hidden" name="items[@i].Id" value="@item.Id" />
+                                    <td><strong>Lv@(item.Level)</strong></td>
+                                    <td><input type="text" name="items[@i].Name" value="@item.Name" class="form-control form-control-sm" maxlength="32" required /></td>
+                                    <td><input type="number" name="items[@i].MinTotalEarned" value="@item.MinTotalEarned" min="0" class="form-control form-control-sm" style="width:140px" /></td>
+                                    <td><input type="number" name="items[@i].LevelUpBonus" value="@item.LevelUpBonus" min="0" class="form-control form-control-sm" style="width:110px" title="0 表示该档不发升档礼" /></td>
+                                    <td>
+                                        <input type="hidden" name="items[@i].Enabled" value="false" />
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" name="items[@i].Enabled" value="true" class="form-check-input" @(item.Enabled ? "checked" : "") />
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table></div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted">阈值=累计获得轴承币达此值落该档（只升不降）；升档礼=跨入该档一次性发币，0=不发；停用档位不可达、自动落到下一启用档。@if (pointLevels.Count == 0) { <span class="text-danger">当前无档位数据。</span> }</small>
+                    @if (pointLevels.Count > 0)
+                    {
+                        <button type="submit" class="btn btn-primary btn-sm" title="保存全部"><i class="fas fa-save me-1"></i><span class="d-none d-sm-inline">保存全部</span></button>
+                    }
                 </div>
             </form>
         </div>

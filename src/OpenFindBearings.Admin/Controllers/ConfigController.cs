@@ -35,6 +35,8 @@ public class ConfigController : Controller
         var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
         var client = _factory.CreateClient("ApiClient");
         await LoadPointRulesAsync(client, apiBase);
+        // 改动说明（v2.12.0 等级玩法）：段位档位表 tab（阈值/段位名/升档礼/启停，实时生效）
+        await LoadPointLevelsAsync(client, apiBase);
         await LoadMerchantTasksAsync(client, apiBase);
         try
         {
@@ -98,6 +100,35 @@ public class ConfigController : Controller
             _logger.LogWarning(ex, "获取积分规则失败");
         }
         ViewBag.PointRules = new List<PointRuleDto>();
+    }
+
+    /// <summary>
+    /// 拉取段位档位表供"等级段位"tab 渲染（v2.12.0 等级玩法；失败不阻塞其他 tab）
+    /// </summary>
+    private async Task LoadPointLevelsAsync(HttpClient client, string apiBase)
+    {
+        try
+        {
+            var resp = await client.GetAsync($"{apiBase}/api/admin/points/levels");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                {
+                    ViewBag.PointLevels = JsonSerializer.Deserialize<List<PointLevelDto>>(data.GetRawText(),
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    return;
+                }
+            }
+            _logger.LogWarning("获取段位档位返回非成功状态: {StatusCode}", (int)resp.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            // 档位拉取失败仅影响等级段位 tab，不阻塞配置管理主功能
+            _logger.LogWarning(ex, "获取段位档位失败");
+        }
+        ViewBag.PointLevels = new List<PointLevelDto>();
     }
 
     /// <summary>

@@ -1,0 +1,171 @@
+@{
+    ViewData["Title"] = "商品审核";
+    var items = ViewBag.Items as IEnumerable<PendingMerchantBearingRowDto> ?? [];
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    var error = (string?)ViewBag.Error;
+
+    // 尺寸三元组展示（内径×外径×宽），全 0 视为未填
+    string Dim(PendingBearingRefDto? b)
+    {
+        if (b == null) return "-";
+        if (b.InnerDiameter == 0 && b.OuterDiameter == 0 && b.Width == 0) return "-";
+        return $"{b.InnerDiameter:0.##}×{b.OuterDiameter:0.##}×{b.Width:0.##}";
+    }
+
+    // 输出 UTC ISO 8601 串，由全局 data-utc JS 按浏览器时区显示
+    string Iso(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-box-open"></i> 商品审核</h4>
+    <p class="text-muted">商家提交上架的商品待平台审核，通过后即在售并对公域可见；驳回须填写原因，商家可见并可修改后重新提交</p>
+</div>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>待审核商品（@totalCount 条）</span>
+        <span class="text-muted small">通过即转在售；驳回原因经站内信触达商家</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>商家</th>
+                        <th>商品型号</th>
+                        <th class="d-none d-md-table-cell">曾用代号</th>
+                        <th>品牌</th>
+                        <th class="d-none d-lg-table-cell">类型</th>
+                        <th class="d-none d-md-table-cell">尺寸（内×外×宽）</th>
+                        <th>价格描述</th>
+                        <th class="d-none d-md-table-cell">提交时间</th>
+                        <th style="width:170px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Any())
+                    {
+                        @foreach (var item in items)
+                        {
+                            <tr data-id="@item.Id">
+                                <td>@(item.Merchant?.Name ?? "-")</td>
+                                <td>@(item.Bearing?.PartNumber ?? "-")</td>
+                                <td class="d-none d-md-table-cell">@(item.Bearing?.OldNumber ?? "-")</td>
+                                <td>@(item.Bearing?.BrandName ?? "-")</td>
+                                <td class="d-none d-lg-table-cell">@(item.Bearing?.BearingTypeName ?? "-")</td>
+                                <td class="d-none d-md-table-cell">@Dim(item.Bearing)</td>
+                                <td>@(string.IsNullOrWhiteSpace(item.PriceDescription) ? "-" : item.PriceDescription)</td>
+                                <td class="d-none d-md-table-cell text-muted small" data-utc="@Iso(item.CreatedAt)">@Iso(item.CreatedAt)</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id" title="审核通过"><i class="fas fa-check"></i><span class="d-none d-sm-inline">通过</span></button>
+                                    <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id" title="驳回"><i class="fas fa-times"></i><span class="d-none d-sm-inline">驳回</span></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无待审核商品</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = 1, pageSize })">首页</a>
+                        </li>
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = page - 1, pageSize })">&laquo;</a>
+                        </li>
+                        @{
+                            var rs = Math.Max(1, page - 2);
+                            var re = Math.Min(totalPages, page + 2);
+                        }
+                        @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        @for (var p = rs; p <= re; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { page = p, pageSize })">@p</a>
+                            </li>
+                        }
+                        @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = page + 1, pageSize })">&raquo;</a>
+                        </li>
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = totalPages, pageSize })">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    // 商品审核动作（v2.15.0）：浏览器调用 Program.cs 注册的代理端点
+    //   POST /api/proxy/merchant-bearings/{id}/approve；POST .../{id}/reject（JSON 带 reason）。
+    //   通过=showConfirm 确认；驳回=showPrompt 必填原因；成功后刷新列表（计数/分页同步）。
+    var merchantBearingProxy = '@Url.Content("~/api/proxy/merchant-bearings")';
+
+    function afterReviewSuccess(msg) {
+        showToast('success', msg || '操作成功');
+        setTimeout(function () { location.reload(); }, 800);
+    }
+
+    function reviewFail(xhr) {
+        // 代理透传 API 状态码；ProblemDetails 的 detail 优先，其次通用文案
+        var detail = xhr && xhr.responseJSON && xhr.responseJSON.detail;
+        showToast(xhr && xhr.status === 409 ? 'warning' : 'error', detail || '操作失败');
+        if (xhr && xhr.status === 409) setTimeout(function () { location.reload(); }, 1200);
+    }
+
+    $('.btn-approve').on('click', function () {
+        var id = $(this).data('id');
+        showConfirm({ title: '审核通过', message: '通过后该商品将转为在售并对公域可见，确认？', okText: '通过' }).then(function (ok) {
+            if (!ok) return;
+            $.ajax({ url: merchantBearingProxy + '/' + id + '/approve', method: 'POST' })
+                .done(function (r) {
+                    if (r && r.success) afterReviewSuccess(r.message);
+                    else showToast('error', (r && r.message) || '操作失败');
+                })
+                .fail(reviewFail);
+        });
+    });
+
+    $('.btn-reject').on('click', function () {
+        var id = $(this).data('id');
+        showPrompt({ title: '驳回商品', message: '请填写驳回原因（商家可见，可修改后重新提交）', required: true }).then(function (reason) {
+            if (!reason) return;
+            $.ajax({
+                url: merchantBearingProxy + '/' + id + '/reject',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ reason: reason })
+            })
+                .done(function (r) {
+                    if (r && r.success) afterReviewSuccess(r.message);
+                    else showToast('error', (r && r.message) || '操作失败');
+                })
+                .fail(reviewFail);
+        });
+    });
+</script>
+}

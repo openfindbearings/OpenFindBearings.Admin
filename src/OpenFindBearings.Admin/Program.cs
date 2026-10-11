@@ -260,6 +260,41 @@ app.MapGet("/api/proxy/bearing-merchants/{bearingId:guid}", async (Guid bearingI
     return Results.Content(content, "application/json");
 }).RequireAuthorization();
 
+// 代理商品审核队列（v2.15.0 商家上架商品人工审核：待审列表 + 通过/驳回）。
+// 与上方 /api/proxy/merchant-bearings/{merchantId:guid}（商家在售商品）不同：
+// 本组针对"待平台审核的商品"，pending 为字面量段，guid 约束保证两条路由互不冲突
+app.MapGet("/api/proxy/merchant-bearings/pending", async (IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var response = await client.GetAsync($"{apiBase}/api/admin/merchant-bearings/pending?page={page}&pageSize={pageSize}");
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json");
+}).RequireAuthorization();
+
+// 代理商品审核通过（通过即在售、公域可见）
+app.MapPost("/api/proxy/merchant-bearings/{id:guid}/approve", async (Guid id, IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var response = await client.PostAsync($"{apiBase}/api/admin/merchant-bearings/{id}/approve", null);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理商品审核驳回（原样透传驳回原因 JSON，商家可见并可修改重提）
+app.MapPost("/api/proxy/merchant-bearings/{id:guid}/reject", async (Guid id, System.Text.Json.JsonElement body,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
+    var response = await client.PostAsync($"{apiBase}/api/admin/merchant-bearings/{id}/reject", content);
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
 // 代理上传/替换勋章图（v2.6.0 勋章图片管线：Admin 传图 → API 存对象存储并回写 ImageKey）
 app.MapPost("/api/proxy/achievements/{id:guid}/image", async (Guid id, IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
 {

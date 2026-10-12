@@ -1,0 +1,383 @@
+@{
+    ViewData["Title"] = "替代品管理";
+    var items = ViewBag.Items as IEnumerable<InterchangeAdminRowDto> ?? [];
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var keyword = (string?)ViewBag.Keyword;
+    var reviewStatus = (int?)ViewBag.ReviewStatus;
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    var error = (string?)ViewBag.Error;
+    var canManage = PanelPerms.Has(User, "merchant.verify");
+
+    // 输出 UTC ISO 8601 串，由全局 data-utc JS 按浏览器时区显示
+    string Iso(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+    // 分页链接保留当前过滤条件
+    string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&keyword={Uri.EscapeDataString(keyword ?? "")}"
+        + (reviewStatus.HasValue ? $"&reviewStatus={reviewStatus.Value}" : "");
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-shuffle"></i> 替代品管理</h4>
+    <p class="text-muted">平台维护轴承替代关系标准（直接生效、公域可见）；商家提交的候选需在此审核或经"替代品审核"队列处理</p>
+</div>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span>替代关系（@totalCount 条）</span>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            @if (canManage)
+            {
+            <button class="btn btn-success" onclick="openCreateInterchange()">
+                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建替代关系</span>
+            </button>
+            }
+            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
+                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="型号/品牌关键字..." style="min-width:180px" />
+                <select name="reviewStatus" class="form-select" style="min-width:140px">
+                    <option value="" selected="@(reviewStatus == null ? "selected" : null)">全部状态</option>
+                    <option value="0" selected="@(reviewStatus == 0 ? "selected" : null)">已生效</option>
+                    <option value="1" selected="@(reviewStatus == 1 ? "selected" : null)">待审核</option>
+                    <option value="2" selected="@(reviewStatus == 2 ? "selected" : null)">已驳回</option>
+                </select>
+                <input type="hidden" name="pageSize" value="@pageSize" />
+                <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+            </form>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>源型号 / 品牌</th>
+                        <th>目标型号 / 品牌</th>
+                        <th class="d-none d-lg-table-cell">类型</th>
+                        <th class="d-none d-md-table-cell">可信度</th>
+                        <th class="d-none d-md-table-cell">双向</th>
+                        <th>状态</th>
+                        <th class="d-none d-lg-table-cell">来源</th>
+                        <th class="d-none d-lg-table-cell">提出商户</th>
+                        <th class="d-none d-md-table-cell">更新时间</th>
+                        @if (canManage)
+                        {
+                        <th style="width:150px">操作</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Any())
+                    {
+                        @foreach (var item in items)
+                        {
+                            var statusClass = item.ReviewStatus == 0 ? "bg-success"
+                                : item.ReviewStatus == 1 ? "bg-warning text-dark" : "bg-danger";
+                            <tr data-id="@item.Id">
+                                <td>@(item.SourceBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.SourceBearing?.BrandName ?? "-")</small></td>
+                                <td>@(item.TargetBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.TargetBearing?.BrandName ?? "-")</small></td>
+                                <td class="d-none d-lg-table-cell"><span class="badge bg-secondary">@(item.TypeLabel ?? "-")</span></td>
+                                <td class="d-none d-md-table-cell">@item.Confidence</td>
+                                <td class="d-none d-md-table-cell">@(item.IsBidirectional ? "是" : "否")</td>
+                                <td>
+                                    <span class="badge @statusClass">@(item.ReviewStatusLabel ?? "-")</span>
+                                    @if (item.ReviewStatus == 2 && !string.IsNullOrWhiteSpace(item.ReviewComment))
+                                    {
+                                        <div class="small text-danger" title="@item.ReviewComment">驳回：@item.ReviewComment</div>
+                                    }
+                                </td>
+                                <td class="d-none d-lg-table-cell">
+                                    <div>@(string.IsNullOrWhiteSpace(item.Origin) ? "-" : item.Origin)</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.DataSourceType))
+                                    {
+                                        <small class="text-muted">@item.DataSourceType</small>
+                                    }
+                                </td>
+                                <td class="d-none d-lg-table-cell">@(string.IsNullOrWhiteSpace(item.ProposedByMerchantName) ? "平台" : item.ProposedByMerchantName)</td>
+                                <td class="d-none d-md-table-cell text-muted small" data-utc="@Iso(item.UpdatedAt)">@Iso(item.UpdatedAt)</td>
+                                @if (canManage)
+                                {
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary btn-edit" onclick='openEditInterchange(@Html.Raw(Json.Serialize(item)))' title="编辑"><i class="fas fa-pen"></i><span class="d-none d-sm-inline">编辑</span></button>
+                                    <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@item.Id" title="删除"><i class="fas fa-trash"></i><span class="d-none d-sm-inline">删除</span></button>
+                                </td>
+                                }
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="@(canManage ? 10 : 9)" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-2"></i><br />暂无替代关系</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(1)">首页</a>
+                        </li>
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(page - 1)">&laquo;</a>
+                        </li>
+                        @{
+                            var rs = Math.Max(1, page - 2);
+                            var re = Math.Min(totalPages, page + 2);
+                        }
+                        @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        @for (var p = rs; p <= re; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" href="@PageUrl(p)">@p</a>
+                            </li>
+                        }
+                        @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(page + 1)">&raquo;</a>
+                        </li>
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(totalPages)">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- 新建 / 编辑替代关系弹窗 -->
+<div class="modal fade" id="interchangeEditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="itModalTitle">新建替代关系</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="itId" />
+                <div id="itBearingPickers">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">源轴承（被替代方）<span class="text-danger">*</span></label>
+                            <div class="input-group mb-1">
+                                <input type="text" id="srcKeyword" class="form-control" placeholder="输入型号/品牌搜索..." />
+                                <button type="button" class="btn btn-outline-primary" id="btnSearchSrc"><i class="fas fa-search"></i></button>
+                            </div>
+                            <select id="srcResults" class="form-select"></select>
+                            <input type="hidden" id="srcId" />
+                            <div class="small text-muted mt-1">已选：<span id="srcChosen">-</span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">目标轴承（替代方）<span class="text-danger">*</span></label>
+                            <div class="input-group mb-1">
+                                <input type="text" id="tgtKeyword" class="form-control" placeholder="输入型号/品牌搜索..." />
+                                <button type="button" class="btn btn-outline-primary" id="btnSearchTgt"><i class="fas fa-search"></i></button>
+                            </div>
+                            <select id="tgtResults" class="form-select"></select>
+                            <input type="hidden" id="tgtId" />
+                            <div class="small text-muted mt-1">已选：<span id="tgtChosen">-</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="itBearingSummary" class="alert alert-light border small" style="display:none"></div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">替代类型</label>
+                        <select id="itType" class="form-select">
+                            <option value="exact">标准等效替代</option>
+                            <option value="conditional">条件替代（需评估）</option>
+                            <option value="functional">仅供参考</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">可信度（0-100）</label>
+                        <input type="number" id="itConfidence" class="form-control" min="0" max="100" value="80" />
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="itBidirectional" checked />
+                            <label class="form-check-label" for="itBidirectional">双向替代</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">来源说明</label>
+                        <input type="text" id="itSource" class="form-control" placeholder="如：SKF 官方互换表" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">备注</label>
+                        <textarea id="itRemarks" class="form-control" rows="2" placeholder="如：需更换密封圈"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="itSaveBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 替代关系管理（v2.16.0）：浏览器调用 Program.cs 注册的代理端点
+    //   GET  /api/proxy/bearing-search?keyword=   选取源/目标轴承
+    //   POST /api/proxy/admin-interchanges        新建
+    //   PUT  /api/proxy/admin-interchanges/{id}   编辑
+    //   DELETE /api/proxy/admin-interchanges/{id} 删除
+    var bearingSearchProxy = '@Url.Content("~/api/proxy/bearing-search")';
+    var interchangeProxy = '@Url.Content("~/api/proxy/admin-interchanges")';
+    var itEditMode = false;
+
+    // 重置某个轴承选择器（清空搜索框/结果/已选）
+    function resetPicker(prefix) {
+        $('#' + prefix + 'Keyword').val('');
+        $('#' + prefix + 'Results').empty().append($('<option>').val('').text('请先搜索'));
+        $('#' + prefix + 'Chosen').text('-');
+        $('#' + prefix + 'Id').val('');
+    }
+
+    // 将搜索结果渲染到下拉，字段取 BearingDto：partNumber/brandName/bearingTypeName(bearingType)
+    function fillBearingOptions(prefix, items) {
+        var $sel = $('#' + prefix + 'Results').empty().append($('<option>').val('').text('请选择'));
+        items.forEach(function (b) {
+            var type = b.bearingTypeName || b.bearingType || '';
+            var label = (b.partNumber || '') + (b.brandName ? ' / ' + b.brandName : '') + (type ? ' [' + type + ']' : '');
+            $sel.append($('<option>').val(b.id).text(label));
+        });
+    }
+
+    // 调用代理搜索轴承并渲染下拉
+    function searchBearings(prefix) {
+        var kw = $('#' + prefix + 'Keyword').val();
+        if (!kw) { showToast('warning', '请输入搜索关键词'); return; }
+        $.get(bearingSearchProxy, { keyword: kw, pageSize: 10 })
+            .done(function (r) {
+                var data = (r && r.data) ? r.data : {};
+                var items = data.items || [];
+                if (!items.length) { showToast('info', '未找到匹配轴承'); }
+                fillBearingOptions(prefix, items);
+                $('#' + prefix + 'Chosen').text('-');
+                $('#' + prefix + 'Id').val('');
+            })
+            .fail(function () { showToast('error', '搜索失败'); });
+    }
+
+    // 绑定一个轴承选择器：搜索按钮/回车触发搜索，下拉变更记录已选 id
+    function bindPicker(prefix, btnId) {
+        $('#' + btnId).on('click', function () { searchBearings(prefix); });
+        $('#' + prefix + 'Keyword').on('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); searchBearings(prefix); }
+        });
+        $('#' + prefix + 'Results').on('change', function () {
+            var id = $(this).val();
+            $('#' + prefix + 'Id').val(id || '');
+            $('#' + prefix + 'Chosen').text(id ? $(this).find('option:selected').text() : '-');
+        });
+    }
+    bindPicker('src', 'btnSearchSrc');
+    bindPicker('tgt', 'btnSearchTgt');
+
+    // 打开"新建"弹窗：重置表单与选择器
+    function openCreateInterchange() {
+        itEditMode = false;
+        $('#itModalTitle').text('新建替代关系');
+        $('#itId').val('');
+        resetPicker('src');
+        resetPicker('tgt');
+        $('#itType').val('exact');
+        $('#itConfidence').val(80);
+        $('#itSource').val('');
+        $('#itRemarks').val('');
+        $('#itBidirectional').prop('checked', true);
+        $('#itBearingPickers').show();
+        $('#itBearingSummary').hide().empty();
+        new bootstrap.Modal(document.getElementById('interchangeEditModal')).show();
+    }
+
+    // 打开"编辑"弹窗：隐藏轴承选择器，展示源/目标只读摘要
+    function openEditInterchange(item) {
+        itEditMode = true;
+        $('#itModalTitle').text('编辑替代关系');
+        $('#itId').val(item.id);
+        $('#itType').val(item.interchangeType || 'exact');
+        $('#itConfidence').val(item.confidence != null ? item.confidence : 80);
+        $('#itSource').val(item.origin || '');
+        $('#itRemarks').val(item.remarks || '');
+        $('#itBidirectional').prop('checked', !!item.isBidirectional);
+        var s = item.sourceBearing || {}, t = item.targetBearing || {};
+        $('#itBearingSummary').html(
+            '<div><strong>源轴承：</strong>' + (s.partNumber || '-') + ' / ' + (s.brandName || '-') + '</div>' +
+            '<div><strong>目标轴承：</strong>' + (t.partNumber || '-') + ' / ' + (t.brandName || '-') + '</div>');
+        $('#itBearingPickers').hide();
+        $('#itBearingSummary').show();
+        new bootstrap.Modal(document.getElementById('interchangeEditModal')).show();
+    }
+
+    // 保存：新建 POST（含源/目标 id）/ 编辑 PUT（不含轴承）
+    $('#itSaveBtn').on('click', function () {
+        var confidence = parseInt($('#itConfidence').val(), 10);
+        if (isNaN(confidence) || confidence < 0 || confidence > 100) { showToast('warning', '可信度需为 0-100'); return; }
+        var body = {
+            interchangeType: $('#itType').val(),
+            confidence: confidence,
+            source: $('#itSource').val() || null,
+            remarks: $('#itRemarks').val() || null,
+            isBidirectional: $('#itBidirectional').is(':checked')
+        };
+        var url = interchangeProxy, method = 'POST';
+        if (itEditMode) {
+            url = interchangeProxy + '/' + $('#itId').val();
+            method = 'PUT';
+        } else {
+            var sid = $('#srcId').val(), tid = $('#tgtId').val();
+            if (!sid || !tid) { showToast('warning', '请选择源轴承与目标轴承'); return; }
+            if (sid === tid) { showToast('warning', '源轴承与目标轴承不能相同'); return; }
+            body.sourceBearingId = sid;
+            body.targetBearingId = tid;
+        }
+        $.ajax({ url: url, method: method, contentType: 'application/json', data: JSON.stringify(body) })
+            .done(function (r) {
+                if (r && r.success) {
+                    showToast('success', r.message || '操作成功');
+                    setTimeout(function () { location.reload(); }, 800);
+                } else {
+                    showToast('error', (r && r.message) || '操作失败');
+                }
+            })
+            .fail(function (xhr) {
+                var detail = xhr && xhr.responseJSON && (xhr.responseJSON.detail || xhr.responseJSON.message);
+                showToast('error', detail || '操作失败');
+            });
+    });
+
+    // 删除：确认后调用 DELETE 代理
+    $('.btn-delete').on('click', function () {
+        var id = $(this).data('id');
+        showConfirm({ title: '删除替代关系', message: '删除后不可恢复，确认删除？', okText: '删除', danger: true }).then(function (ok) {
+            if (!ok) return;
+            $.ajax({ url: interchangeProxy + '/' + id, method: 'DELETE' })
+                .done(function (r) {
+                    if (r && r.success) {
+                        showToast('success', r.message || '已删除');
+                        setTimeout(function () { location.reload(); }, 800);
+                    } else {
+                        showToast('error', (r && r.message) || '操作失败');
+                    }
+                })
+                .fail(function () { showToast('error', '操作失败'); });
+        });
+    });
+</script>
+}

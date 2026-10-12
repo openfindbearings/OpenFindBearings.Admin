@@ -222,12 +222,13 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 }).AllowAnonymous();
 
 // API 代理端点：前端通过 Admin 中转调用 API，避免跨域问题
-// 代理轴承替代品查询
+// 代理轴承替代品查询（v2.16.0 修正：目标端点为公域 /api/bearings/{id}/interchanges，
+//   旧路径 /api/interchanges/by-bearing/{id} 已废弃，修正以保证轴承列表"替代品"弹窗可用）
 app.MapGet("/api/proxy/interchanges/{bearingId:guid}", async (Guid bearingId, IHttpClientFactory factory, IConfiguration config) =>
 {
     var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
     var client = factory.CreateClient("ApiClient");
-    var response = await client.GetAsync($"{apiBase}/api/interchanges/by-bearing/{bearingId}");
+    var response = await client.GetAsync($"{apiBase}/api/bearings/{bearingId}/interchanges");
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json");
 }).RequireAuthorization();
@@ -293,6 +294,106 @@ app.MapPost("/api/proxy/merchant-bearings/{id:guid}/reject", async (Guid id, Sys
     var response = await client.PostAsync($"{apiBase}/api/admin/merchant-bearings/{id}/reject", content);
     var resp = await response.Content.ReadAsStringAsync();
     return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// ============ 替代关系治理代理（v2.16.0：平台建标准、审关系） ============
+// 前缀 /api/proxy/admin-interchanges 与旧的 /api/proxy/interchanges/{bearingId:guid} 互不冲突
+
+// 代理替代关系管理列表（关键字/审核状态过滤，分页）
+app.MapGet("/api/proxy/admin-interchanges", async (IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] string? keyword = null, [FromQuery] int? reviewStatus = null,
+    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var url = $"{apiBase}/api/admin/interchanges?page={page}&pageSize={pageSize}";
+    if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
+    if (reviewStatus.HasValue) url += $"&reviewStatus={reviewStatus.Value}";
+    var response = await client.GetAsync(url);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理待审核替代候选队列
+app.MapGet("/api/proxy/admin-interchanges/pending", async (IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var response = await client.GetAsync($"{apiBase}/api/admin/interchanges/pending?page={page}&pageSize={pageSize}");
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理平台新建替代关系（原样透传请求体）
+app.MapPost("/api/proxy/admin-interchanges", async (System.Text.Json.JsonElement body,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
+    var response = await client.PostAsync($"{apiBase}/api/admin/interchanges", content);
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理平台编辑替代关系（类型/可信度/来源/备注/双向）
+app.MapPut("/api/proxy/admin-interchanges/{id:guid}", async (Guid id, System.Text.Json.JsonElement body,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
+    var response = await client.PutAsync($"{apiBase}/api/admin/interchanges/{id}", content);
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理平台删除替代关系（物理删除）
+app.MapDelete("/api/proxy/admin-interchanges/{id:guid}", async (Guid id,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var response = await client.DeleteAsync($"{apiBase}/api/admin/interchanges/{id}");
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理审核通过替代候选
+app.MapPost("/api/proxy/admin-interchanges/{id:guid}/approve", async (Guid id,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/approve", null);
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理审核驳回替代候选（原样透传驳回原因 JSON，提交方可见）
+app.MapPost("/api/proxy/admin-interchanges/{id:guid}/reject", async (Guid id, System.Text.Json.JsonElement body,
+    IHttpClientFactory factory, IConfiguration config) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
+    var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/reject", content);
+    var resp = await response.Content.ReadAsStringAsync();
+    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
+}).RequireAuthorization();
+
+// 代理轴承搜索（新建替代关系时选取源/目标轴承；返回分页 items：id/partNumber/brandName/bearingType 等）
+app.MapGet("/api/proxy/bearing-search", async (IHttpClientFactory factory, IConfiguration config,
+    [FromQuery] string? keyword = null, [FromQuery] int pageSize = 20) =>
+{
+    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var client = factory.CreateClient("ApiClient");
+    var url = $"{apiBase}/api/bearings/search?page=1&pageSize={pageSize}";
+    if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
+    var response = await client.GetAsync(url);
+    var content = await response.Content.ReadAsStringAsync();
+    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
 
 // 代理上传/替换勋章图（v2.6.0 勋章图片管线：Admin 传图 → API 存对象存储并回写 ImageKey）

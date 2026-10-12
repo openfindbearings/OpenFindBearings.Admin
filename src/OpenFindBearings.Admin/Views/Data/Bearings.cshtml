@@ -209,7 +209,7 @@
 <div class="modal fade" id="interchangeModal" tabindex="-1">
     <div class="modal-dialog"><div class="modal-content">
         <div class="modal-header"><h6 class="modal-title">替代品 - <span id="interchangeBearing"></span></h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body"><div class="table-responsive"><table class="modal-table"><thead><tr><th>类型</th><th>品牌</th><th>型号</th></tr></thead><tbody id="interchangeBody"></tbody></table></div></div>
+        <div class="modal-body"><div class="table-responsive"><table class="modal-table"><thead><tr><th>类型</th><th>品牌</th><th>型号</th><th>备注</th></tr></thead><tbody id="interchangeBody"></tbody></table></div></div>
     </div></div>
 </div>
 
@@ -247,12 +247,17 @@ document.querySelectorAll('.btn-interchange').forEach(function(btn){
     btn.addEventListener('click',function(){
         var id=this.dataset.id, name=this.dataset.name;
         document.getElementById('interchangeBearing').textContent=name;
-        document.getElementById('interchangeBody').innerHTML='<tr><td colspan="3">加载中...</td></tr>';
+        document.getElementById('interchangeBody').innerHTML='<tr><td colspan="4">加载中...</td></tr>';
         new bootstrap.Modal(document.getElementById('interchangeModal')).show();
         fetch('/api/proxy/interchanges/'+id).then(function(r){return r.json()}).then(function(d){
-            var h='';(d||[]).forEach(function(r){h+='<tr><td>'+(r.type||'-')+'</td><td>'+(r.brand||'-')+'</td><td>'+(r.partNumber||'-')+'</td></tr>';});
-            document.getElementById('interchangeBody').innerHTML=h||'<tr><td colspan="3" class="text-center text-muted">无替代品</td></tr>';
-        }).catch(function(){document.getElementById('interchangeBody').innerHTML='<tr><td colspan="3" class="text-center text-danger">加载失败</td></tr>';});
+            // v2.16.0：API 统一响应外层 {success,data}，替代品数组在 d.data；兼容旧裸数组返回
+            var list = (d && d.data) ? d.data : (d || []);
+            var h='';
+            list.forEach(function(r){
+                h+='<tr><td>'+(r.typeLabel||'-')+'</td><td>'+(r.brandName||'-')+'</td><td>'+(r.partNumber||'-')+'</td><td>'+(r.remarks||'-')+'</td></tr>';
+            });
+            document.getElementById('interchangeBody').innerHTML=h||'<tr><td colspan="4" class="text-center text-muted">无替代品</td></tr>';
+        }).catch(function(){document.getElementById('interchangeBody').innerHTML='<tr><td colspan="4" class="text-center text-danger">加载失败</td></tr>';});
     });
 });
 

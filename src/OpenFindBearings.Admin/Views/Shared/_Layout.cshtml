@@ -51,7 +51,9 @@
                     </a>
                 </li>
                 }
-                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view"))
+                @* 改动说明（v2.16.0 替代品治理）：替代品管理入口归入信息管理（平台建标准），
+                   外组条件补 merchant.verify 保证仅持该权限者也能见到本组 *@
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.verify"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
@@ -70,6 +72,11 @@
                         @if (HasPerm("bearing.view"))
                         {
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
+                        }
+                        @* 改动说明（v2.16.0 替代品治理）：平台替代关系管理入口，与轴承列表同置基础信息区 *@
+                        @if (HasPerm("merchant.verify"))
+                        {
+                        <li><a asp-controller="Interchanges" asp-action="Index" class="nav-link" data-page="interchanges"><i class="fas fa-circle"></i><span>替代品管理</span></a></li>
                         }
                         @if (HasPerm("merchant.view"))
                         {
@@ -96,6 +103,8 @@
                         <li><a asp-controller="Document" asp-action="Index" class="nav-link" data-page="document"><i class="fas fa-circle"></i><span>证照材料审核</span></a></li>
                         @* 改动说明（v2.15.0 商品审核）：商家上架商品人工审核入口，与入驻/证照审核同置 merchant.verify 组 *@
                         <li><a asp-controller="MerchantBearingReview" asp-action="Index" class="nav-link" data-page="merchant-bearing-review"><i class="fas fa-circle"></i><span>商品审核</span></a></li>
+                        @* 改动说明（v2.16.0 替代品治理）：商家替代候选审核入口，与商品审核同置 merchant.verify 组 *@
+                        <li><a asp-controller="InterchangeReview" asp-action="Index" class="nav-link" data-page="interchange-review"><i class="fas fa-circle"></i><span>替代品审核</span></a></li>
                         }
                     </ul>
                 </li>

@@ -15,7 +15,6 @@
    - 配置删除：appsettings `Features` 节与 `ApiUrls:FindBearingsSync` 键；deploy 模板 `ApiUrls__FindBearingsSync` env。
 2. **配套 API 摘除**（见 API《02 v1.46.0》）：/api/sync 端点组、import-context、config/reliability、SeedData 权限目录五键（merchant.import/mapping.view/mapping.manage/review.sync/sync.run）。
 3. **保留说明**：商家 `DataSource=Crawler` 枚举为平台核心业务属性（互联网数据来源标记，展示与守卫逻辑在用）不摘；DashboardStats 去 Sync 聚合、仪表盘同步数据待处理卡删除，仅呈现本 API 自身统计。
-4. **闭源线吸收**：开源删除后闭源仓 merge 遇 modify/delete 冲突一律选保留本地（AGENTS.md 铁律 1/9），Sync/Crawler 管理面板能力继续活在闭源 Admin。
 ### v1.34.0 → v1.35.0（2026-10 Sync 集成门控默认关闭）
 
 1. **`Features:SyncIntegration` 默认值改 `false`**（v1.34.0 起为 true 默认、靠部署置 false 门控）：开源版部署（不含 Sync 数据管线）开箱即无 Sync 痕迹——

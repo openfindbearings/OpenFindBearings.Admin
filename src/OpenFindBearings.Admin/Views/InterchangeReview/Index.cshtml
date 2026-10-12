@@ -1,0 +1,159 @@
+@{
+    ViewData["Title"] = "替代品审核";
+    var items = ViewBag.Items as IEnumerable<InterchangeAdminRowDto> ?? [];
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    var error = (string?)ViewBag.Error;
+
+    // 输出 UTC ISO 8601 串，由全局 data-utc JS 按浏览器时区显示
+    string Iso(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-shuffle"></i> 替代品审核</h4>
+    <p class="text-muted">商家提交的轴承替代候选待平台审核，通过后该替代关系生效并对公域可见；驳回须填写原因，提交方可见</p>
+</div>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>待审核替代候选（@totalCount 条）</span>
+        <span class="text-muted small">通过即生效；驳回原因经站内信触达提交方</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>源型号 / 品牌</th>
+                        <th>目标型号 / 品牌</th>
+                        <th class="d-none d-lg-table-cell">类型</th>
+                        <th class="d-none d-md-table-cell">可信度</th>
+                        <th class="d-none d-md-table-cell">提出商户</th>
+                        <th class="d-none d-md-table-cell">提交时间</th>
+                        <th style="width:170px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Any())
+                    {
+                        @foreach (var item in items)
+                        {
+                            <tr data-id="@item.Id">
+                                <td>@(item.SourceBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.SourceBearing?.BrandName ?? "-")</small></td>
+                                <td>@(item.TargetBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.TargetBearing?.BrandName ?? "-")</small></td>
+                                <td class="d-none d-lg-table-cell"><span class="badge bg-secondary">@(item.TypeLabel ?? "-")</span></td>
+                                <td class="d-none d-md-table-cell">@item.Confidence</td>
+                                <td class="d-none d-md-table-cell">@(string.IsNullOrWhiteSpace(item.ProposedByMerchantName) ? "平台" : item.ProposedByMerchantName)</td>
+                                <td class="d-none d-md-table-cell text-muted small" data-utc="@Iso(item.CreatedAt)">@Iso(item.CreatedAt)</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success btn-approve" data-id="@item.Id" title="审核通过"><i class="fas fa-check"></i><span class="d-none d-sm-inline">通过</span></button>
+                                    <button class="btn btn-sm btn-outline-danger btn-reject" data-id="@item.Id" title="驳回"><i class="fas fa-times"></i><span class="d-none d-sm-inline">驳回</span></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无待审核替代候选</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (totalPages > 1)
+    {
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = 1, pageSize })">首页</a>
+                        </li>
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = page - 1, pageSize })">&laquo;</a>
+                        </li>
+                        @{
+                            var rs = Math.Max(1, page - 2);
+                            var re = Math.Min(totalPages, page + 2);
+                        }
+                        @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        @for (var p = rs; p <= re; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { page = p, pageSize })">@p</a>
+                            </li>
+                        }
+                        @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = page + 1, pageSize })">&raquo;</a>
+                        </li>
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", new { page = totalPages, pageSize })">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+    // 替代品审核动作（v2.16.0）：浏览器调用 Program.cs 注册的代理端点
+    //   POST /api/proxy/admin-interchanges/{id}/approve；POST .../{id}/reject（JSON 带 reason）。
+    //   通过=showConfirm 确认；驳回=showPrompt 必填原因；成功后刷新列表（计数/分页同步）。
+    var interchangeProxy = '@Url.Content("~/api/proxy/admin-interchanges")';
+
+    function afterReviewSuccess(msg) {
+        showToast('success', msg || '操作成功');
+        setTimeout(function () { location.reload(); }, 800);
+    }
+
+    function reviewFail(xhr) {
+        // 代理透传 API 状态码；ProblemDetails 的 detail 优先，其次通用文案
+        var detail = xhr && xhr.responseJSON && xhr.responseJSON.detail;
+        showToast(xhr && xhr.status === 409 ? 'warning' : 'error', detail || '操作失败');
+        if (xhr && xhr.status === 409) setTimeout(function () { location.reload(); }, 1200);
+    }
+
+    $('.btn-approve').on('click', function () {
+        var id = $(this).data('id');
+        showConfirm({ title: '审核通过', message: '通过后该替代关系将生效并对公域可见，确认？', okText: '通过' }).then(function (ok) {
+            if (!ok) return;
+            $.ajax({ url: interchangeProxy + '/' + id + '/approve', method: 'POST' })
+                .done(function (r) {
+                    if (r && r.success) afterReviewSuccess(r.message);
+                    else showToast('error', (r && r.message) || '操作失败');
+                })
+                .fail(reviewFail);
+        });
+    });
+
+    $('.btn-reject').on('click', function () {
+        var id = $(this).data('id');
+        showPrompt({ title: '驳回替代候选', message: '请填写驳回原因（提交方可见）', required: true }).then(function (reason) {
+            if (!reason) return;
+            $.ajax({
+                url: interchangeProxy + '/' + id + '/reject',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ reason: reason })
+            })
+                .done(function (r) {
+                    if (r && r.success) afterReviewSuccess(r.message);
+                    else showToast('error', (r && r.message) || '操作失败');
+                })
+                .fail(reviewFail);
+        });
+    });
+</script>
+}

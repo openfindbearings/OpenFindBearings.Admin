@@ -76,7 +76,7 @@ public interface IAdminModule
 
     /// <summary>
     /// 加载本模块提供的审计日志源（可选）：source 命中本模块时返回该源原始 JSON（交由骨架按统一口径解析）；
-    /// 不处理返回 null。骨架只内置 identity/api，其它源（如闭源 Sync）由模块贡献。开源基座默认 null。
+    /// 不处理返回 null。骨架只内置 identity/api，其它源（如闭源服务）由模块贡献。开源基座默认 null。
     /// </summary>
     /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
     /// <param name="source">审计源标识</param>

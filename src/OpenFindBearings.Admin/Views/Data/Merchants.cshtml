@@ -1,15 +1,8 @@
 @model MerchantListViewModel
 @functions
 {
-    // 改动说明（v1.31.1）：商家类型中文化（与入驻审批页同映射），此前直出英文枚举
-    string MerchantTypeName(string t) => t switch
-    {
-        "Manufacturer" => "生产厂家",
-        "AuthorizedDealer" => "授权经销商",
-        "Distributor" => "分销商",
-        "Trader" => "贸易商",
-        _ => t
-    };
+    // 改动说明（v2.13.2 收敛）：类型中文改取 Helpers.MerchantLabels 唯一来源
+    string MerchantTypeName(string t) => MerchantLabels.TypeName(t);
 }
 
 @using OpenFindBearings.Admin.Models.DTOs

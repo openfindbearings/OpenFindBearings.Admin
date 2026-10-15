@@ -10,7 +10,9 @@
         <div class="d-flex flex-wrap gap-2 align-items-center">
             @if (PanelPerms.Has(User, "bearing.create"))
             {
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bearingModal" onclick="openCreateBearing()">
+            @* 改动说明（v2.13.2 死链修复）：原 target=#bearingModal（不存在）且 onclick=openCreateBearing()（未定义），
+   点击无反应；真实模态为 #createBearingModal *@
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBearingModal">
                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
             </button>
             }

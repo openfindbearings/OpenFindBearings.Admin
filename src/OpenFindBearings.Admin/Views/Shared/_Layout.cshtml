@@ -14,7 +14,8 @@
     //   子视图按钮级判定用 Helpers.PanelPerms.Has(User, ...)（_ViewImports 不支持本块共享）
     var permSet = User.Claims.Where(c => c.Type == "permission").Select(c => c.Value).ToHashSet();
     bool HasPerm(params string[] perms) =>
-        User.HasClaim(c => c.Type == "panel_role" && c.Value == "Admin") || perms.Any(p => permSet.Contains(p));
+        // 改动说明（v2.13.2 收敛）：超管角色名统一取 PanelRoles.Admin
+        User.HasClaim(c => c.Type == "panel_role" && c.Value == PanelRoles.Admin) || perms.Any(p => permSet.Contains(p));
 }
 <!DOCTYPE html>
 <html lang="zh-CN" data-bs-theme="light">
@@ -155,7 +156,8 @@
                     <ul class="sub-menu" id="sub-audit">
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="identity" class="nav-link" data-page="auditlog-identity"><i class="fas fa-circle"></i><span>管理员日志</span></a></li>
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="api" class="nav-link" data-page="auditlog-api"><i class="fas fa-circle"></i><span>API 日志</span></a></li>
-                        <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="sync" class="nav-link" data-page="auditlog-sync"><i class="fas fa-circle"></i><span>Sync 日志</span></a></li>
+                        @* 改动说明（v2.13.2 死链修复）：开源版不部署 Sync，控制器/视图亦无 sync 源，
+                           原 Sync 日志菜单项点击落到空列表，删除 *@
                     </ul>
                 </li>
                 }
@@ -244,7 +246,10 @@
             function fmtUtc(v) {
                 if (!v) return null;
                 var s = v;
-                if (typeof v === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(v)) s = v + "Z";
+                // 改动说明（v2.13.2）：截断 >3 位小数秒（.NET "O"/cookie expires_at 含 7 位），
+                //   否则部分引擎 new Date 解析失败；统一全局转换器能兜住所有 data-utc 消费点
+                if (typeof s === "string") s = s.replace(/(\.\d{3})\d+/, "$1");
+                if (typeof s === "string" && !/Z$|[+-]\d{2}:\d{2}$/.test(s)) s = s + "Z";
                 return _fmt.format(new Date(s));
             }
             document.addEventListener("DOMContentLoaded", function () {

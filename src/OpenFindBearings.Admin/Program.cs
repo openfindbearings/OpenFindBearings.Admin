@@ -9,9 +9,14 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Ext;
 using OpenFindBearings.Admin.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 改动说明（v2.18.0 通用扩展点）：加载可选扩展覆盖配置（开源无 appsettings.pro.json = 无副作用），
+//   供扩展模块读取自身配置（如闭源 Sync 的 ApiUrls:FindBearingsSync / Features:SyncIntegration）
+builder.Configuration.AddJsonFile("appsettings.pro.json", optional: true, reloadOnChange: false);
 
 // MVC + JSON 配置：camelCase 命名，null 值不序列化
 builder.Services.AddControllersWithViews()
@@ -151,6 +156,11 @@ builder.Services.AddHttpClient("IdentityClient", c =>
 
 builder.Services.AddScoped<ServiceHealthService>();
 builder.Services.AddSingleton<PriceConfigService>();
+
+// 改动说明（v2.18.0 通用扩展点）：反射发现扩展模块（开源无实现 = 空列表），
+//   注册为单例供健康检查与侧栏菜单读取；闭源在同项目新增 IAdminModule 实现即被接入
+var adminModules = AdminModuleLoader.Discover(builder.Configuration);
+builder.Services.AddSingleton<IReadOnlyList<IAdminModule>>(adminModules);
 
 var app = builder.Build();
 
@@ -404,5 +414,9 @@ app.MapPost("/api/proxy/achievements/{id:guid}/image", async (Guid id, IFormFile
     var content = await response.Content.ReadAsStringAsync();
     return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
+
+// 改动说明（v2.18.0 通用扩展点）：接入扩展模块专属路由（开源无模块 = 无）
+foreach (var module in adminModules)
+    module.MapRoutes(app);
 
 app.Run();

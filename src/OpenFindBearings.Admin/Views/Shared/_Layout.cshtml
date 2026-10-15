@@ -1,4 +1,5 @@
 @inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject System.Collections.Generic.IReadOnlyList<OpenFindBearings.Admin.Ext.IAdminModule> Modules
 @{ 
     var identityAuth = Config["Identity:Authority"] ?? "https://localhost:7201";
     var clientId = Config["Identity:ClientId"] ?? "admin_client";
@@ -107,6 +108,17 @@
                         @* 改动说明（v2.16.0 替代品治理）：商家替代候选审核入口，与商品审核同置 merchant.verify 组 *@
                         <li><a asp-controller="InterchangeReview" asp-action="Index" class="nav-link" data-page="interchange-review"><i class="fas fa-circle"></i><span>替代品审核</span></a></li>
                         }
+                        @* 改动说明（v2.18.0 通用扩展点）：并入扩展模块声明在"审核"分组的菜单项（开源无模块=无） *@
+                        @foreach (var module in Modules)
+                        {
+                            foreach (var item in module.MenuItems.Where(i => i.Group == "审核"))
+                            {
+                                if (item.Permission == null || HasPerm(item.Permission))
+                                {
+                        <li><a asp-controller="@item.Controller" asp-action="@item.Action" class="nav-link" data-page="@item.Controller.ToLowerInvariant()"><i class="fas @item.Icon"></i><span>@item.Label</span></a></li>
+                                }
+                            }
+                        }
                     </ul>
                 </li>
                 }
@@ -168,6 +180,17 @@
                         <i class="fas fa-cog"></i><span>系统配置</span>
                     </a>
                 </li>
+                }
+                @* 改动说明（v2.18.0 通用扩展点）：扩展模块声明在其它分组的菜单项，作为顶层项追加（开源无模块=无） *@
+                @foreach (var module in Modules)
+                {
+                    foreach (var item in module.MenuItems.Where(i => i.Group != "审核"))
+                    {
+                        if (item.Permission == null || HasPerm(item.Permission))
+                        {
+                <li><a asp-controller="@item.Controller" asp-action="@item.Action" class="nav-link" data-page="@item.Controller.ToLowerInvariant()"><i class="fas @item.Icon"></i><span>@item.Label</span></a></li>
+                        }
+                    }
                 }
             </ul>
         </nav>

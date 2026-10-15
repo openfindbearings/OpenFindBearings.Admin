@@ -1,0 +1,64 @@
+namespace OpenFindBearings.Admin.Ext;
+
+/// <summary>
+/// 健康检查端点描述（v2.18.0 通用扩展点）：扩展模块追加检查项时给出 URL/HttpClient 名/探测路径。
+/// </summary>
+public record ServiceEndpoint(string Url, string Client, string Path);
+
+/// <summary>
+/// 后台侧栏扩展菜单项（v2.18.0 通用扩展点）：模块声明一条菜单，归入既有分组（如"审核"）。
+/// </summary>
+/// <param name="Group">分组名（如"审核"），与开源侧栏分组同名即并排显示</param>
+/// <param name="Label">菜单文字</param>
+/// <param name="Controller">MVC 控制器</param>
+/// <param name="Action">MVC action</param>
+/// <param name="Permission">所需面板权限（为空则不判权限）</param>
+/// <param name="Icon">FontAwesome 图标类（默认圆点）</param>
+public record AdminMenuItem(
+    string Group,
+    string Label,
+    string Controller,
+    string Action,
+    string? Permission = null,
+    string Icon = "fa-circle");
+
+/// <summary>
+/// 后台扩展模块接口（v2.18.0 通用扩展点）。
+/// 开源基座只识别"模块"这一通用概念、不含任何具体业务；闭源在同项目内新增实现类即可被
+/// <see cref="AdminModuleLoader"/> 自动发现，并把路由/健康检查/侧栏菜单接进既有骨架。
+/// 目的：闭源只做加法（新增 .Pro.cs 文件），开源不再为闭源预留 Sync 专属占位，双方永不改同一共享文件。
+/// </summary>
+public interface IAdminModule
+{
+    /// <summary>
+    /// 模块是否启用：读取本模块自己的配置键（如 Features:SyncIntegration）；关闭则整体不接入。
+    /// </summary>
+    /// <param name="config">应用配置</param>
+    bool IsEnabled(IConfiguration config);
+
+    /// <summary>
+    /// 映射本模块的专属路由（如代理到闭源 Sync 服务的 /api/proxy/*）。无则空实现。
+    /// </summary>
+    /// <param name="app">已构建的 WebApplication（可经 app.Services 取依赖）</param>
+    void MapRoutes(WebApplication app);
+
+    /// <summary>
+    /// 追加本模块的服务健康检查项（写入 name → 端点 映射）。
+    /// </summary>
+    /// <param name="config">应用配置</param>
+    /// <param name="map">健康检查项映射（就地追加）</param>
+    void AddHealthServices(IConfiguration config, IDictionary<string, ServiceEndpoint> map);
+
+    /// <summary>
+    /// 本模块贡献的侧栏菜单项（可为空集合）。
+    /// </summary>
+    IEnumerable<AdminMenuItem> MenuItems { get; }
+
+    /// <summary>
+    /// 富化仪表盘统计 JSON（可选）：传入 API 原始 JSON，返回富化后 JSON；返回 null 表示不修改。
+    /// 闭源可借此把 Sync 审核待办等并入仪表盘，开源无模块 = 原样返回。
+    /// </summary>
+    /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
+    /// <param name="apiJson">API 返回的原始仪表盘 JSON</param>
+    Task<string?> EnrichDashboardJsonAsync(IServiceProvider services, string apiJson);
+}

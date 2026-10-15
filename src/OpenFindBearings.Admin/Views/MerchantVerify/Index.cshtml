@@ -172,7 +172,7 @@
     }
 </div>
 
-@* --- 详情抽屉：申请资料全量 + 爬虫历史数据比对（替代原独立"同步数据"弹窗，主流审批"先看全资料再决策"） --- *@
+@* --- 详情抽屉：申请资料全量 + 互联网数据比对（替代原独立"同步数据"弹窗，主流审批"先看全资料再决策"） --- *@
 <div class="offcanvas offcanvas-end" tabindex="-1" id="detailDrawer" style="width:620px">
     <div class="offcanvas-header">
         <h6 class="offcanvas-title">申请详情 - <span id="drawerName"></span></h6>
@@ -208,7 +208,7 @@
             <div id="dDocs" class="row g-2"></div>
             <div id="dDocsEmpty" class="text-muted small d-none">该申请未随附材料（历史通道数据），可要求驳回补全。</div>
 
-            <h6 class="text-muted small mt-4 mb-2">爬虫历史数据比对</h6>
+            <h6 class="text-muted small mt-4 mb-2">互联网数据比对</h6>
             <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
                 <span>共 <span id="drawerSyncTotal">0</span> 条</span>
                 <label class="d-flex align-items-center gap-1">
@@ -454,11 +454,11 @@
         // ============ 详情抽屉 ============
         let drawerMerchantId = null;
 
-        /** 抽屉内爬虫历史数据表（原独立"同步数据"弹窗并入抽屉，作为认领场景的资料比对） */
+        /** 抽屉内互联网数据表（原独立"同步数据"弹窗并入抽屉，作为认领场景的资料比对；dataSource=Internet 即互联网来源） */
         function loadDrawerSyncData() {
             if (!drawerMerchantId) return;
             const showAll = document.getElementById('drawerShowAll').checked;
-            let url = '@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', drawerMerchantId) + '?dataSource=Crawler&pageSize=9999';
+            let url = '@Url.Action("GetMerchantBearings", new { id = "PLACEHOLDER" })'.replace('PLACEHOLDER', drawerMerchantId) + '?dataSource=Internet&pageSize=9999';
             if (!showAll) url += '&onlyOnSale=true';
             fetch(url)
                 .then(function (r) { return r.json(); })
@@ -468,7 +468,7 @@
                     if (!Array.isArray(items)) items = [];
                     $('#drawerSyncTotal').text(totalCount);
                     if (items.length === 0) {
-                        $('#drawerSyncBody').html('<tr><td colspan="6" class="text-center text-muted py-3">无爬虫历史数据（自助新建商户属正常）</td></tr>');
+                        $('#drawerSyncBody').html('<tr><td colspan="6" class="text-center text-muted py-3">暂无互联网数据（自助新建商户属正常）</td></tr>');
                         return;
                     }
                     let h = '';

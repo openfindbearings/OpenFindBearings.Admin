@@ -123,7 +123,7 @@ public class InterchangeAdminRowDto
     /// <summary>提出候选的商户名称（平台自建为 null）</summary>
     [JsonPropertyName("proposedByMerchantName")] public string? ProposedByMerchantName { get; set; }
 
-    /// <summary>数据来源类型（Manual/Crawler/UserSubmitted 等）</summary>
+    /// <summary>数据来源类型（Manual/Internet/UserSubmitted 等）</summary>
     [JsonPropertyName("dataSourceType")] public string? DataSourceType { get; set; }
 
     /// <summary>创建时间（UTC，展示层转本地）</summary>

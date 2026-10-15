@@ -19,6 +19,8 @@
             <div class="btn-group btn-group-sm">
                 <a href="?source=identity&page=1" class="btn btn-outline-secondary @(source=="identity"?"active":"")">管理员</a>
                 <a href="?source=api&page=1" class="btn btn-outline-secondary @(source=="api"?"active":"")">API</a>
+                @* 改动说明（v2.18.0 通用扩展点）：闭源扩展页签槽（开源无 Views/Ext/auditlog.tabs.cshtml = 无） *@
+                @await Component.InvokeAsync("ProSlot", new { key = "auditlog.tabs" })
             </div>
         </div>
     </div>

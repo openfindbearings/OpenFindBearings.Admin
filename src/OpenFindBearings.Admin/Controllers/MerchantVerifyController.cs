@@ -32,7 +32,7 @@ public class MerchantVerifyController : Controller
     public async Task<IActionResult> Index(string? status = "pending", string search = "", int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
-        var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted=false&excludeCrawler=true";
+        var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted=false&excludeInternet=true";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&keyword={Uri.EscapeDataString(search)}";
         if (!string.IsNullOrWhiteSpace(status))

@@ -15,7 +15,7 @@ using OpenFindBearings.Admin.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // 改动说明（v2.18.0 通用扩展点）：加载可选扩展覆盖配置（开源无 appsettings.pro.json = 无副作用），
-//   供扩展模块读取自身配置（如闭源 Sync 的 ApiUrls:FindBearingsSync / Features:SyncIntegration）
+//   供扩展模块读取自身配置（如闭源 互联网数据的 ApiUrls:FindBearings互联网数据/ Features:SyncIntegration）
 builder.Configuration.AddJsonFile("appsettings.pro.json", optional: true, reloadOnChange: false);
 
 // MVC + JSON 配置：camelCase 命名，null 值不序列化
@@ -161,6 +161,9 @@ builder.Services.AddSingleton<PriceConfigService>();
 //   注册为单例供健康检查与侧栏菜单读取；闭源在同项目新增 IAdminModule 实现即被接入
 var adminModules = AdminModuleLoader.Discover(builder.Configuration);
 builder.Services.AddSingleton<IReadOnlyList<IAdminModule>>(adminModules);
+// 改动说明（v2.18.0 通用扩展点）：模块注册自身服务（如闭源 互联网数据的命名 HttpClient），开源无模块=无
+foreach (var module in adminModules)
+    module.ConfigureServices(builder);
 
 var app = builder.Build();
 

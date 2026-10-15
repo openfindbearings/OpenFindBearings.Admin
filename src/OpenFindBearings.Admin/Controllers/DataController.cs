@@ -424,7 +424,7 @@ public class DataController : Controller
 
     /// <summary>
     /// 解除商户归属（v1.24.0），POST /api/admin/merchants/{id}/detach——
-    /// 认领商户清场回公海（可再认领、随爬取自然更新）；自建商户会被 API 拒绝（应走删除）。
+    /// 认领商户清场回公海（可再认领、随互联网自然更新）；自建商户会被 API 拒绝（应走删除）。
     /// 上游 400 文案透传 TempData（如"自助创建或提名新建的商户无公海数据可退回"）
     /// </summary>
     [HttpPost]

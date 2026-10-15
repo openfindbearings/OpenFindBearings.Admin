@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Ext;
 using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,12 +14,15 @@ public class AuditLogController : Controller
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
     private readonly ILogger<AuditLogController> _logger;
+    private readonly IReadOnlyList<IAdminModule> _modules;
 
-    public AuditLogController(IHttpClientFactory factory, IConfiguration config, ILogger<AuditLogController> logger)
+    public AuditLogController(IHttpClientFactory factory, IConfiguration config, ILogger<AuditLogController> logger,
+        IReadOnlyList<IAdminModule> modules)
     {
         _factory = factory;
         _config = config;
         _logger = logger;
+        _modules = modules;
     }
 
     public async Task<IActionResult> Index(string source = "identity", int page = 1, int pageSize = 30)
@@ -34,7 +38,7 @@ public class AuditLogController : Controller
             {
                 "identity" => await LoadIdentityLogsAsync(page, pageSize),
                 "api" => await LoadApiLogsAsync(page, pageSize),
-                _ => ([], 0)
+                _ => await LoadModuleLogsAsync(source, page, pageSize)
             };
 
             ViewBag.Items = items;
@@ -72,6 +76,20 @@ public class AuditLogController : Controller
 
         var json = await resp.Content.ReadAsStringAsync();
         return ParsePagedResponse(json);
+    }
+
+    /// <summary>
+    /// 复合源：委托扩展模块加载其专属审计日志源（如闭源服务），取回原始 JSON 后按统一口径解析。
+    /// 改动说明（v2.18.0 通用扩展点）：骨架只内置 identity/api，其它源交模块贡献。
+    /// </summary>
+    private async Task<(List<AuditLogItemDto>, int)> LoadModuleLogsAsync(string source, int page, int pageSize)
+    {
+        foreach (var module in _modules)
+        {
+            var json = await module.LoadAuditLogJsonAsync(HttpContext.RequestServices, source, page, pageSize);
+            if (json != null) return ParsePagedResponse(json);
+        }
+        return ([], 0);
     }
 
     private (List<AuditLogItemDto>, int) ParsePagedResponse(string json)

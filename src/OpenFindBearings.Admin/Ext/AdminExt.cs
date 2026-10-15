@@ -73,4 +73,13 @@ public interface IAdminModule
     /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
     /// <param name="apiJson">API 返回的原始仪表盘 JSON</param>
     Task<string?> EnrichDashboardJsonAsync(IServiceProvider services, string apiJson);
+
+    /// <summary>
+    /// 加载本模块提供的审计日志源（可选）：source 命中本模块时返回该源原始 JSON（交由骨架按统一口径解析）；
+    /// 不处理返回 null。骨架只内置 identity/api，其它源（如闭源 Sync）由模块贡献。开源基座默认 null。
+    /// </summary>
+    /// <param name="source">审计源标识</param>
+    /// <param name="page">页码</param>
+    /// <param name="pageSize">每页条数</param>
+    Task<string?> LoadAuditLogJsonAsync(string source, int page, int pageSize) => Task.FromResult<string?>(null);
 }

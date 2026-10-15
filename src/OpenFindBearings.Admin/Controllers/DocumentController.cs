@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,7 @@ public class DocumentController : Controller
     /// </summary>
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var url = $"{apiBase}/api/admin/documents/pending?page={page}&pageSize={pageSize}";
         try
@@ -56,7 +57,7 @@ public class DocumentController : Controller
     [HttpPost]
     public async Task<IActionResult> Approve(string id)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -76,7 +77,7 @@ public class DocumentController : Controller
     [HttpPost]
     public async Task<IActionResult> Reject(string id, string? reason)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models;
@@ -39,7 +40,7 @@ public class HomeController : Controller
     [AllowAnonymous]
     public async Task<IActionResult> DashboardStats()
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var apiClient = _factory.CreateClient("ApiClient");
         apiClient.Timeout = TimeSpan.FromSeconds(10);
 

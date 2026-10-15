@@ -1,4 +1,5 @@
 namespace OpenFindBearings.Admin.Services;
+using OpenFindBearings.Admin.Helpers;
 
 public class ServiceHealthService
 {
@@ -17,8 +18,8 @@ public class ServiceHealthService
 
         var services = new Dictionary<string, (string url, string client)>
         {
-            ["Api"] = (_config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183", "ApiClient"),
-            ["Identity"] = (_config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201", "IdentityClient")
+            ["Api"] = (ApiUrlResolver.Api(_config), "ApiClient"),
+            ["Identity"] = (ApiUrlResolver.Identity(_config), "IdentityClient")
         };
 
         var paths = new Dictionary<string, string>

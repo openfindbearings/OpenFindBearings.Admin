@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using OpenFindBearings.Admin.Helpers;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -55,7 +56,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             }
 
             var cfg = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-            var apiBase = cfg["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var apiBase = ApiUrlResolver.Api(cfg);
             using var req = new HttpRequestMessage(HttpMethod.Get, $"{apiBase}/api/me/permissions");
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var resp = await context.HttpContext.RequestServices
@@ -219,7 +220,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 //   旧路径 /api/interchanges/by-bearing/{id} 已废弃，修正以保证轴承列表"替代品"弹窗可用）
 app.MapGet("/api/proxy/interchanges/{bearingId:guid}", async (Guid bearingId, IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.GetAsync($"{apiBase}/api/bearings/{bearingId}/interchanges");
     var content = await response.Content.ReadAsStringAsync();
@@ -231,7 +232,7 @@ app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchan
     [FromQuery] bool? onlyOnSale = null, [FromQuery] string? dataSource = null,
     [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var url = $"{apiBase}/api/merchants/{merchantId}/bearings?page={page}&pageSize={pageSize}";
     if (onlyOnSale.HasValue) url += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
@@ -245,7 +246,7 @@ app.MapGet("/api/proxy/merchant-bearings/{merchantId:guid}", async (Guid merchan
 app.MapGet("/api/proxy/bearing-merchants/{bearingId:guid}", async (Guid bearingId, IHttpClientFactory factory, IConfiguration config,
     [FromQuery] bool? onlyOnSale = true, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var url = $"{apiBase}/api/bearings/{bearingId}/merchants?page={page}&pageSize={pageSize}";
     if (onlyOnSale.HasValue) url += $"&onlyOnSale={onlyOnSale.Value.ToString().ToLower()}";
@@ -260,7 +261,7 @@ app.MapGet("/api/proxy/bearing-merchants/{bearingId:guid}", async (Guid bearingI
 app.MapGet("/api/proxy/merchant-bearings/pending", async (IHttpClientFactory factory, IConfiguration config,
     [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.GetAsync($"{apiBase}/api/admin/merchant-bearings/pending?page={page}&pageSize={pageSize}");
     var content = await response.Content.ReadAsStringAsync();
@@ -270,7 +271,7 @@ app.MapGet("/api/proxy/merchant-bearings/pending", async (IHttpClientFactory fac
 // 代理商品审核通过（通过即在售、公域可见）
 app.MapPost("/api/proxy/merchant-bearings/{id:guid}/approve", async (Guid id, IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.PostAsync($"{apiBase}/api/admin/merchant-bearings/{id}/approve", null);
     var content = await response.Content.ReadAsStringAsync();
@@ -281,7 +282,7 @@ app.MapPost("/api/proxy/merchant-bearings/{id:guid}/approve", async (Guid id, IH
 app.MapPost("/api/proxy/merchant-bearings/{id:guid}/reject", async (Guid id, System.Text.Json.JsonElement body,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
     var response = await client.PostAsync($"{apiBase}/api/admin/merchant-bearings/{id}/reject", content);
@@ -297,7 +298,7 @@ app.MapGet("/api/proxy/admin-interchanges", async (IHttpClientFactory factory, I
     [FromQuery] string? keyword = null, [FromQuery] int? reviewStatus = null,
     [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var url = $"{apiBase}/api/admin/interchanges?page={page}&pageSize={pageSize}";
     if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
@@ -311,7 +312,7 @@ app.MapGet("/api/proxy/admin-interchanges", async (IHttpClientFactory factory, I
 app.MapGet("/api/proxy/admin-interchanges/pending", async (IHttpClientFactory factory, IConfiguration config,
     [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.GetAsync($"{apiBase}/api/admin/interchanges/pending?page={page}&pageSize={pageSize}");
     var content = await response.Content.ReadAsStringAsync();
@@ -322,7 +323,7 @@ app.MapGet("/api/proxy/admin-interchanges/pending", async (IHttpClientFactory fa
 app.MapPost("/api/proxy/admin-interchanges", async (System.Text.Json.JsonElement body,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
     var response = await client.PostAsync($"{apiBase}/api/admin/interchanges", content);
@@ -334,7 +335,7 @@ app.MapPost("/api/proxy/admin-interchanges", async (System.Text.Json.JsonElement
 app.MapPut("/api/proxy/admin-interchanges/{id:guid}", async (Guid id, System.Text.Json.JsonElement body,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
     var response = await client.PutAsync($"{apiBase}/api/admin/interchanges/{id}", content);
@@ -346,7 +347,7 @@ app.MapPut("/api/proxy/admin-interchanges/{id:guid}", async (Guid id, System.Tex
 app.MapDelete("/api/proxy/admin-interchanges/{id:guid}", async (Guid id,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.DeleteAsync($"{apiBase}/api/admin/interchanges/{id}");
     var resp = await response.Content.ReadAsStringAsync();
@@ -357,7 +358,7 @@ app.MapDelete("/api/proxy/admin-interchanges/{id:guid}", async (Guid id,
 app.MapPost("/api/proxy/admin-interchanges/{id:guid}/approve", async (Guid id,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/approve", null);
     var resp = await response.Content.ReadAsStringAsync();
@@ -368,7 +369,7 @@ app.MapPost("/api/proxy/admin-interchanges/{id:guid}/approve", async (Guid id,
 app.MapPost("/api/proxy/admin-interchanges/{id:guid}/reject", async (Guid id, System.Text.Json.JsonElement body,
     IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
     var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/reject", content);
@@ -380,7 +381,7 @@ app.MapPost("/api/proxy/admin-interchanges/{id:guid}/reject", async (Guid id, Sy
 app.MapGet("/api/proxy/bearing-search", async (IHttpClientFactory factory, IConfiguration config,
     [FromQuery] string? keyword = null, [FromQuery] int pageSize = 20) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     var url = $"{apiBase}/api/bearings/search?page=1&pageSize={pageSize}";
     if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
@@ -392,7 +393,7 @@ app.MapGet("/api/proxy/bearing-search", async (IHttpClientFactory factory, IConf
 // 代理上传/替换勋章图（v2.6.0 勋章图片管线：Admin 传图 → API 存对象存储并回写 ImageKey）
 app.MapPost("/api/proxy/achievements/{id:guid}/image", async (Guid id, IFormFile file, IHttpClientFactory factory, IConfiguration config) =>
 {
-    var apiBase = config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    var apiBase = ApiUrlResolver.Api(config);
     var client = factory.CreateClient("ApiClient");
     using var form = new MultipartFormDataContent();
     using var stream = file.OpenReadStream();

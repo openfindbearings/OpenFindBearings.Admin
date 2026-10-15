@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -27,7 +28,7 @@ public class AchievementController : Controller
     /// <summary>成就目录列表页（按范围/分类分组展示，含停用项）</summary>
     public async Task<IActionResult> Index()
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -75,7 +76,7 @@ public class AchievementController : Controller
     public async Task<IActionResult> Update(Guid id, string name, string description, int progressTarget,
         int metaPoints, string? titleReward, bool enabled, string? imageKey)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

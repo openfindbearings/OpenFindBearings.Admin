@@ -26,18 +26,24 @@ public record AdminMenuItem(
 /// 后台扩展模块接口（v2.18.0 通用扩展点）。
 /// 开源基座只识别"模块"这一通用概念、不含任何具体业务；闭源在同项目内新增实现类即可被
 /// <see cref="AdminModuleLoader"/> 自动发现，并把路由/健康检查/侧栏菜单接进既有骨架。
-/// 目的：闭源只做加法（新增 .Pro.cs 文件），开源不再为闭源预留 Sync 专属占位，双方永不改同一共享文件。
+/// 目的：闭源只做加法（新增 .Pro.cs 文件），开源不再为闭源预留 互联网数据专属占位，双方永不改同一共享文件。
 /// </summary>
 public interface IAdminModule
 {
     /// <summary>
-    /// 模块是否启用：读取本模块自己的配置键（如 Features:SyncIntegration）；关闭则整体不接入。
+    /// 模块是否启用：读取本模块自己的配置键（如模块开关）；关闭则整体不接入。
     /// </summary>
     /// <param name="config">应用配置</param>
     bool IsEnabled(IConfiguration config);
 
     /// <summary>
-    /// 映射本模块的专属路由（如代理到闭源 Sync 服务的 /api/proxy/*）。无则空实现。
+    /// 注册本模块所需的服务（如专属命名 HttpClient）；在 Build 前调用。
+    /// </summary>
+    /// <param name="builder">应用构造器（可注册 HttpClient/服务）</param>
+    void ConfigureServices(WebApplicationBuilder builder);
+
+    /// <summary>
+    /// 映射本模块的专属路由（如代理到闭源 互联网数据服务的 /api/proxy/*）。无则空实现。
     /// </summary>
     /// <param name="app">已构建的 WebApplication（可经 app.Services 取依赖）</param>
     void MapRoutes(WebApplication app);
@@ -56,7 +62,7 @@ public interface IAdminModule
 
     /// <summary>
     /// 富化仪表盘统计 JSON（可选）：传入 API 原始 JSON，返回富化后 JSON；返回 null 表示不修改。
-    /// 闭源可借此把 Sync 审核待办等并入仪表盘，开源无模块 = 原样返回。
+    /// 闭源可借此把 互联网数据审核待办等并入仪表盘，开源无模块 = 原样返回。
     /// </summary>
     /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
     /// <param name="apiJson">API 返回的原始仪表盘 JSON</param>

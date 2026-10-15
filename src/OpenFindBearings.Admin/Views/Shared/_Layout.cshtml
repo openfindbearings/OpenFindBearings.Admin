@@ -168,8 +168,8 @@
                     <ul class="sub-menu" id="sub-audit">
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="identity" class="nav-link" data-page="auditlog-identity"><i class="fas fa-circle"></i><span>管理员日志</span></a></li>
                         <li><a asp-controller="AuditLog" asp-action="Index" asp-route-source="api" class="nav-link" data-page="auditlog-api"><i class="fas fa-circle"></i><span>API 日志</span></a></li>
-                        @* 改动说明（v2.13.2 死链修复）：开源版不部署 Sync，控制器/视图亦无 sync 源，
-                           原 Sync 日志菜单项点击落到空列表，删除 *@
+                        @* 改动说明（v2.13.2 死链修复）：开源版不部署 Sync，控制器/视图亦无各数据源，
+                           原 互联网数据日志菜单项点击落到空列表，删除 *@
                     </ul>
                 </li>
                 }

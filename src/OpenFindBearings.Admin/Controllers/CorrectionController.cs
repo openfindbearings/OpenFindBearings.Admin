@@ -55,7 +55,7 @@ public class CorrectionController : Controller
 
     /// <summary>
     /// 采纳纠错（v1.23.0）：代理 API /api/admin/corrections/{id}/approve——
-    /// API 侧自动应用建议值到目标实体并标记人工来源（防爬虫覆盖），
+    /// API 侧自动应用建议值到目标实体并标记人工来源（防互联网覆盖），
     /// 领域事件向提交人发站内信；并发冲突（已被他人处理）409 透传给前端提示刷新
     /// </summary>
     [HttpPost]

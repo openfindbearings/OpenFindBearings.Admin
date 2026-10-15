@@ -16,12 +16,12 @@
     {
         ["Site"] = "站点设置",
         ["Price"] = "价格显示",
-        ["Sync"] = "数据同步",
+        ["System"] = "系统设置",
         ["Business"] = "业务设置"
     };
 
     // tab 展示次序：常用组在前，未知组按字母序垫底（积分任务恒为最后一个 tab）
-    var tabOrder = new[] { "Site", "Price", "Sync", "Business" };
+    var tabOrder = new[] { "Site", "Price", "System", "Business" };
     var orderedGroups = (groupedItems ?? Enumerable.Empty<IGrouping<string, SystemConfigDto>>())
         .OrderBy(g =>
         {

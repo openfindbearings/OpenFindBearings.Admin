@@ -88,7 +88,7 @@ public class AuditLogController : Controller
         if (!root.TryGetProperty("data", out var data))
             return (items, totalCount);
 
-        // Parse items（兼容各项目 DTO 字段命名差异：Sync 用 operatorId/operatorName/resourceType/resourceId/ipAddress/createdAt，Identity 用 userId/username，API 用 entityType/entityId/entityName/operatedAt）
+        // Parse items（兼容各项目 DTO 字段命名差异：互联网数据用 operatorId/operatorName/resourceType/resourceId/ipAddress/createdAt，Identity 用 userId/username，API 用 entityType/entityId/entityName/operatedAt）
         if (data.TryGetProperty("items", out var itemsEl))
         {
             foreach (var item in itemsEl.EnumerateArray())

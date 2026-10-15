@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Ext;
 using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +16,15 @@ public class HomeController : Controller
     private readonly ServiceHealthService _health;
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
+    private readonly IReadOnlyList<IAdminModule> _modules;
 
-    public HomeController(ServiceHealthService health, IHttpClientFactory factory, IConfiguration config)
+    public HomeController(ServiceHealthService health, IHttpClientFactory factory, IConfiguration config,
+        IReadOnlyList<IAdminModule> modules)
     {
         _health = health;
         _factory = factory;
         _config = config;
+        _modules = modules;
     }
 
     public IActionResult Index()
@@ -52,6 +56,12 @@ public class HomeController : Controller
                 return Content(FallbackJson, "application/json");
             }
             var apiJson = await apiResp.Content.ReadAsStringAsync();
+            // 改动说明（v2.18.0 通用扩展点）：闭源模块可富化仪表盘 JSON（如并入 Sync 待办），开源无模块=原样
+            foreach (var module in _modules)
+            {
+                var enriched = await module.EnrichDashboardJsonAsync(HttpContext.RequestServices, apiJson);
+                if (!string.IsNullOrEmpty(enriched)) apiJson = enriched;
+            }
             return Content(apiJson, "application/json");
         }
         catch

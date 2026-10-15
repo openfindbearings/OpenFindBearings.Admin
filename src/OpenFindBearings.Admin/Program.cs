@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenFindBearings.Admin.Authorization;
-using OpenFindBearings.Admin.Data;
 using OpenFindBearings.Admin.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,9 +20,8 @@ builder.Services.AddControllersWithViews()
         o.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-// Admin 自有数据库：db_admin（PostgreSQL）
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// 改动说明（v2.13.2 僵尸清理）：删除 Admin 自有 ApplicationDbContext/Npgsql 连接——
+//   其两张表（AdminAuditLogs/AdminConfigs）全仓从不读写，且违反"Admin 只经 API 代理、不直连库"原则
 
 // 认证配置：Cookie + JWT Bearer
 builder.Services.AddAuthorization();
@@ -77,7 +74,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                     perms = pEl.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList();
             }
 
-            var panelRoles = new[] { "Admin", "Operator", "Auditor" };
+            // 改动说明（v2.13.2 收敛）：面板角色集合统一取 PanelRoles.All
+            var panelRoles = PanelRoles.All;
             if (!roles.Any(x => panelRoles.Contains(x)))
             {
                 context.RejectPrincipal();
@@ -155,12 +153,7 @@ builder.Services.AddSingleton<PriceConfigService>();
 
 var app = builder.Build();
 
-// 启动时确保数据库存在（v1.25.0 起本地 RBAC 种子废弃，权限唯一事实源=API）
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
-}
+// 改动说明（v2.13.2 僵尸清理）：删除启动 EnsureCreated（随 ApplicationDbContext 一并移除）
 
 if (!app.Environment.IsDevelopment())
 {

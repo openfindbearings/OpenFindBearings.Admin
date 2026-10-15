@@ -146,9 +146,9 @@
         <div class="status-card">
             <h6><i class="fas fa-heartbeat"></i> 服务状态</h6>
             <table class="status-table" id="serviceTable">
+                {{-- 改动说明（v2.13.2 死行修复）：开源版无 Sync 健康检查，删除行 --}}
                 <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td></tr>
                 <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td></tr>
-                <tr><td>Sync</td><td><span class="badge bg-secondary">检测中</span></td></tr>
             </table>
         </div>
     </div>
@@ -160,7 +160,7 @@
         xhr.onload = function () {
             if (xhr.status !== 200) return;
             var data = JSON.parse(xhr.responseText);
-            var nameMap = { 'Api': 'API', 'Identity': 'Identity', 'Sync': 'Sync' };
+            var nameMap = { 'Api': 'API', 'Identity': 'Identity' };
             var rows = document.querySelectorAll('#serviceTable tr');
             for (var prop in data) {
                 var label = nameMap[prop];

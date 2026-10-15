@@ -10,25 +10,9 @@
     var search = (string?)ViewBag.Search ?? "";
     var error = (string?)ViewBag.Error;
 
-    // 改动说明：商家类型枚举名转中文（v1.21.1，运营要求列表/抽屉不再露英文枚举）
-    string MerchantTypeName(string t) => t switch
-    {
-        "Manufacturer" => "生产厂家",
-        "AuthorizedDealer" => "授权经销商",
-        "Distributor" => "分销商",
-        "Trader" => "贸易商",
-        _ => t
-    };
-
-    // 改动说明：入驻渠道码转中文（对齐 API ApplicationMode 枚举）
-    static string ModeLabel(string? mode) => mode switch
-    {
-        "Self" => "自助新建",
-        "Claim" => "认领",
-        "Nomination" => "提名",
-        "None" or null or "" => "-",
-        _ => mode
-    };
+    // 改动说明（v2.13.2 收敛）：类型/渠道中文改取 Helpers.MerchantLabels 唯一来源
+    string MerchantTypeName(string t) => MerchantLabels.TypeName(t);
+    static string ModeLabel(string? mode) => MerchantLabels.ModeLabel(mode);
 }
 
 <div class="page-header">
@@ -96,7 +80,8 @@
                                 <td>@ModeLabel(item.ApplicationMode)</td>
                                 <td>@(item.ContactPerson ?? "-")</td>
                                 <td>@(item.Mobile ?? item.Phone ?? "-")</td>
-                                <td>@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                @* 改动说明（v2.13.2 时区修复）：原服务端按 UTC 裸格式化作本地显示，改 data-utc 交全局转换器按浏览器时区渲染 *@
+                                <td data-utc="@(item.SubmittedAt?.ToString("yyyy-MM-ddTHH:mm:ssZ"))">@(item.SubmittedAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
                                 <td>
                                     @if (item.Status == "Active")
                                     {
@@ -113,7 +98,8 @@
                                     }
                                     else if (item.Status == "Suspended")
                                     {
-                                        <span class="badge bg-secondary">已拒绝</span>
+                                        @* 改动说明（v2.13.2 色值统一）：驳回/拒绝类统一 bg-danger（原此处 bg-secondary 与文档/替代品页不一致） *@
+                                        <span class="badge bg-danger">已拒绝</span>
                                     }
                                     else if (item.Status == "Pending")
                                     {
@@ -514,7 +500,7 @@
                     if (!d) { $('#drawerLoading').text('加载失败'); return; }
                     $('#drawerLoading').addClass('d-none');
                     $('#drawerContent').removeClass('d-none');
-                    const modeMap = { self: '自助新建', claim: '认领', nomination: '提名', none: '-' };
+                    const modeMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(MerchantLabels.ModeMapLower));
                     const statusMap = { Pending: '待审核', Active: '已生效', Suspended: '已拒绝', Draft: '草稿' };
                     // 改动说明（v1.21.1）：status/mode 大小写归一再查表（API 侧 mode 输出小写、status 输出 PascalCase，
                     //   原表只匹配一种导致抽屉"状态 -"）
@@ -522,7 +508,7 @@
                     $('#dName').text(d.name || '-');
                     $('#dCompanyName').text(d.companyName || '-');
                     $('#dCreditCode').text(d.unifiedSocialCreditCode || '-');
-                    const typeMap = { Manufacturer: '生产厂家', AuthorizedDealer: '授权经销商', Distributor: '分销商', Trader: '贸易商' };
+                    const typeMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(MerchantLabels.TypeMap));
                     $('#dType').text(typeMap[d.type] || d.type || '-');
                     $('#dMode').text(modeMap[normKey(d.applicationMode)] || d.applicationMode || '-');
                     $('#dSubmittedAt').text(d.submittedAt ? new Date(d.submittedAt).toLocaleString('zh-CN') : '-');

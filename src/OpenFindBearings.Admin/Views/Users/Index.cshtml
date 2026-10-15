@@ -24,7 +24,7 @@
     var platformRoles = ViewBag.PlatformRoles as Dictionary<string, List<string>> ?? new();
     // 改动说明（v1.29.0）：角色徽章显示 API 目录里的中文显示名（DisplayName ?? Name）
     var roleDisplayNames = ViewBag.RoleDisplayNames as Dictionary<string, string> ?? new(StringComparer.OrdinalIgnoreCase);
-    string[] panelRoleNames = ["Admin", "Operator", "Auditor"];
+    string[] panelRoleNames = PanelRoles.All; // 改动说明（v2.13.2 收敛）：统一取 PanelRoles
     string RoleBadgeClass(string r) => r switch { "Admin" => "bg-success", "Operator" => "bg-primary", "Auditor" => "bg-warning text-dark", _ => "bg-secondary" };
     string RoleBadgeText(string r) => roleDisplayNames.TryGetValue(r, out var dn) ? dn : (r == "Individual" ? "注册用户" : r);
 }

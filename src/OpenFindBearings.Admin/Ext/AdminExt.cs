@@ -6,21 +6,27 @@ namespace OpenFindBearings.Admin.Ext;
 public record ServiceEndpoint(string Url, string Client, string Path);
 
 /// <summary>
-/// 后台侧栏扩展菜单项（v2.18.0 通用扩展点）：模块声明一条菜单，归入既有分组（如"审核"）。
+/// 后台侧栏扩展菜单项（v2.18.0 通用扩展点）：模块声明一条菜单。
+/// 分组语义：Group="审核" 并入开源"审核"分组；Group=null/空 追加为顶层项；
+/// Group=其它键 渲染为一个模块声明的新分组（has-sub），组名/图标取该组首项的 GroupLabel/GroupIcon。
 /// </summary>
-/// <param name="Group">分组名（如"审核"），与开源侧栏分组同名即并排显示</param>
+/// <param name="Group">分组键：空=顶层项；"审核"=并入审核分组；其它=模块自建分组键</param>
 /// <param name="Label">菜单文字</param>
 /// <param name="Controller">MVC 控制器</param>
 /// <param name="Action">MVC action</param>
 /// <param name="Permission">所需面板权限（为空则不判权限）</param>
 /// <param name="Icon">FontAwesome 图标类（默认圆点）</param>
+/// <param name="GroupLabel">模块自建分组的显示名（该组首项生效；为空用分组键）</param>
+/// <param name="GroupIcon">模块自建分组的图标类（默认文件夹）</param>
 public record AdminMenuItem(
     string Group,
     string Label,
     string Controller,
     string Action,
     string? Permission = null,
-    string Icon = "fa-circle");
+    string Icon = "fa-circle",
+    string? GroupLabel = null,
+    string? GroupIcon = "fa-folder");
 
 /// <summary>
 /// 后台扩展模块接口（v2.18.0 通用扩展点）。

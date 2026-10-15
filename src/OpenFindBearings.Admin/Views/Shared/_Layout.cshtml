@@ -181,15 +181,40 @@
                     </a>
                 </li>
                 }
-                @* 改动说明（v2.18.0 通用扩展点）：扩展模块声明在其它分组的菜单项，作为顶层项追加（开源无模块=无） *@
-                @foreach (var module in Modules)
+                @* 改动说明（v2.18.0 通用扩展点）：扩展模块菜单——无分组=顶层项；有分组=按组渲染为 has-sub 分组（开源无模块=无） *@
+                @{
+                    var moduleMenuItems = Modules.SelectMany(m => m.MenuItems).Where(i => i.Group != "审核").ToList();
+                    var moduleTopItems = moduleMenuItems.Where(i => string.IsNullOrEmpty(i.Group)).ToList();
+                    var moduleGroups = moduleMenuItems.Where(i => !string.IsNullOrEmpty(i.Group)).GroupBy(i => i.Group).ToList();
+                    var moduleGroupIndex = 0;
+                }
+                @foreach (var item in moduleTopItems)
                 {
-                    foreach (var item in module.MenuItems.Where(i => i.Group != "审核"))
+                    if (item.Permission == null || HasPerm(item.Permission))
                     {
-                        if (item.Permission == null || HasPerm(item.Permission))
-                        {
                 <li><a asp-controller="@item.Controller" asp-action="@item.Action" class="nav-link" data-page="@item.Controller.ToLowerInvariant()"><i class="fas @item.Icon"></i><span>@item.Label</span></a></li>
+                    }
+                }
+                @foreach (var grp in moduleGroups)
+                {
+                    var grpFirst = grp.First();
+                    if (grp.Any(i => i.Permission == null || HasPerm(i.Permission)))
+                    {
+                        var grpTarget = "sub-mod-" + (moduleGroupIndex++);
+                <li class="has-sub">
+                    <a href="#" class="nav-link toggle-sub" data-target="@grpTarget">
+                        <i class="fas @(grpFirst.GroupIcon ?? "fa-folder")"></i><span>@(grpFirst.GroupLabel ?? grp.Key)</span><i class="fas fa-chevron-right arrow"></i>
+                    </a>
+                    <ul class="sub-menu" id="@grpTarget">
+                        @foreach (var item in grp)
+                        {
+                            if (item.Permission == null || HasPerm(item.Permission))
+                            {
+                        <li><a asp-controller="@item.Controller" asp-action="@item.Action" class="nav-link" data-page="@item.Controller.ToLowerInvariant()"><i class="fas @item.Icon"></i><span>@item.Label</span></a></li>
+                            }
                         }
+                    </ul>
+                </li>
                     }
                 }
             </ul>

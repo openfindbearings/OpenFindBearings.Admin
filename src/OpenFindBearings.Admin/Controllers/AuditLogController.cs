@@ -86,7 +86,7 @@ public class AuditLogController : Controller
     {
         foreach (var module in _modules)
         {
-            var json = await module.LoadAuditLogJsonAsync(source, page, pageSize);
+            var json = await module.LoadAuditLogJsonAsync(HttpContext.RequestServices, source, page, pageSize);
             if (json != null) return ParsePagedResponse(json);
         }
         return ([], 0);

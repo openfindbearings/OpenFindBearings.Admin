@@ -15,7 +15,7 @@ using OpenFindBearings.Admin.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // 改动说明（v2.18.0 通用扩展点）：加载可选扩展覆盖配置（开源无 appsettings.pro.json = 无副作用），
-//   供扩展模块读取自身配置（如闭源 互联网数据的 ApiUrls:FindBearings互联网数据/ Features:SyncIntegration）
+//   供扩展模块读取自身配置（配置键名由各模块自行约定，开源基座不感知具体键）
 builder.Configuration.AddJsonFile("appsettings.pro.json", optional: true, reloadOnChange: false);
 
 // MVC + JSON 配置：camelCase 命名，null 值不序列化

@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
@@ -32,7 +33,7 @@ public class ConfigController : Controller
     /// </summary>
     public async Task<IActionResult> Index()
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         await LoadPointRulesAsync(client, apiBase);
         // 改动说明（v2.12.0 等级玩法）：段位档位表 tab（阈值/段位名/升档礼/启停，实时生效）
@@ -168,7 +169,7 @@ public class ConfigController : Controller
     [PanelPermission("system.manage")]
     public async Task<IActionResult> Update(string key, string value, string? tab)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

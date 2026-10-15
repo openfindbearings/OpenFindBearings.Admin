@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,7 @@ public class CorrectionController : Controller
     /// </summary>
     public async Task<IActionResult> Index(string status = "pending", int page = 1, int pageSize = 20)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var url = $"{apiBase}/api/admin/corrections?status={status}&page={page}&pageSize={pageSize}";
         try
@@ -117,7 +118,7 @@ public class CorrectionController : Controller
     }
 
     /// <summary>API 基址配置</summary>
-    private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    private string ApiBase() => ApiUrlResolver.Api(_config);
 
     /// <summary>从 ProblemDetails JSON 提取 detail 文案（对齐 MerchantVerifyController 同名逻辑）</summary>
     private static string? ExtractProblemDetail(string json)

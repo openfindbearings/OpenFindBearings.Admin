@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,7 +33,7 @@ public class PointsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveRules(List<PointRuleSave> items)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var failed = 0;
         try
@@ -81,7 +82,7 @@ public class PointsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveLevels(List<PointLevelSave> items)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var failed = 0;
         try
@@ -134,7 +135,7 @@ public class PointsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveMerchantTasks(List<MerchantTaskSave> items)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var failed = 0;
         try
@@ -174,7 +175,7 @@ public class PointsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateMerchantTask(MerchantTaskCreate form)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

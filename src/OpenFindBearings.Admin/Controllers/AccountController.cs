@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using OpenFindBearings.Admin.Helpers;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -167,7 +168,7 @@ namespace OpenFindBearings.Admin.Controllers
                 //   与面板角色 {Admin,Operator,Auditor} 交集为空即拒登（app 个人用户/商户成员进不来）；
                 //   通过后权限清单写 cookie 多值 claim，供菜单渲染与 Controller Policy 消费，
                 //   配合 Cookie 事件 30 分钟复核防权限收回后残留
-                var apiBase = _configuration["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+                var apiBase = ApiUrlResolver.Api(_configuration);
                 using var permRequest = new HttpRequestMessage(HttpMethod.Get, $"{apiBase}/api/me/permissions");
                 permRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 var permResponse = await client.SendAsync(permRequest);
@@ -360,7 +361,7 @@ namespace OpenFindBearings.Admin.Controllers
             // 3. 调用 API 项目获取业务角色
             try
             {
-                var apiBase = _configuration["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+                var apiBase = ApiUrlResolver.Api(_configuration);
                 var apiClient = _httpClientFactory.CreateClient("ApiClient");
                 var apiRequest = new HttpRequestMessage(HttpMethod.Get, $"{apiBase}/api/me/roles");
                 apiRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);

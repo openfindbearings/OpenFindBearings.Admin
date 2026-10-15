@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +31,7 @@ public class SourcingController : Controller
     [PanelPermission("sourcing.view")]
     public async Task<IActionResult> Index(int? status = null, string search = "", int page = 1, int pageSize = 20)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var url = $"{apiBase}/api/admin/sourcing/demands?page={page}&pageSize={pageSize}";
         if (status.HasValue) url += $"&status={status.Value}";
@@ -60,7 +61,7 @@ public class SourcingController : Controller
     [PanelPermission("sourcing.view")]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -84,7 +85,7 @@ public class SourcingController : Controller
     [PanelPermission("sourcing.manage")]
     public async Task<IActionResult> TakeDown(Guid id, string? reason)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

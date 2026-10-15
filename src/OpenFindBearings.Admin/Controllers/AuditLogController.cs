@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
@@ -51,7 +52,7 @@ public class AuditLogController : Controller
 
     private async Task<(List<AuditLogItemDto>, int)> LoadIdentityLogsAsync(int page, int pageSize)
     {
-        var baseUrl = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var baseUrl = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         var resp = await client.GetAsync($"{baseUrl}/api/auditlog?page={page}&pageSize={pageSize}");
 
@@ -63,7 +64,7 @@ public class AuditLogController : Controller
 
     private async Task<(List<AuditLogItemDto>, int)> LoadApiLogsAsync(int page, int pageSize)
     {
-        var baseUrl = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var baseUrl = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         var resp = await client.GetAsync($"{baseUrl}/api/admin/audit-logs?page={page}&pageSize={pageSize}");
 

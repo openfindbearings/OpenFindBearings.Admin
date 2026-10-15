@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.DTOs;
@@ -28,7 +29,7 @@ public class UsersController : Controller
     /// </summary>
     public async Task<IActionResult> Index(string search = "", int page = 1, int pageSize = 20, string status = "enabled", string tab = "all")
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         var url = $"{identityBase}/api/account/admin/users?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(search))
@@ -95,7 +96,7 @@ public class UsersController : Controller
         // 拉取失败降级为"无角色显示"，不阻塞列表主流程
         try
         {
-            var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var apiBase = ApiUrlResolver.Api(_config);
             var apiClient = _factory.CreateClient("ApiClient");
             var prResp = await apiClient.GetAsync($"{apiBase}/api/admin/users/platform-roles");
             if (prResp.IsSuccessStatusCode)
@@ -169,7 +170,7 @@ public class UsersController : Controller
             return RedirectToAction("Index", new { tab, status });
         }
 
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:5001";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -193,7 +194,7 @@ public class UsersController : Controller
             var newId = doc.RootElement.TryGetProperty("data", out var d) && d.TryGetProperty("id", out var i) ? i.GetString() : null;
             if (!string.IsNullOrEmpty(newId))
             {
-                var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+                var apiBase = ApiUrlResolver.Api(_config);
                 var apiClient = _factory.CreateClient("ApiClient");
                 var pr = await apiClient.PostAsJsonAsync($"{apiBase}/api/admin/users/provision",
                     new { authUserId = newId, userName, roles });
@@ -224,7 +225,7 @@ public class UsersController : Controller
     // 改动说明（v1.31.1）：status 透传——操作回跳停在当前状态视图（黑名单里解禁不弹回正常页）
     public async Task<IActionResult> ToggleStatus(string id, bool enable, string? tab, string? status)
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -246,7 +247,7 @@ public class UsersController : Controller
     [PanelPermission("user.ban")]
     public async Task<IActionResult> Unlock(string id, string? tab, string? status)
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -275,7 +276,7 @@ public class UsersController : Controller
         // 角色查询按既有模式降级不阻塞主流程（404=未 JIT 建档必无 Individual，正常放行）
         try
         {
-            var guardApiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var guardApiBase = ApiUrlResolver.Api(_config);
             var guardClient = _factory.CreateClient("ApiClient");
             var rolesResp = await guardClient.GetAsync($"{guardApiBase}/api/admin/users/by-auth/{id}/roles");
             if (rolesResp.IsSuccessStatusCode)
@@ -298,7 +299,7 @@ public class UsersController : Controller
             // 守卫查询异常不阻塞重置主流程
         }
 
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -329,7 +330,7 @@ public class UsersController : Controller
     [PanelPermission("user.manage")]
     public async Task<IActionResult> Restore(string id, string? tab, string? status)
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -350,7 +351,7 @@ public class UsersController : Controller
     [PanelPermission("data.harddelete")]
     public async Task<IActionResult> HardDelete(string id, string? tab, string? status)
     {
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var identityBase = ApiUrlResolver.Identity(_config);
         var client = _factory.CreateClient("IdentityClient");
         try
         {
@@ -383,8 +384,8 @@ public class UsersController : Controller
             return RedirectToAction("Index", new { tab, status });
         }
 
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
-        var identityBase = _config["ApiUrls:OpenFindBearingsIdentity"] ?? "https://localhost:7201";
+        var apiBase = ApiUrlResolver.Api(_config);
+        var identityBase = ApiUrlResolver.Identity(_config);
         try
         {
             // 最后启用管理员守卫：目标挂 Admin 角色时，须存在其他启用 Admin
@@ -460,7 +461,7 @@ public class UsersController : Controller
     public async Task<IActionResult> PlatformRoles(string id)
     {
         var client = _factory.CreateClient("ApiClient");
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var roles = new List<string>();
         var catalog = new List<object>();
         var notProvisioned = false;
@@ -513,7 +514,7 @@ public class UsersController : Controller
             return Json(new { ok = false, message = "不能移除自己的 Admin 角色" });
 
         var client = _factory.CreateClient("ApiClient");
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var current = new List<string>();
         var rolesResp = await client.GetAsync($"{apiBase}/api/admin/users/by-auth/{id}/roles");
         if (rolesResp.IsSuccessStatusCode)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenFindBearings.Admin.Helpers;
 using System.Text.Json.Serialization;
 using OpenFindBearings.Admin.Authorization;
 using Microsoft.AspNetCore.Authorization;
@@ -30,7 +31,7 @@ public class InterchangesController : Controller
     }
 
     /// <summary>API 基址配置（与各控制器同口径）</summary>
-    private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    private string ApiBase() => ApiUrlResolver.Api(_config);
 
     /// <summary>
     /// 替代关系管理列表页：拉取 API /api/admin/interchanges（支持关键字/审核状态过滤），服务端渲染首屏与分页。

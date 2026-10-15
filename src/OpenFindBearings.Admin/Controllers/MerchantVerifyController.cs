@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authorization;
@@ -26,7 +27,7 @@ public class MerchantVerifyController : Controller
         _logger = logger;
     }
 
-    private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    private string ApiBase() => ApiUrlResolver.Api(_config);
 
     public async Task<IActionResult> Index(string? status = "pending", string search = "", int page = 1, int pageSize = 20)
     {

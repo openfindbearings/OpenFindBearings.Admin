@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenFindBearings.Admin.Models.ViewModels;
@@ -30,7 +31,7 @@ public class RoleController : Controller
         _logger = logger;
     }
 
-    private string ApiBase() => _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+    private string ApiBase() => ApiUrlResolver.Api(_config);
 
     private HttpClient Api() => _factory.CreateClient("ApiClient");
 

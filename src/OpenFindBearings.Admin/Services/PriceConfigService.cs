@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenFindBearings.Admin.Helpers;
 using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Services;
@@ -67,7 +68,7 @@ public class PriceConfigService
             if (_cached != null && DateTime.UtcNow - _cachedAt < CacheDuration)
                 return _cached;
 
-            var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+            var apiBase = ApiUrlResolver.Api(_config);
             var client = _factory.CreateClient("ApiClient");
             try
             {

@@ -1,4 +1,5 @@
 using OpenFindBearings.Admin.Authorization;
+using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
@@ -30,7 +31,7 @@ public class MallController : Controller
     public async Task<IActionResult> Index()
     {
         var vm = new MallIndexVm();
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -122,7 +123,7 @@ public class MallController : Controller
     [PanelPermission("merchant.verify")]
     public async Task<IActionResult> ApproveGift(Guid id, int pointPrice)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -143,7 +144,7 @@ public class MallController : Controller
     [PanelPermission("merchant.verify")]
     public async Task<IActionResult> RejectGift(Guid id, string? reason)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -163,7 +164,7 @@ public class MallController : Controller
     [PanelPermission("merchant.manage")]
     public async Task<IActionResult> RefundOrder(Guid id, string? reason)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {
@@ -198,7 +199,7 @@ public class MallController : Controller
         // 改动说明（v2.10.0 寻货置顶）：置顶对象类型透传 API（1=商品/2=需求）
         int targetKind = 1)
     {
-        var apiBase = _config["ApiUrls:OpenFindBearingsApi"] ?? "https://localhost:7183";
+        var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
         try
         {

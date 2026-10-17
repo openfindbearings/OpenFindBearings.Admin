@@ -18,6 +18,11 @@ var builder = WebApplication.CreateBuilder(args);
 //   供扩展模块读取自身配置（配置键名由各模块自行约定，开源基座不感知具体键）
 builder.Configuration.AddJsonFile("appsettings.pro.json", optional: true, reloadOnChange: false);
 
+// 改动说明（v1.39.0 配置优先级修复）：扩展覆盖配置须低于"部署环境变量"——此前它在环境变量之后加载，
+//   会把部署时注入的环境变量（如各服务基地址）盖回镜像内默认值。现追加一次环境变量源，
+//   保证优先级：appsettings.json < 扩展覆盖配置 < 环境变量（部署值始终生效）。
+builder.Configuration.AddEnvironmentVariables();
+
 // MVC + JSON 配置：camelCase 命名，null 值不序列化
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(o =>

@@ -1,0 +1,47 @@
+@model OpenFindBearings.Admin.ViewComponents.ServiceStatusViewComponent.Options
+@{
+    var showDetails = Model.ShowDetails;
+}
+<table class="@Model.CssClass" id="serviceTable">
+    @if (showDetails)
+    {
+        <thead>
+            <tr>
+                <th>服务</th>
+                <th>状态</th>
+                <th>详情</th>
+            </tr>
+        </thead>
+    }
+    <tbody></tbody>
+</table>
+<script>
+    // 遍历 /Home/Status 返回的各项生成服务状态行；已知键用中文/大写展示，未知键原样显示
+    // （闭源经 IAdminModule 追加的健康项随之自动出现，视图层无需为闭源特判）
+    (function () {
+        var showDetails = @(showDetails ? "true" : "false");
+        var labelMap = { 'Api': 'API', 'Identity': 'Identity' };
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/Home/Status', true);
+        xhr.onload = function () {
+            if (xhr.status !== 200) return;
+            var data = JSON.parse(xhr.responseText);
+            var tbody = document.querySelector('#serviceTable tbody');
+            if (!tbody) return;
+            var html = '';
+            for (var key in data) {
+                if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+                var s = data[key] || {};
+                var label = labelMap[key] || key;
+                var badge = s.available
+                    ? '<span class="badge bg-success">在线</span>'
+                    : '<span class="badge bg-danger">离线</span>';
+                html += '<tr><td>' + label + '</td><td>' + badge + '</td>';
+                if (showDetails) html += '<td>' + (s.message || '-') + '</td>';
+                html += '</tr>';
+            }
+            tbody.innerHTML = html;
+        };
+        xhr.send();
+    })();
+</script>

@@ -75,15 +75,8 @@
 <div class="card">
     <div class="card-header"><h6 class="mb-0">服务状态</h6></div>
     <div class="card-body p-0">
-        <table class="table" id="serviceTable">
-            <thead><tr><th>服务</th><th>状态</th><th>详情</th></tr></thead>
-            <tbody>
-                @* 改动说明（v2.13.2 死行修复）：开源版不含外部数据源，ServiceHealthService 亦不检查它，
-                   该行恒"检测中"，删除 *@
-                <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
-                <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td><td>-</td></tr>
-            </tbody>
-        </table>
+        @* 改动说明（v1.38.0 共享组件）：服务状态表改由共享组件渲染，按 /Home/Status 遍历生成行 *@
+        @await Component.InvokeAsync("ServiceStatus", new { cssClass = "table", showDetails = true })
     </div>
 </div>
 
@@ -160,15 +153,7 @@
                 var el=document.getElementById(id);if(el)el.textContent='N/A';
             });
         });
-    fetch('/Home/Status')
-        .then(function(r){return r.json()})
-        .then(function(data){
-            var tbody=document.querySelector('#serviceTable tbody');if(!tbody)return;
-            var h='';for(var k in data){var s=data[k];
-            h+='<tr><td>'+k+'</td><td>'+(s.available?'<span class="badge bg-success">在线</span>':'<span class="badge bg-danger">离线</span>')+'</td><td>'+(s.message||'-')+'</td></tr>';}
-            tbody.innerHTML=h;
-        });
-})();
+    })();
 </script>
 @* 改动说明（v2.18.0 通用扩展点）：闭源扩展脚本槽（开源无 Views/Ext/home.scripts.cshtml = 无） *@
 @await Component.InvokeAsync("ProSlot", new { key = "home.scripts" })

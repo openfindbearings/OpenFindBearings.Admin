@@ -145,40 +145,10 @@
 
         <div class="status-card">
             <h6><i class="fas fa-heartbeat"></i> 服务状态</h6>
-            <table class="status-table" id="serviceTable">
-                {{-- 改动说明（v2.13.2 死行修复）：开源版无 互联网数据健康检查，删除行 --}}
-                <tr><td>API</td><td><span class="badge bg-secondary">检测中</span></td></tr>
-                <tr><td>Identity</td><td><span class="badge bg-secondary">检测中</span></td></tr>
-            </table>
+            @* 改动说明（v1.38.0 共享组件）：服务状态表改由共享组件渲染，按 /Home/Status 遍历生成行 *@
+            @await Component.InvokeAsync("ServiceStatus", new { cssClass = "status-table", showDetails = false })
         </div>
     </div>
 
-    <script>
-    (function () {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/Home/Status', true);
-        xhr.onload = function () {
-            if (xhr.status !== 200) return;
-            var data = JSON.parse(xhr.responseText);
-            var nameMap = { 'Api': 'API', 'Identity': 'Identity' };
-            var rows = document.querySelectorAll('#serviceTable tr');
-            for (var prop in data) {
-                var label = nameMap[prop];
-                if (!label) continue;
-                for (var i = 0; i < rows.length; i++) {
-                    var cell = rows[i].querySelector('td:first-child');
-                    if (cell && cell.textContent.trim() === label) {
-                        var s = data[prop];
-                        rows[i].querySelector('td:last-child').innerHTML = s.available
-                            ? '<span class="badge bg-success">在线</span>'
-                            : '<span class="badge bg-danger">离线</span>';
-                        break;
-                    }
-                }
-            }
-        };
-        xhr.send();
-    })();
-    </script>
-</body>
+    </body>
 </html>

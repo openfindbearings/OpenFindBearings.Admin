@@ -17,7 +17,7 @@
 </table>
 <script>
     // 遍历 /Home/Status 返回的各项生成服务状态行；已知键用中文/大写展示，未知键原样显示
-    // （闭源经 IAdminModule 追加的健康项随之自动出现，视图层无需为闭源特判）
+    // （扩展模块经 IAdminModule 追加的健康项随之自动出现，视图层无需特判）
     (function () {
         var showDetails = @(showDetails ? "true" : "false");
         var labelMap = { 'Api': 'API', 'Identity': 'Identity' };

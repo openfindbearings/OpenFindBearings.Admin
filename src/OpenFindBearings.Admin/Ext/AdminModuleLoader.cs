@@ -4,7 +4,7 @@ namespace OpenFindBearings.Admin.Ext;
 
 /// <summary>
 /// 扩展模块加载器（v2.18.0 通用扩展点）：反射发现当前 Admin 程序集中所有 <see cref="IAdminModule"/>
-/// 实现并按 IsEnabled 过滤。开源基座内无任何实现 = 返回空列表（零副作用）；闭源在同项目新增实现类即被接入。
+/// 实现并按 IsEnabled 过滤。开源基座内无任何实现 = 返回空列表（零副作用）；扩展方在同项目新增实现类即被接入。
 /// </summary>
 public static class AdminModuleLoader
 {

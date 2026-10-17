@@ -10,7 +10,7 @@
 
 1. **仪表盘改左右两栏布局**（`Views/Home/Index.cshtml`）：左栏 `col-lg-8` 竖排图表，右栏 `col-lg-4` 竖排「品牌 Top10 + 服务状态」（原为图表一行 + 品牌整行 + 服务状态独占一行）。窄屏（`< lg`）由 Bootstrap 自动堆叠为整行，手机端依次为 图、图、品牌 Top10、服务状态。
 2. **图表固定高度**：canvas 外层加 `height:280px` 容器并设 `maintainAspectRatio:false`。修复存量问题——此前 `responsive:true` 且未关宽高比，`height="200"` 属性被忽略、高度随宽度按 2:1 膨胀（整行时约 585px 过高）。
-3. **"互联网新增"图改由扩展槽提供**：共享视图左栏留 `ProSlot("home.trend.internet")`，**开源无 `Views/Ext/home.trend.internet.cshtml` → 只显示「人工新增」一张图**；启用 Sync 的部署由该分部注入「互联网新增」卡片（闭源侧新增）。共享 JS 只绘制人工图，并把绘图函数暴露为 `window.ofbMakeTrend(canvasId, bearingSeg, merchantSeg, interchangeSeg, isInternet)` 供扩展脚本复用。
+3. **"互联网新增"图改由扩展槽提供**：共享视图左栏留 `ProSlot("home.trend.internet")`，**开源无 `Views/Ext/home.trend.internet.cshtml` → 只显示「人工新增」一张图**；启用互联网数据管线的部署由该分部注入「互联网新增」卡片（扩展侧新增）。共享 JS 只绘制人工图，并把绘图函数暴露为 `window.ofbMakeTrend(canvasId, bearingSeg, merchantSeg, interchangeSeg, isInternet)` 供扩展脚本复用。
 4. **下钻沿用**：三组柱子（轴承/商家/替代品）点击仍按业务日历起点 + 对应来源跳转对应列表（`isInternet` 决定来源口径）。
 5. 说明：不采用"读 `Features:SyncIntegration` 隐藏互联网图"的做法——那会在开源代码中重新引入 Sync 字样（v1.36.0 已代码级摘除），扩展槽是本规则下的正解。
 
@@ -44,7 +44,7 @@
 1. **新增共享组件** `ServiceStatusViewComponent`（`ViewComponents/ServiceStatusViewComponent.cs` + `Views/Shared/Components/ServiceStatus/Default.cshtml`）：渲染服务状态表格骨架 + 一段遍历脚本，`fetch('/Home/Status')` 后按返回的**键逐个生成行**（已知键映射 Api→API / Identity→Identity，未知键原样显示）。参数 `cssClass`（登录页 `status-table` / 仪表盘 `table`）与 `showDetails`（仪表盘三列 服务/状态/详情，登录页两列 服务/状态）。
 2. **两处视图去重**：`Views/Account/Login.cshtml` 与 `Views/Home/Index.cshtml` 原来各自维护"静态行 + 硬编码 nameMap JS"，现统一改为 `@await Component.InvokeAsync("ServiceStatus", ...)`，删除重复的 `/Home/Status` 取数与逐行刷新 JS。
 3. **修复登录页注释被当文本渲染的缺陷**：`Login.cshtml` 原把"死行删除"注释写成了 `{{-- … --}}`（Liquid 风格，非 Razor 注释），导致该行注释**直接显示在页面上**；本次随组件化一并移除。
-4. **闭源受益（零视图改动）**：闭源经 `IAdminModule.AddHealthServices` 追加的健康项（`Sync`）由组件遍历自动生成行，登录页与仪表盘一致显示 API / Identity / Sync；开源环境仅显示前两项。
+4. **扩展方受益（零视图改动）**：扩展模块经 `IAdminModule.AddHealthServices` 追加的健康项由组件遍历自动生成行，登录页与仪表盘显示一致（内置项 + 扩展项）。
 
 ### v1.36.0 → v1.37.0（2026-10-13 商品审核出口 + 替代品三级治理）
 

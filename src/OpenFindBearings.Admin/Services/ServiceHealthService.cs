@@ -4,8 +4,8 @@ using OpenFindBearings.Admin.Helpers;
 namespace OpenFindBearings.Admin.Services;
 
 /// <summary>
-/// 服务健康检查（v2.18.0 通用扩展点改造）：内置 Api/Identity 检查项，经 IAdminModule 追加闭源专属项
-/// （如闭源服务）；开源基座无模块 = 仅内置两项。
+/// 服务健康检查（v2.18.0 通用扩展点改造）：内置 Api/Identity 检查项，经 IAdminModule 追加扩展专属项
+/// （如外部服务）；开源基座无模块 = 仅内置两项。
 /// </summary>
 public class ServiceHealthService
 {
@@ -33,7 +33,7 @@ public class ServiceHealthService
             ["Identity"] = new(ApiUrlResolver.Identity(_config), "IdentityClient", "/health/live")
         };
 
-        // 改动说明（v2.18.0 通用扩展点）：闭源模块追加专属检查项（如闭源服务），开源无模块 = 无
+        // 改动说明（v2.18.0 通用扩展点）：扩展模块追加专属检查项（如外部服务），开源无模块 = 无
         foreach (var module in _modules)
             module.AddHealthServices(_config, services);
 

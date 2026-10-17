@@ -163,10 +163,10 @@ builder.Services.AddScoped<ServiceHealthService>();
 builder.Services.AddSingleton<PriceConfigService>();
 
 // 改动说明（v2.18.0 通用扩展点）：反射发现扩展模块（开源无实现 = 空列表），
-//   注册为单例供健康检查与侧栏菜单读取；闭源在同项目新增 IAdminModule 实现即被接入
+//   注册为单例供健康检查与侧栏菜单读取；扩展方在同项目新增 IAdminModule 实现即被接入
 var adminModules = AdminModuleLoader.Discover(builder.Configuration);
 builder.Services.AddSingleton<IReadOnlyList<IAdminModule>>(adminModules);
-// 改动说明（v2.18.0 通用扩展点）：模块注册自身服务（如闭源 互联网数据的命名 HttpClient），开源无模块=无
+// 改动说明（v2.18.0 通用扩展点）：模块注册自身服务（如外部数据的命名 HttpClient），开源无模块=无
 foreach (var module in adminModules)
     module.ConfigureServices(builder);
 

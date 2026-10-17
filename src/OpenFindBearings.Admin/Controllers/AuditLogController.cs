@@ -79,7 +79,7 @@ public class AuditLogController : Controller
     }
 
     /// <summary>
-    /// 复合源：委托扩展模块加载其专属审计日志源（如闭源服务），取回原始 JSON 后按统一口径解析。
+    /// 复合源：委托扩展模块加载其专属审计日志源（如外部服务），取回原始 JSON 后按统一口径解析。
     /// 改动说明（v2.18.0 通用扩展点）：骨架只内置 identity/api，其它源交模块贡献。
     /// </summary>
     private async Task<(List<AuditLogItemDto>, int)> LoadModuleLogsAsync(string source, int page, int pageSize)

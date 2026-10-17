@@ -37,7 +37,8 @@ public class InterchangesController : Controller
     /// 替代关系管理列表页：拉取 API /api/admin/interchanges（支持关键字/审核状态过滤），服务端渲染首屏与分页。
     /// API 不可达时降级空表并提示，不阻断页面。
     /// </summary>
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string? keyword = null, int? reviewStatus = null)
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string? keyword = null, int? reviewStatus = null,
+        string? createdFrom = null, string? createdTo = null, string? sourceFilter = null)
     {
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/interchanges?page={page}&pageSize={pageSize}";
@@ -45,6 +46,15 @@ public class InterchangesController : Controller
             url += $"&keyword={Uri.EscapeDataString(keyword)}";
         if (reviewStatus.HasValue)
             url += $"&reviewStatus={reviewStatus.Value}";
+        // 改动说明（v1.40.0 下钻筛选）：透传创建时间区间（业务日历 yyyy-MM-dd）与来源，供仪表盘"替代品·新增"柱下钻
+        if (!string.IsNullOrWhiteSpace(createdFrom))
+            url += $"&createdFrom={Uri.EscapeDataString(createdFrom)}";
+        if (!string.IsNullOrWhiteSpace(createdTo))
+            url += $"&createdTo={Uri.EscapeDataString(createdTo)}";
+        if (string.Equals(sourceFilter, "internet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=true";
+        else if (string.Equals(sourceFilter, "noninternet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=false";
         try
         {
             var resp = await client.GetAsync(url);
@@ -71,6 +81,9 @@ public class InterchangesController : Controller
         ViewBag.PageSize = pageSize;
         ViewBag.Keyword = keyword;
         ViewBag.ReviewStatus = reviewStatus;
+        ViewBag.CreatedFrom = createdFrom;
+        ViewBag.CreatedTo = createdTo;
+        ViewBag.SourceFilter = sourceFilter;
         return View();
     }
 }

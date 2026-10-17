@@ -55,28 +55,30 @@
     @await Component.InvokeAsync("ProSlot", new { key = "home.pending.cards" })
 </div>
 
+@* 改动说明（v1.41.0 布局）：左右两栏——左栏竖排图表（"互联网新增"由扩展槽提供，开源无该分部 → 只剩"人工新增"），
+   右栏竖排"品牌 Top10 + 服务状态"；窄屏自动堆叠为整行。图表固定高度 + maintainAspectRatio:false 防整行时高度膨胀 *@
 <div class="row">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><h6 class="mb-0">今日 / 本周 / 本月新增</h6></div>
+    <div class="col-lg-8">
+        @await Component.InvokeAsync("ProSlot", new { key = "home.trend.internet" })
+        <div class="card mb-3">
+            <div class="card-header"><h6 class="mb-0">人工新增 <small class="text-muted">（平台维护 / 商家入驻；点任意柱看名单）</small></h6></div>
             <div class="card-body">
-                <canvas id="trendChart" height="200"></canvas>
+                <div style="height:280px"><canvas id="trendChartManual"></canvas></div>
             </div>
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="card">
+    <div class="col-lg-4">
+        <div class="card mb-3">
             <div class="card-header"><h6 class="mb-0">品牌 Top10</h6></div>
             <div class="card-body" id="topBrandsChart"></div>
         </div>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header"><h6 class="mb-0">服务状态</h6></div>
-    <div class="card-body p-0">
-        @* 改动说明（v1.38.0 共享组件）：服务状态表改由共享组件渲染，按 /Home/Status 遍历生成行 *@
-        @await Component.InvokeAsync("ServiceStatus", new { cssClass = "table", showDetails = true })
+        <div class="card">
+            <div class="card-header"><h6 class="mb-0">服务状态</h6></div>
+            <div class="card-body p-0">
+                @* 改动说明（v1.38.0 共享组件）：服务状态表改由共享组件渲染，按 /Home/Status 遍历生成行 *@
+                @await Component.InvokeAsync("ServiceStatus", new { cssClass = "table", showDetails = true })
+            </div>
+        </div>
     </div>
 </div>
 
@@ -95,7 +97,8 @@
             var el=document.getElementById('bearingCount');if(el)el.textContent=b.totalCount??'-';
             el=document.getElementById('brandCount');if(el)el.textContent=br.totalCount??'-';
             el=document.getElementById('typeCount');if(el)el.textContent=tp.totalCount??'-';
-            el=document.getElementById('merchantCount');if(el)el.textContent=(m.verifiedCount??'-')+'/'+(m.totalCount??'-');
+            // 改动说明（v1.40.0）："已入驻"改为真值（OnboardedAt 非空计数），此前误用 verifiedCount（认证数）
+            el=document.getElementById('merchantCount');if(el)el.textContent=(m.onboardedCount??'-')+'/'+(m.totalCount??'-');
 
             // 改动说明（v1.31.0）：待办数字条件红——>0 才挂 .todo-alert 显警报色，0 用主题默认色（原恒红且 0 也红是语义错误）
             function setTodo(id, val) {
@@ -109,29 +112,51 @@
             setTodo('merchantApplicationPendingCount', m.pendingApplicationCount ?? 0);
 
             try {
-                var trendCanvas=document.getElementById('trendChart');
-                if(trendCanvas&&typeof Chart!=='undefined'){
-                    new Chart(trendCanvas,{
+                // 改动说明（v1.41.0 布局/扩展点）：共享版只绘制"人工新增"图（平台维护 / 商家入驻），
+                //   含 轴承/商家/替代品 三系列、点柱按业务日历起点下钻；"互联网新增"图由扩展槽按需提供，
+                //   绘图函数暴露为 window.ofbMakeTrend 供扩展脚本复用（isInternet 决定下钻的来源口径）
+                var periods=data.periods||{};
+                var fromList=[periods.today,periods.weekStart,periods.monthStart];
+                function makeTrend(id, bearingSeg, merchantSeg, interchangeSeg, isInternet){
+                    var cv=document.getElementById(id);
+                    if(!cv||typeof Chart==='undefined')return;
+                    new Chart(cv,{
                         type:'bar',
                         data:{
                             labels:['今日','本周','本月'],
-                            datasets:[{
-                                label:'轴承',
-                                data:[b.todayAdded||0,b.thisWeekAdded||0,b.thisMonthAdded||0],
-                                backgroundColor:'rgba(23,162,184,.7)'
-                            },{
-                                label:'商家',
-                                data:[m.todayRegistered||0,m.totalCount?Math.round(m.totalCount/30):0,0],
-                                backgroundColor:'rgba(255,193,7,.7)'
-                            }]
+                            datasets:[
+                                {label:'轴承',data:[bearingSeg.today||0,bearingSeg.week||0,bearingSeg.month||0],backgroundColor:'rgba(23,162,184,.7)'},
+                                {label:'商家',data:[merchantSeg.today||0,merchantSeg.week||0,merchantSeg.month||0],backgroundColor:'rgba(255,193,7,.7)'},
+                                {label:'替代品',data:[interchangeSeg.today||0,interchangeSeg.week||0,interchangeSeg.month||0],backgroundColor:'rgba(75,192,88,.7)'}
+                            ]
                         },
                         options:{
                             responsive:true,
+                            // 改动说明：外层为固定高度容器，须关闭宽高比，否则整行时图表高度会随宽度膨胀
+                            maintainAspectRatio:false,
                             plugins:{legend:{position:'bottom'}},
-                            scales:{y:{beginAtZero:true}}
+                            scales:{y:{beginAtZero:true}},
+                            onClick:function(e,els){
+                                if(!els.length)return;
+                                var el=els[0];
+                                var from=fromList[el.index];
+                                if(!from)return;
+                                if(el.datasetIndex===1){ // 商家：互联网→按注册时间+仅互联网；人工→按入驻时间
+                                    window.location = isInternet
+                                        ? '/Data/Merchants?dateField=registered&dateFrom='+encodeURIComponent(from)+'&sourceFilter=internet'
+                                        : '/Data/Merchants?dateField=onboarded&dateFrom='+encodeURIComponent(from);
+                                } else if(el.datasetIndex===0){ // 轴承：按创建时间 + 对应来源
+                                    window.location = '/Data/Bearings?dateFrom='+encodeURIComponent(from)+'&sourceFilter='+(isInternet?'internet':'noninternet');
+                                } else if(el.datasetIndex===2){ // 替代品：按创建时间 + 对应来源
+                                    window.location = '/Interchanges?createdFrom='+encodeURIComponent(from)+'&sourceFilter='+(isInternet?'internet':'noninternet');
+                                }
+                            }
                         }
                     });
                 }
+                // 供扩展脚本复用：window.ofbMakeTrend(canvasId, bearingSeg, merchantSeg, interchangeSeg, isInternet)
+                window.ofbMakeTrend = makeTrend;
+                makeTrend('trendChartManual', b.manualAdded||{}, m.onboarded||{}, (data.interchanges||{}).manualAdded||{}, false);
             } catch(e) {}
 
             try {

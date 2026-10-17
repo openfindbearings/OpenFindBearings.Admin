@@ -41,12 +41,22 @@ public class DataController : Controller
     /// <summary>
     /// 轴承列表（分页），支持显示已删除项
     /// </summary>
-    public async Task<IActionResult> Bearings(string? search, bool includeDeleted = false, int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Bearings(string? search, bool includeDeleted = false,
+        string? dateFrom = null, string? dateTo = null, string? sourceFilter = null, int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/bearings?page={page}&pageSize={pageSize}&includeDeleted={includeDeleted.ToString().ToLower()}";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&keyword={Uri.EscapeDataString(search)}";
+        // 改动说明（v1.40.0 下钻筛选）：透传创建时间区间（业务日历 yyyy-MM-dd）与来源给 API
+        if (!string.IsNullOrWhiteSpace(dateFrom))
+            url += $"&createdFrom={Uri.EscapeDataString(dateFrom)}";
+        if (!string.IsNullOrWhiteSpace(dateTo))
+            url += $"&createdTo={Uri.EscapeDataString(dateTo)}";
+        if (string.Equals(sourceFilter, "internet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=true";
+        else if (string.Equals(sourceFilter, "noninternet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=false";
         var resp = await client.GetAsync(url);
         if (!resp.IsSuccessStatusCode)
         {
@@ -64,7 +74,10 @@ public class DataController : Controller
             Page = page,
             PageSize = pageSize,
             Search = search,
-            IncludeDeleted = includeDeleted
+            IncludeDeleted = includeDeleted,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            SourceFilter = sourceFilter
         });
     }
 
@@ -329,7 +342,9 @@ public class DataController : Controller
     /// <summary>
     /// 商家列表（分页），支持显示已删除项
     /// </summary>
-    public async Task<IActionResult> Merchants(string? search, string? verifiedOnly, bool includeDeleted = false, int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Merchants(string? search, string? verifiedOnly, bool includeDeleted = false,
+        string? dateField = null, string? dateFrom = null, string? dateTo = null, string? sourceFilter = null,
+        string? sortBy = null, string? sortOrder = null, int page = 1, int pageSize = 20)
     {
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted={includeDeleted.ToString().ToLower()}";
@@ -337,6 +352,20 @@ public class DataController : Controller
             url += $"&keyword={Uri.EscapeDataString(search)}";
         if (!string.IsNullOrWhiteSpace(verifiedOnly))
             url += $"&verifiedOnly={verifiedOnly}";
+        // 改动说明（v1.40.0 时间/来源筛选）：时间字段映射到注册/入驻区间（业务日历 yyyy-MM-dd），来源映射到 internetSource
+        var useOnboarded = string.Equals(dateField, "onboarded", StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(dateFrom))
+            url += $"&{(useOnboarded ? "onboardedFrom" : "registeredFrom")}={Uri.EscapeDataString(dateFrom)}";
+        if (!string.IsNullOrWhiteSpace(dateTo))
+            url += $"&{(useOnboarded ? "onboardedTo" : "registeredTo")}={Uri.EscapeDataString(dateTo)}";
+        if (string.Equals(sourceFilter, "internet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=true";
+        else if (string.Equals(sourceFilter, "noninternet", StringComparison.OrdinalIgnoreCase))
+            url += "&internetSource=false";
+        if (!string.IsNullOrWhiteSpace(sortBy))
+            url += $"&sortBy={Uri.EscapeDataString(sortBy)}";
+        if (!string.IsNullOrWhiteSpace(sortOrder))
+            url += $"&sortOrder={Uri.EscapeDataString(sortOrder)}";
         var resp = await client.GetAsync(url);
         if (!resp.IsSuccessStatusCode)
             return View(new MerchantListViewModel());
@@ -354,7 +383,13 @@ public class DataController : Controller
             PageSize = pageSize,
             Search = search,
             VerifiedOnly = verifiedOnly,
-            IncludeDeleted = includeDeleted
+            IncludeDeleted = includeDeleted,
+            DateField = dateField,
+            DateFrom = dateFrom,
+            DateTo = dateTo,
+            SourceFilter = sourceFilter,
+            SortBy = sortBy,
+            SortOrder = sortOrder
         });
     }
 

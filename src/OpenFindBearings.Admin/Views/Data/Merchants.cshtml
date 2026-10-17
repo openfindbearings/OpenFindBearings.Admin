@@ -3,13 +3,31 @@
 {
     // 改动说明（v2.13.2 收敛）：类型中文改取 Helpers.MerchantLabels 唯一来源
     string MerchantTypeName(string t) => MerchantLabels.TypeName(t);
+
+    // 改动说明（v1.40.0 注册时间列）：输出 UTC ISO 串，交全局 data-utc 转换器按浏览器时区渲染
+    string TimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
 }
 
 @using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "商家列表";
     var vo = Model.VerifiedOnly;
-    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}";
+    // 改动说明（v1.40.0 时间/来源筛选）：时间字段（注册/入驻）+ 起止日期 + 来源（互联网/非互联网）
+    var dateField = string.Equals(Model.DateField, "onboarded", StringComparison.OrdinalIgnoreCase) ? "onboarded" : "registered";
+    string DateQuery() =>
+        (!string.IsNullOrWhiteSpace(Model.DateFrom) ? $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}" : "")
+        + (!string.IsNullOrWhiteSpace(Model.DateTo) ? $"&dateTo={Uri.EscapeDataString(Model.DateTo)}" : "")
+        + (!string.IsNullOrWhiteSpace(Model.SourceFilter) ? $"&sourceFilter={Model.SourceFilter}" : "");
+    string SortQuery() => !string.IsNullOrWhiteSpace(Model.SortBy) ? $"&sortBy={Model.SortBy}&sortOrder={Model.SortOrder}" : "";
+    // 分页/页签统一保留搜索、认证、时间/来源筛选与排序
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}&dateField={dateField}{DateQuery()}{SortQuery()}";
+    string TabUrl(string? v) => $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={v ?? ""}&dateField={dateField}{DateQuery()}{SortQuery()}";
+    // 列排序链接：已按该列排序时点击切换方向，否则默认最新在前
+    string SortUrl(string field)
+    {
+        var next = (Model.SortBy == field && Model.SortOrder != "asc") ? "asc" : "desc";
+        return $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}&dateField={dateField}{DateQuery()}&sortBy={field}&sortOrder={next}";
+    }
     // 从 ViewBag 读取价格配置（由 DataController.Merchants 预加载，5 分钟缓存）
     var priceConfig = ViewBag.PriceConfig as PriceConfigDto ?? new PriceConfigDto();
     var showNegotiable = priceConfig.ShowNegotiableLabel;
@@ -18,13 +36,13 @@
 
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-        <a class="nav-link @(vo == null ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = (string?)null, search = Model.Search, page = 1 })">全部</a>
+        <a class="nav-link @(vo == null ? "active" : "")" href="@TabUrl(null)">全部</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(vo == "true" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "true", search = Model.Search, page = 1 })">已认证</a>
+        <a class="nav-link @(vo == "true" ? "active" : "")" href="@TabUrl("true")">已认证</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(vo == "false" ? "active" : "")" href="@Url.Action("Merchants", new { verifiedOnly = "false", search = Model.Search, page = 1 })">未认证</a>
+        <a class="nav-link @(vo == "false" ? "active" : "")" href="@TabUrl("false")">未认证</a>
     </li>
 </ul>
 
@@ -35,16 +53,38 @@
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createMerchantModal" title="新建商家">
                 <i class="fas fa-plus"></i><span class="d-none d-sm-inline"> 新建</span>
             </button>
-            <form class="d-flex gap-2 align-items-center" method="get">
+            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
                 <input type="hidden" name="verifiedOnly" value="@vo" />
+                @if (!string.IsNullOrWhiteSpace(Model.SortBy))
+                {
+                    <input type="hidden" name="sortBy" value="@Model.SortBy" />
+                    <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
+                }
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索商家..." style="min-width:140px" />
+                @* 改动说明（v1.40.0 时间/来源筛选）：时间字段可选"注册时间/入驻时间"，来源可选"全部/仅互联网/仅非互联网" *@
+                <select name="dateField" class="form-select form-select-sm" style="width:120px" title="时间字段">
+                    <option value="registered" selected="@(dateField == "registered" ? "selected" : null)">注册时间</option>
+                    <option value="onboarded" selected="@(dateField == "onboarded" ? "selected" : null)">入驻时间</option>
+                </select>
+                <input type="date" name="dateFrom" value="@Model.DateFrom" class="form-control form-control-sm" style="width:150px" title="起始日期（含）" />
+                <span class="text-muted small">~</span>
+                <input type="date" name="dateTo" value="@Model.DateTo" class="form-control form-control-sm" style="width:150px" title="截止日期（含）" />
+                <select name="sourceFilter" class="form-select form-select-sm" style="width:130px" title="来源">
+                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.SourceFilter) ? "selected" : null)">全部来源</option>
+                    <option value="internet" selected="@(Model.SourceFilter == "internet" ? "selected" : null)">仅互联网</option>
+                    <option value="noninternet" selected="@(Model.SourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
+                </select>
                 <button class="btn btn-primary"><i class="fas fa-search"></i></button>
+                @if (!string.IsNullOrWhiteSpace(Model.DateFrom) || !string.IsNullOrWhiteSpace(Model.DateTo) || !string.IsNullOrWhiteSpace(Model.SourceFilter))
+                {
+                    <a class="btn btn-outline-secondary" href="@TabUrl(vo)" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
+                }
             </form>
         </div>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive"><table class="table table-hover">
-            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th>操作</th></tr></thead>
+            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("registeredat")" class="text-decoration-none" title="按注册时间排序">注册时间 <i class="fas fa-sort"></i></a></th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("onboardedat")" class="text-decoration-none" title="按入驻时间排序">入驻时间 <i class="fas fa-sort"></i></a></th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -58,6 +98,9 @@
                             <td>@(item.ContactPerson ?? "-")</td>
                             <td>@(item.Phone ?? "-")</td>
                             <td>@(item.IsVerified ? "已认证" : "未认证")</td>
+                            @* 改动说明（v1.40.0 注册/入驻时间列）：UTC ISO 串由全局 data-utc 转换器渲染 *@
+                            <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.SubmittedAt)">@TimeRaw(item.SubmittedAt)</td>
+                            <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.OnboardedAt)">@TimeRaw(item.OnboardedAt)</td>
                             <td>
                                 @if (PanelPerms.Has(User, "merchant.manage"))
                                 {
@@ -114,7 +157,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="8" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table></div>

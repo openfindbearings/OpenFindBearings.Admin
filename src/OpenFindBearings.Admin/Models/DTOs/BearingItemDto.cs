@@ -9,4 +9,7 @@ public record BearingItemDto(
     string? EnglishName,
     string? Description,
     string? Image3DUrl,
-    string? Image2DUrl);
+    string? Image2DUrl,
+    // 改动说明（v1.40.0 下钻筛选）：对齐 API BearingDto 新增字段——来源（互联网/人工）与创建时间列
+    string? DataSource = null,
+    DateTime? CreatedAt = null);

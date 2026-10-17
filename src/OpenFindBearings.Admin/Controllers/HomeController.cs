@@ -56,7 +56,7 @@ public class HomeController : Controller
                 return Content(FallbackJson, "application/json");
             }
             var apiJson = await apiResp.Content.ReadAsStringAsync();
-            // 改动说明（v2.18.0 通用扩展点）：闭源模块可富化仪表盘 JSON（如并入 互联网数据待办），开源无模块=原样
+            // 改动说明（v2.18.0 通用扩展点）：扩展模块可富化仪表盘 JSON（如并入 互联网数据待办），开源无模块=原样
             foreach (var module in _modules)
             {
                 var enriched = await module.EnrichDashboardJsonAsync(HttpContext.RequestServices, apiJson);

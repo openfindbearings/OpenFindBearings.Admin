@@ -30,9 +30,9 @@ public record AdminMenuItem(
 
 /// <summary>
 /// 后台扩展模块接口（v2.18.0 通用扩展点）。
-/// 开源基座只识别"模块"这一通用概念、不含任何具体业务；闭源在同项目内新增实现类即可被
+/// 开源基座只识别"模块"这一通用概念、不含任何具体业务；扩展方在同项目内新增实现类即可被
 /// <see cref="AdminModuleLoader"/> 自动发现，并把路由/健康检查/侧栏菜单接进既有骨架。
-/// 目的：闭源只做加法（新增 .Pro.cs 文件），开源不再为闭源预留 互联网数据专属占位，双方永不改同一共享文件。
+/// 目的：扩展方只做加法（新增 .Pro.cs 文件），开源不再为扩展数据预留专属占位，双方永不改同一共享文件。
 /// </summary>
 public interface IAdminModule
 {
@@ -49,7 +49,7 @@ public interface IAdminModule
     void ConfigureServices(WebApplicationBuilder builder);
 
     /// <summary>
-    /// 映射本模块的专属路由（如代理到闭源 互联网数据服务的 /api/proxy/*）。无则空实现。
+    /// 映射本模块的专属路由（如代理到外部数据服务的 /api/proxy/*）。无则空实现。
     /// </summary>
     /// <param name="app">已构建的 WebApplication（可经 app.Services 取依赖）</param>
     void MapRoutes(WebApplication app);
@@ -68,7 +68,7 @@ public interface IAdminModule
 
     /// <summary>
     /// 富化仪表盘统计 JSON（可选）：传入 API 原始 JSON，返回富化后 JSON；返回 null 表示不修改。
-    /// 闭源可借此把 互联网数据审核待办等并入仪表盘，开源无模块 = 原样返回。
+    /// 扩展方可借此把外部数据审核待办等并入仪表盘，开源无模块 = 原样返回。
     /// </summary>
     /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
     /// <param name="apiJson">API 返回的原始仪表盘 JSON</param>
@@ -76,7 +76,7 @@ public interface IAdminModule
 
     /// <summary>
     /// 加载本模块提供的审计日志源（可选）：source 命中本模块时返回该源原始 JSON（交由骨架按统一口径解析）；
-    /// 不处理返回 null。骨架只内置 identity/api，其它源（如闭源服务）由模块贡献。开源基座默认 null。
+    /// 不处理返回 null。骨架只内置 identity/api，其它源（如外部服务）由模块贡献。开源基座默认 null。
     /// </summary>
     /// <param name="services">应用服务提供器（模块可自取 HttpClientFactory/配置）</param>
     /// <param name="source">审计源标识</param>

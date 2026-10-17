@@ -51,7 +51,7 @@
             <div class="icon"><i class="fas fa-file-alt"></i></div>
         </div>
     </div>
-    @* 改动说明（v2.18.0 通用扩展点）：闭源扩展待办卡片槽（开源无 Views/Ext/home.pending.cards.cshtml = 无） *@
+    @* 改动说明（v2.18.0 通用扩展点）：扩展待办卡片槽（开源无 Views/Ext/home.pending.cards.cshtml = 无） *@
     @await Component.InvokeAsync("ProSlot", new { key = "home.pending.cards" })
 </div>
 
@@ -180,6 +180,6 @@
         });
     })();
 </script>
-@* 改动说明（v2.18.0 通用扩展点）：闭源扩展脚本槽（开源无 Views/Ext/home.scripts.cshtml = 无） *@
+@* 改动说明（v2.18.0 通用扩展点）：扩展脚本槽（开源无 Views/Ext/home.scripts.cshtml = 无） *@
 @await Component.InvokeAsync("ProSlot", new { key = "home.scripts" })
 }

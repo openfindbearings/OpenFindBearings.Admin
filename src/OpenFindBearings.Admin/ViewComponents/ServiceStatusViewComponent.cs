@@ -5,7 +5,7 @@ namespace OpenFindBearings.Admin.ViewComponents;
 /// <summary>
 /// 服务状态视图组件（共享组件）：渲染服务状态表格骨架，并由内联脚本拉取 /Home/Status，
 /// 遍历返回的各项逐个生成行。登录页与仪表盘共用同一份遍历逻辑，消除各自的硬编码行与重复 JS；
-/// 闭源经 IAdminModule 追加的健康项（如 Sync）会被自动遍历出来，视图层无需区分开源/闭源。
+/// 扩展模块经 IAdminModule 追加的健康项会被自动遍历出来，视图层无需特判。
 /// </summary>
 public class ServiceStatusViewComponent : ViewComponent
 {

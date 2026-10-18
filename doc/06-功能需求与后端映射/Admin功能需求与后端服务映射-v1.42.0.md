@@ -1,10 +1,19 @@
-# Admin 功能需求与后端服务映射 v1.41.0
+# Admin 功能需求与后端服务映射 v1.42.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.41.0 → v1.42.0（2026-10-18 替代品字典化：删除"替代品审核"页与代理，管理页去状态筛选）
+
+1. **删除「替代品审核」页**（`InterchangeReviewController` + `Views/InterchangeReview/`）与侧边栏入口：替代关系回归平台维护的主数据（字典），不再有"商家报候选 → 平台审核生效"队列。
+2. **替代品管理页去审核态**（`Views/Interchanges/Index.cshtml`）：删除"审核状态"筛选下拉与"状态/提出商户"两列（含驳回理由展示），表格列 9→7（管理员含操作列 8）；页头说明改为"平台维护…；商家/用户发现替代关系有误可通过纠错提交、由平台核实后维护"。
+3. **代理收敛**（`Program.cs`）：删除 `/api/proxy/admin-interchanges` 的 **GET 列表**、**GET /pending**、**POST /{id}/approve**、**POST /{id}/reject** 四条（保留 新建/编辑/删除 三条；列表页由 `InterchangesController` 服务端直取 API）。
+4. **`InterchangesController`**：`Index` 去掉 `reviewStatus` 参数与 `ViewBag.ReviewStatus`；行 DTO 删 `reviewStatus`/`reviewStatusLabel`/`reviewComment`/`proposedByMerchantId`/`proposedByMerchantName`。
+5. **降级 JSON**：`HomeController` 的 `interchanges` 占位对象删 `pendingCount`（对齐 API 仪表盘字段裁剪）。
+6. **未改动**：轴承列表"替代品"查看弹窗（走 `/api/proxy/interchanges/{bearingId}`）保留；纠错管理页无需改动（`interchange` 字段随既有纠错流程走，审批后在替代品管理页人工落地）。
 
 ### v1.40.0 → v1.41.0（2026-10-17 仪表盘两栏布局 + "互联网新增"图改由扩展槽提供 + 图表固定高度）
 
@@ -204,9 +213,25 @@
 | 页面 | 控制器/视图 | 功能 | 数据源 API | 权限 |
 |---|---|---|---|---|
 | 商品审核 | MerchantBearingReviewController / Views/MerchantBearingReview | 待审队列 + 通过 / 驳回（填理由） | /api/admin/merchant-bearings/pending\|approve\|reject | merchant.verify |
-| 替代品管理 | InterchangesController / Views/Interchanges | 列表 / 筛选 / 新建（选源·目标型号）/ 编辑 / 删除 | /api/admin/interchanges（GET/POST/PUT/DELETE） | merchant.verify |
-| 替代品审核 | InterchangeReviewController / Views/InterchangeReview | 待审候选 + 通过 / 驳回（附理由） | /api/admin/interchanges/pending\|{id}/approve\|reject | merchant.verify |
+| 替代品管理 | InterchangesController / Views/Interchanges | 列表 / 筛选（关键字 + 创建时间 + 来源）/ 新建（选源·目标型号）/ 编辑 / 删除 | /api/admin/interchanges（GET/POST/PUT/DELETE） | merchant.verify |
+| ~~替代品审核~~ | ~~InterchangeReviewController / Views/InterchangeReview~~ | **已于 v1.42.0 移除**（替代品字典化：无候选流即无审核队列） | — | — |
 
-- 菜单：信息管理组新增"商品审核/替代品管理"入口（外组权限条件补 merchant.verify）。
+- 菜单：信息管理组新增"商品审核/替代品管理"入口（外组权限条件补 merchant.verify）；**v1.42.0 起"替代品审核"入口删除**。
 - 修复：轴承列表"替代品"查看弹窗（原代理路由与字段名错配，恒加载失败）。
 - 商品列表在售状态列改按 API `saleState`/`reviewStatus` 映射展示。
+
+---
+
+## 本版增量（v1.42.0）：替代品字典化——删除审核页、管理页去审核态（承 API《02 v1.52.0》《16-替代品治理设计 v2.0.0》）
+
+| 对象 | 变更 |
+|---|---|
+| `InterchangeReviewController` + `Views/InterchangeReview/` | 删除（含 `_Layout` 侧边栏"替代品审核"入口）：替代关系回归平台维护的主数据（字典），不再有"商家报候选 → 平台审核生效"队列 |
+| `Views/Interchanges/Index.cshtml` | 删"审核状态"筛选下拉、"状态"列（含驳回理由）、"提出商户"列——表格列 9→7（管理员含操作列 8）；页头说明改为平台维护口径 + 纠错核实 |
+| `InterchangesController` | `Index` 去掉 `reviewStatus` 入参；行 DTO 删 `ReviewStatus`/`ReviewStatusLabel`/`ReviewComment`/`ProposedByMerchantId`/`ProposedByMerchantName` |
+| `Program.cs` 代理 | 删 `/api/proxy/admin-interchanges` 的 **GET 列表**、**GET /pending**、**POST /{id}/approve**、**POST /{id}/reject** 四条（保留 新建/编辑/删除；列表页服务端直取 API） |
+| `HomeController` 降级 JSON | `interchanges` 占位对象删 `pendingCount`（对齐 API 字段裁剪） |
+| 未改动 | 轴承列表"替代品"查看弹窗代理（`/api/proxy/interchanges/{bearingId}`）保留；纠错管理页不变（`interchange` 字段走既有纠错流程，采纳后在替代品管理页人工落地关系） |
+
+> 数据来源：权威网站抓取（Sync staging 审核后入库，进 API 即生效）或平台人工维护；商家/用户经"纠错"反馈，平台核实后维护。
+> 迁移（API 侧）：`RemoveInterchangeReview`（删三列与索引，先清除历史未生效候选行）。

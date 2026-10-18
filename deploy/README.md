@@ -4,7 +4,7 @@
 
 ## 步骤
 
-1. **创建 Secret**：`secrets/admin-secret-template.yml` 填真实值（连接串、Identity ClientSecret）后 apply
+1. **创建 Secret**：`secrets/admin-secret-template.yml` 填真实值（仅 Identity ClientSecret；Admin 无本地数据库，无需连接串）后 apply
 2. **替换占位符**：`<your-admin-domain>` → 你的管理后台域名（ingress.yaml，TLS 由 cert-manager 自动签发）
 3. **依赖**：Identity（OAuth 登录）、API（业务代理）；镜像 `ghcr.io/openfindbearings/openfindbearings-admin`（公开）
 

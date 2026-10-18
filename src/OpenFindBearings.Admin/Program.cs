@@ -308,34 +308,10 @@ app.MapPost("/api/proxy/merchant-bearings/{id:guid}/reject", async (Guid id, Sys
     return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
 
-// ============ 替代关系治理代理（v2.16.0：平台建标准、审关系） ============
+// ============ 替代关系治理代理（平台建标准，v2.16.0） ============
 // 前缀 /api/proxy/admin-interchanges 与旧的 /api/proxy/interchanges/{bearingId:guid} 互不冲突
-
-// 代理替代关系管理列表（关键字/审核状态过滤，分页）
-app.MapGet("/api/proxy/admin-interchanges", async (IHttpClientFactory factory, IConfiguration config,
-    [FromQuery] string? keyword = null, [FromQuery] int? reviewStatus = null,
-    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
-{
-    var apiBase = ApiUrlResolver.Api(config);
-    var client = factory.CreateClient("ApiClient");
-    var url = $"{apiBase}/api/admin/interchanges?page={page}&pageSize={pageSize}";
-    if (!string.IsNullOrWhiteSpace(keyword)) url += $"&keyword={Uri.EscapeDataString(keyword)}";
-    if (reviewStatus.HasValue) url += $"&reviewStatus={reviewStatus.Value}";
-    var response = await client.GetAsync(url);
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
-
-// 代理待审核替代候选队列
-app.MapGet("/api/proxy/admin-interchanges/pending", async (IHttpClientFactory factory, IConfiguration config,
-    [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
-{
-    var apiBase = ApiUrlResolver.Api(config);
-    var client = factory.CreateClient("ApiClient");
-    var response = await client.GetAsync($"{apiBase}/api/admin/interchanges/pending?page={page}&pageSize={pageSize}");
-    var content = await response.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
+// 改动说明（v2.17.0 替代品字典化）：删除"列表 GET"与"待审核 GET"两条代理——
+//   列表页由 InterchangesController 服务端直取 API，审核队列随商家候选流一并取消
 
 // 代理平台新建替代关系（原样透传请求体）
 app.MapPost("/api/proxy/admin-interchanges", async (System.Text.Json.JsonElement body,
@@ -372,28 +348,7 @@ app.MapDelete("/api/proxy/admin-interchanges/{id:guid}", async (Guid id,
     return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
 }).RequireAuthorization();
 
-// 代理审核通过替代候选
-app.MapPost("/api/proxy/admin-interchanges/{id:guid}/approve", async (Guid id,
-    IHttpClientFactory factory, IConfiguration config) =>
-{
-    var apiBase = ApiUrlResolver.Api(config);
-    var client = factory.CreateClient("ApiClient");
-    var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/approve", null);
-    var resp = await response.Content.ReadAsStringAsync();
-    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
-
-// 代理审核驳回替代候选（原样透传驳回原因 JSON，提交方可见）
-app.MapPost("/api/proxy/admin-interchanges/{id:guid}/reject", async (Guid id, System.Text.Json.JsonElement body,
-    IHttpClientFactory factory, IConfiguration config) =>
-{
-    var apiBase = ApiUrlResolver.Api(config);
-    var client = factory.CreateClient("ApiClient");
-    using var content = new StringContent(body.GetRawText(), System.Text.Encoding.UTF8, "application/json");
-    var response = await client.PostAsync($"{apiBase}/api/admin/interchanges/{id}/reject", content);
-    var resp = await response.Content.ReadAsStringAsync();
-    return Results.Content(resp, "application/json", System.Text.Encoding.UTF8, (int)response.StatusCode);
-}).RequireAuthorization();
+// 改动说明（v2.17.0 替代品字典化）：删除"审核通过/审核驳回"两条代理——替代关系不再有候选待审
 
 // 代理轴承搜索（新建替代关系时选取源/目标轴承；返回分页 items：id/partNumber/brandName/bearingType 等）
 app.MapGet("/api/proxy/bearing-search", async (IHttpClientFactory factory, IConfiguration config,

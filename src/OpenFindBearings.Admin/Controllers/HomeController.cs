@@ -80,7 +80,7 @@ public class HomeController : Controller
             merchants = new { totalCount = "N/A", verifiedCount = 0, onboardedCount = 0, pendingApplicationCount = 0, internetAdded = new { today = 0, week = 0, month = 0 }, onboarded = new { today = 0, week = 0, month = 0 }, typeDistribution = Array.Empty<object>() },
             users = new { totalCount = 0, adminCount = 0, merchantStaffCount = 0, individualCount = 0, todayRegistered = 0, activeToday = 0 },
             corrections = new { totalCount = 0, pendingCount = "N/A", approvedCount = 0, rejectedCount = 0, todaySubmitted = 0 },
-            interchanges = new { totalCount = 0, pendingCount = 0, internetAdded = new { today = 0, week = 0, month = 0 }, manualAdded = new { today = 0, week = 0, month = 0 } },
+            interchanges = new { totalCount = 0, internetAdded = new { today = 0, week = 0, month = 0 }, manualAdded = new { today = 0, week = 0, month = 0 } },
             periods = new { today = "", weekStart = "", monthStart = "" },
             pending = new { pendingMerchantBearings = 0, pendingCorrections = 0, pendingDocuments = "N/A" }
         }

@@ -5,7 +5,7 @@
     var page = (int)(ViewBag.Page ?? 1);
     var pageSize = (int)(ViewBag.PageSize ?? 20);
     var keyword = (string?)ViewBag.Keyword;
-    var reviewStatus = (int?)ViewBag.ReviewStatus;
+    // 改动说明（v2.17.0 替代品字典化）：去掉审核状态（替代关系不再有审核状态机）
     // 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源（互联网/非互联网）
     var createdFrom = (string?)ViewBag.CreatedFrom;
     var createdTo = (string?)ViewBag.CreatedTo;
@@ -19,7 +19,6 @@
 
     // 分页链接保留当前过滤条件
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&keyword={Uri.EscapeDataString(keyword ?? "")}"
-        + (reviewStatus.HasValue ? $"&reviewStatus={reviewStatus.Value}" : "")
         + (!string.IsNullOrWhiteSpace(createdFrom) ? $"&createdFrom={Uri.EscapeDataString(createdFrom)}" : "")
         + (!string.IsNullOrWhiteSpace(createdTo) ? $"&createdTo={Uri.EscapeDataString(createdTo)}" : "")
         + (!string.IsNullOrWhiteSpace(sourceFilter) ? $"&sourceFilter={sourceFilter}" : "");
@@ -27,7 +26,7 @@
 
 <div class="page-header">
     <h4><i class="fas fa-shuffle"></i> 替代品管理</h4>
-    <p class="text-muted">平台维护轴承替代关系标准（直接生效、公域可见）；商家提交的候选需在此审核或经"替代品审核"队列处理</p>
+    <p class="text-muted">平台维护轴承替代关系标准（进 API 即生效、公域可见）：数据来自权威网站抓取或平台手动维护；商家/用户发现替代关系有误或缺失，通过"纠错"提交、由平台核实后维护</p>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -47,12 +46,7 @@
             }
             <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
                 <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="型号/品牌关键字..." style="min-width:180px" />
-                <select name="reviewStatus" class="form-select" style="min-width:140px">
-                    <option value="" selected="@(reviewStatus == null ? "selected" : null)">全部状态</option>
-                    <option value="0" selected="@(reviewStatus == 0 ? "selected" : null)">已生效</option>
-                    <option value="1" selected="@(reviewStatus == 1 ? "selected" : null)">待审核</option>
-                    <option value="2" selected="@(reviewStatus == 2 ? "selected" : null)">已驳回</option>
-                </select>
+                @* 改动说明（v2.17.0 替代品字典化）：去掉"审核状态"筛选 *@
                 @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源，供仪表盘"替代品·新增"柱下钻核对 *@
                 <input type="date" name="createdFrom" value="@createdFrom" class="form-control form-control-sm" style="width:150px" title="创建起始日期（含）" />
                 <span class="text-muted small">~</span>
@@ -66,7 +60,7 @@
                 <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
                 @if (!string.IsNullOrWhiteSpace(createdFrom) || !string.IsNullOrWhiteSpace(createdTo) || !string.IsNullOrWhiteSpace(sourceFilter))
                 {
-                    <a class="btn btn-outline-secondary" href="?keyword=@Uri.EscapeDataString(keyword ?? "")@(reviewStatus.HasValue ? $"&reviewStatus={reviewStatus.Value}" : "")" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
+                    <a class="btn btn-outline-secondary" href="?keyword=@Uri.EscapeDataString(keyword ?? "")" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
                 }
             </form>
         </div>
@@ -81,9 +75,7 @@
                         <th class="d-none d-lg-table-cell">类型</th>
                         <th class="d-none d-md-table-cell">可信度</th>
                         <th class="d-none d-md-table-cell">双向</th>
-                        <th>状态</th>
                         <th class="d-none d-lg-table-cell">来源</th>
-                        <th class="d-none d-lg-table-cell">提出商户</th>
                         <th class="d-none d-md-table-cell">更新时间</th>
                         @if (canManage)
                         {
@@ -96,21 +88,13 @@
                     {
                         @foreach (var item in items)
                         {
-                            var statusClass = item.ReviewStatus == 0 ? "bg-success"
-                                : item.ReviewStatus == 1 ? "bg-warning text-dark" : "bg-danger";
+                            // 改动说明（v2.17.0 替代品字典化）：去掉审核状态徽标（行均为平台维护、进 API 即生效）
                             <tr data-id="@item.Id">
                                 <td>@(item.SourceBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.SourceBearing?.BrandName ?? "-")</small></td>
                                 <td>@(item.TargetBearing?.PartNumber ?? "-")<br /><small class="text-muted">@(item.TargetBearing?.BrandName ?? "-")</small></td>
                                 <td class="d-none d-lg-table-cell"><span class="badge bg-secondary">@(item.TypeLabel ?? "-")</span></td>
                                 <td class="d-none d-md-table-cell">@item.Confidence</td>
                                 <td class="d-none d-md-table-cell">@(item.IsBidirectional ? "是" : "否")</td>
-                                <td>
-                                    <span class="badge @statusClass">@(item.ReviewStatusLabel ?? "-")</span>
-                                    @if (item.ReviewStatus == 2 && !string.IsNullOrWhiteSpace(item.ReviewComment))
-                                    {
-                                        <div class="small text-danger" title="@item.ReviewComment">驳回：@item.ReviewComment</div>
-                                    }
-                                </td>
                                 <td class="d-none d-lg-table-cell">
                                     <div>@(string.IsNullOrWhiteSpace(item.Origin) ? "-" : item.Origin)</div>
                                     @if (!string.IsNullOrWhiteSpace(item.DataSourceType))
@@ -118,7 +102,6 @@
                                         <small class="text-muted">@item.DataSourceType</small>
                                     }
                                 </td>
-                                <td class="d-none d-lg-table-cell">@(string.IsNullOrWhiteSpace(item.ProposedByMerchantName) ? "平台" : item.ProposedByMerchantName)</td>
                                 <td class="d-none d-md-table-cell text-muted small" data-utc="@Iso(item.UpdatedAt)">@Iso(item.UpdatedAt)</td>
                                 @if (canManage)
                                 {
@@ -132,7 +115,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="@(canManage ? 10 : 9)" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-2"></i><br />暂无替代关系</td></tr>
+                        <tr><td colspan="@(canManage ? 8 : 7)" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-2"></i><br />暂无替代关系</td></tr>
                     }
                 </tbody>
             </table>

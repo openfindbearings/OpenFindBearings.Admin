@@ -54,8 +54,10 @@
                 </li>
                 }
                 @* 改动说明（v2.16.0 替代品治理）：替代品管理入口归入信息管理（平台建标准），
-                   外组条件补 merchant.verify 保证仅持该权限者也能见到本组 *@
-                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.verify"))
+                   外组条件补权限键保证仅持该权限者也能见到本组 *@
+                @* 改动说明（v2.17.0 替代品字典化）：替代品改用 interchange.view，外组条件随之替换
+                   （merchant.verify 已无本组条目依赖，去除避免僵尸条件） *@
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "interchange.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
@@ -76,7 +78,8 @@
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
                         }
                         @* 改动说明（v2.16.0 替代品治理）：平台替代关系管理入口，与轴承列表同置基础信息区 *@
-                        @if (HasPerm("merchant.verify"))
+                        @* 改动说明（v2.17.0 替代品字典化）：替代关系属主数据，权限由 merchant.verify 改为 interchange.view *@
+                        @if (HasPerm("interchange.view"))
                         {
                         <li><a asp-controller="Interchanges" asp-action="Index" class="nav-link" data-page="interchanges"><i class="fas fa-circle"></i><span>替代品管理</span></a></li>
                         }
@@ -106,7 +109,12 @@
                         @* 改动说明（v2.15.0 商品审核）：商家上架商品人工审核入口，与入驻/证照审核同置 merchant.verify 组 *@
                         <li><a asp-controller="MerchantBearingReview" asp-action="Index" class="nav-link" data-page="merchant-bearing-review"><i class="fas fa-circle"></i><span>商品审核</span></a></li>
                         @* 改动说明（v2.16.0 替代品治理）：商家替代候选审核入口，与商品审核同置 merchant.verify 组 *@
-                        <li><a asp-controller="InterchangeReview" asp-action="Index" class="nav-link" data-page="interchange-review"><i class="fas fa-circle"></i><span>替代品审核</span></a></li>
+                        @* 改动说明（v2.17.0 替代品字典化）：删除"替代品审核"入口（商家候选流取消） *@
+                        }
+                        @* 改动说明（v2.19.0）：寻货管理页此前无侧边栏入口、后台无法进入；补入口，按 sourcing.view 显示 *@
+                        @if (HasPerm("sourcing.view"))
+                        {
+                        <li><a asp-controller="Sourcing" asp-action="Index" class="nav-link" data-page="sourcing"><i class="fas fa-circle"></i><span>寻货管理</span></a></li>
                         }
                         @* 改动说明（v2.18.0 通用扩展点）：并入扩展模块声明在"审核"分组的菜单项（开源无模块=无） *@
                         @foreach (var module in Modules)
@@ -268,7 +276,8 @@
         </div>
 
         <footer class="main-footer">
-            <strong>@siteName</strong> &copy; @DateTime.Now.Year
+            @* 改动说明（v2.19.0）：页脚年份统一取 UTC，原 DateTime.Now 违反全项目时间与时区规则（禁止服务层取本地时间） *@
+            <strong>@siteName</strong> &copy; @DateTime.UtcNow.Year
             @if (!string.IsNullOrEmpty(siteDescription))
             {
                 <span class="text-muted ms-2">@siteDescription</span>

@@ -372,7 +372,9 @@ document.getElementById('onSaleSearch').addEventListener('input',function(){
 function renderOnSaleRows(items){
     var showNeg = window.PRICE_CONFIG && window.PRICE_CONFIG.showNegotiableLabel;
     var h='';items.forEach(function(r){
-        var statusText=r.isOnSale?'在售':'下架';
+        // 改动说明（v2.19.0 状态契约对齐）：上游 MerchantBearingDto 已由 isOnSale 布尔改为 saleState（0已下架/1出售中/2补货中），
+        //   原读 r.isOnSale（字段已不存在）恒为 undefined，导致本列状态永远显示"下架"
+        var statusText = r.saleState === 1 ? '出售中' : (r.saleState === 2 ? '补货中' : '已下架');
         // 价格列：按 PriceVisibility 决定显示内容
         var priceCell = renderPriceCell(r, showNeg);
         h+='<tr><td>'+(r.bearingPartNumber||'-')+'</td><td>'+(r.bearingOldNumber||'-')+'</td><td>'+(r.bearingTypeName||'-')+'</td><td>'+(r.dimensions||'-')+'</td><td>'+(r.brandName||'-')+'</td><td>'+priceCell+'</td><td>'+statusText+'</td></tr>';

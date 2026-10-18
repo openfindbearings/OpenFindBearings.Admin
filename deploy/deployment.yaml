@@ -26,11 +26,8 @@ spec:
           value: Production
         - name: ASPNETCORE_URLS
           value: "http://+:8080"
-        - name: ConnectionStrings__DefaultConnection
-          valueFrom:
-            secretKeyRef:
-              name: openfindbearings-admin-secrets
-              key: connection-string
+        # 改动说明（v2.19.0）：Admin 已无本地数据库（无 DbContext、无迁移），不再注入连接串；
+        #   原 ConnectionStrings__DefaultConnection 指向已废弃的 db_admin，已移除
         - name: ApiUrls__OpenFindBearingsApi
           value: "http://openfindbearings-api:80"
         - name: ApiUrls__OpenFindBearingsIdentity

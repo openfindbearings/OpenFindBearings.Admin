@@ -9,14 +9,16 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 替代关系管理控制器（v2.16.0 替代品治理）：平台建标准、商家报候选、平台审核生效。
-/// 管理列表服务端渲染（对齐商品审核页），新建/编辑/删除/通过/驳回由浏览器调用
+/// 替代关系管理控制器（v2.17.0 替代品字典化）：替代关系已成为平台维护的主数据（字典），
+/// 由平台人工维护或由数据管线推送后进 API 即生效，不再有"商家报候选 + 平台审核"环节。
+/// 管理列表服务端渲染（对齐商品审核页），新建/编辑/删除由浏览器调用
 /// Program.cs 注册的代理端点 /api/proxy/admin-interchanges/... 完成。
-/// 权限 merchant.verify（与商品审核、入驻审批同口径）。
+/// 权限 interchange.view（读取与页面进入）；写操作由 API 侧 interchange.manage 约束。
 /// </summary>
 [Authorize]
-[PanelPermission("merchant.verify")]
-public class InterchangesController : Controller
+    // 改动说明（v2.17.0 替代品字典化）：替代关系属平台维护的主数据，权限由 merchant.verify 改为 interchange.view
+    [PanelPermission("interchange.view")]
+    public class InterchangesController : Controller
 {
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
@@ -34,18 +36,17 @@ public class InterchangesController : Controller
     private string ApiBase() => ApiUrlResolver.Api(_config);
 
     /// <summary>
-    /// 替代关系管理列表页：拉取 API /api/admin/interchanges（支持关键字/审核状态过滤），服务端渲染首屏与分页。
+    /// 替代关系管理列表页：拉取 API /api/admin/interchanges（支持关键字/创建时间/来源过滤），服务端渲染首屏与分页。
     /// API 不可达时降级空表并提示，不阻断页面。
+    /// 改动说明（v2.17.0 替代品字典化）：去掉审核状态参数（替代关系不再有审核状态机）
     /// </summary>
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string? keyword = null, int? reviewStatus = null,
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string? keyword = null,
         string? createdFrom = null, string? createdTo = null, string? sourceFilter = null)
     {
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/interchanges?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(keyword))
             url += $"&keyword={Uri.EscapeDataString(keyword)}";
-        if (reviewStatus.HasValue)
-            url += $"&reviewStatus={reviewStatus.Value}";
         // 改动说明（v1.40.0 下钻筛选）：透传创建时间区间（业务日历 yyyy-MM-dd）与来源，供仪表盘"替代品·新增"柱下钻
         if (!string.IsNullOrWhiteSpace(createdFrom))
             url += $"&createdFrom={Uri.EscapeDataString(createdFrom)}";
@@ -80,7 +81,6 @@ public class InterchangesController : Controller
         ViewBag.Page = page;
         ViewBag.PageSize = pageSize;
         ViewBag.Keyword = keyword;
-        ViewBag.ReviewStatus = reviewStatus;
         ViewBag.CreatedFrom = createdFrom;
         ViewBag.CreatedTo = createdTo;
         ViewBag.SourceFilter = sourceFilter;
@@ -90,7 +90,7 @@ public class InterchangesController : Controller
 
 /// <summary>
 /// 替代关系管理行 DTO，字段对齐 API InterchangeAdminDto（camelCase 序列化）。
-/// 管理列表与审核队列共用。
+/// 改动说明（v2.17.0 替代品字典化）：删除审核状态与提出商户字段（候选流取消，行均为平台维护）
 /// </summary>
 public class InterchangeAdminRowDto
 {
@@ -121,20 +121,8 @@ public class InterchangeAdminRowDto
     /// <summary>是否双向替代</summary>
     [JsonPropertyName("isBidirectional")] public bool IsBidirectional { get; set; }
 
-    /// <summary>审核状态（0=已生效 1=待审核 2=已驳回）</summary>
-    [JsonPropertyName("reviewStatus")] public int ReviewStatus { get; set; }
-
-    /// <summary>审核状态中文标签</summary>
-    [JsonPropertyName("reviewStatusLabel")] public string? ReviewStatusLabel { get; set; }
-
-    /// <summary>驳回理由（仅已驳回有值）</summary>
-    [JsonPropertyName("reviewComment")] public string? ReviewComment { get; set; }
-
-    /// <summary>提出候选的商户 ID（平台自建为 null）</summary>
-    [JsonPropertyName("proposedByMerchantId")] public Guid? ProposedByMerchantId { get; set; }
-
-    /// <summary>提出候选的商户名称（平台自建为 null）</summary>
-    [JsonPropertyName("proposedByMerchantName")] public string? ProposedByMerchantName { get; set; }
+    // 改动说明（v2.17.0 替代品字典化）：删除 ReviewStatus/ReviewStatusLabel/ReviewComment/
+    //   ProposedByMerchantId/ProposedByMerchantName——商家候选流取消，全部行均为平台维护
 
     /// <summary>数据来源类型（Manual/Internet/UserSubmitted 等）</summary>
     [JsonPropertyName("dataSourceType")] public string? DataSourceType { get; set; }

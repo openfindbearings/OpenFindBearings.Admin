@@ -140,7 +140,8 @@
                 </button>
             </form>
 
-            <p class="login-footer">© @DateTime.Now.Year OpenFindBearings</p>
+            @* 改动说明（v2.19.0）：页脚年份统一取 UTC，原 DateTime.Now 违反全项目时间与时区规则（禁止服务层取本地时间） *@
+            <p class="login-footer">© @DateTime.UtcNow.Year OpenFindBearings</p>
         </div>
 
         <div class="status-card">

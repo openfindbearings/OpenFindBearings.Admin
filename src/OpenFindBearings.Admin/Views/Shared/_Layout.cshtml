@@ -54,8 +54,10 @@
                 </li>
                 }
                 @* 改动说明（v2.16.0 替代品治理）：替代品管理入口归入信息管理（平台建标准），
-                   外组条件补 merchant.verify 保证仅持该权限者也能见到本组 *@
-                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.verify"))
+                   外组条件补权限键保证仅持该权限者也能见到本组 *@
+                @* 改动说明（v2.17.0 替代品字典化）：替代品改用 interchange.view，外组条件随之替换
+                   （merchant.verify 已无本组条目依赖，去除避免僵尸条件） *@
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "interchange.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
@@ -76,7 +78,8 @@
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
                         }
                         @* 改动说明（v2.16.0 替代品治理）：平台替代关系管理入口，与轴承列表同置基础信息区 *@
-                        @if (HasPerm("merchant.verify"))
+                        @* 改动说明（v2.17.0 替代品字典化）：替代关系属主数据，权限由 merchant.verify 改为 interchange.view *@
+                        @if (HasPerm("interchange.view"))
                         {
                         <li><a asp-controller="Interchanges" asp-action="Index" class="nav-link" data-page="interchanges"><i class="fas fa-circle"></i><span>替代品管理</span></a></li>
                         }

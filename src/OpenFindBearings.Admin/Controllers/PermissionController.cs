@@ -74,7 +74,7 @@ public class PermissionController : Controller
     private static string GetGroup(string key) => key.Split('.')[0] switch
     {
         "dashboard" => "仪表盘",
-        "bearing" or "brand" or "type" => "数据管理",
+            "bearing" or "brand" or "type" or "interchange" => "数据管理",
         "merchant" => "商家管理",
         "data" => "数据危险操作",
         "review" or "correction" or "sourcing" => "审核管理",
@@ -91,7 +91,10 @@ public class PermissionController : Controller
         "bearing.view" => "查看轴承",
         "bearing.create" => "创建轴承",
         "bearing.edit" => "编辑轴承",
-        "bearing.delete" => "删除轴承",
+                "bearing.delete" => "删除轴承",
+                // 改动说明（v2.17.0 替代品字典化）：替代关系独立权限键的显示名回退（API 目录已带中文说明，此处兜底）
+                "interchange.view" => "查看替代关系",
+                "interchange.manage" => "维护替代关系",
         "merchant.view" => "查看商家",
         "merchant.manage" => "编辑商家",
         "merchant.detach" => "解除商户归属",

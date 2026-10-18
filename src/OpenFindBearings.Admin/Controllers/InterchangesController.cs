@@ -9,14 +9,16 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 替代关系管理控制器（v2.16.0 替代品治理）：平台建标准、商家报候选、平台审核生效。
-/// 管理列表服务端渲染（对齐商品审核页），新建/编辑/删除/通过/驳回由浏览器调用
+/// 替代关系管理控制器（v2.17.0 替代品字典化）：替代关系已成为平台维护的主数据（字典），
+/// 由平台人工维护或由数据管线推送后进 API 即生效，不再有"商家报候选 + 平台审核"环节。
+/// 管理列表服务端渲染（对齐商品审核页），新建/编辑/删除由浏览器调用
 /// Program.cs 注册的代理端点 /api/proxy/admin-interchanges/... 完成。
-/// 权限 merchant.verify（与商品审核、入驻审批同口径）。
+/// 权限 interchange.view（读取与页面进入）；写操作由 API 侧 interchange.manage 约束。
 /// </summary>
 [Authorize]
-[PanelPermission("merchant.verify")]
-public class InterchangesController : Controller
+    // 改动说明（v2.17.0 替代品字典化）：替代关系属平台维护的主数据，权限由 merchant.verify 改为 interchange.view
+    [PanelPermission("interchange.view")]
+    public class InterchangesController : Controller
 {
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;

@@ -12,7 +12,8 @@
     var sourceFilter = (string?)ViewBag.SourceFilter;
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     var error = (string?)ViewBag.Error;
-    var canManage = PanelPerms.Has(User, "merchant.verify");
+    // 改动说明（v2.17.0 替代品字典化）：写按钮按 interchange.manage 显示（原借用 merchant.verify）
+var canManage = PanelPerms.Has(User, "interchange.manage");
 
     // 输出 UTC ISO 8601 串，由全局 data-utc JS 按浏览器时区显示
     string Iso(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");

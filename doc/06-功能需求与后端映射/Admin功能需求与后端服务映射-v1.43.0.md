@@ -1,10 +1,18 @@
-# Admin 功能需求与后端服务映射 v1.42.0
+# Admin 功能需求与后端服务映射 v1.43.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.42.0 → v1.43.0（2026-10-18 替代关系独立权限键：替代品管理由 merchant.verify 改为 interchange.view/manage）
+
+1. **权限独立**：替代关系（替代品）已是平台主数据，权限从借用 `merchant.verify`（认证审核语义）改为独立键 `interchange.view`（查看替代关系）与 `interchange.manage`（维护替代关系）。权限目录 32→34 键，迁移 `AddInterchangePermissions`。
+2. **替代品管理页判权**：`InterchangesController` 类特性由 `[PanelPermission("merchant.verify")]` 改为 `[PanelPermission("interchange.view")]`；页面进入需 `interchange.view`。
+3. **写按钮判权**：`Views/Interchanges/Index.cshtml` 内新建/编辑/删除按钮由 `PanelPerms.Has(User, "interchange.manage")` 控制（原借用 `merchant.verify`）。
+4. **菜单判权**：`Views/Shared/_Layout.cshtml`「替代品管理」入口显隐由 `interchange.view` 控制（原 `merchant.verify`）；`PermissionController` 新增 `interchange` → 「数据管理」分组映射与两键显示名回退。
+5. **端点判权**：`GET /api/admin/interchanges` 需 `interchange.view`；`POST/PUT/DELETE /api/admin/interchanges[/{id:guid}]` 需 `interchange.manage`。
 
 ### v1.41.0 → v1.42.0（2026-10-18 替代品字典化：删除"替代品审核"页与代理，管理页去状态筛选）
 
@@ -213,10 +221,10 @@
 | 页面 | 控制器/视图 | 功能 | 数据源 API | 权限 |
 |---|---|---|---|---|
 | 商品审核 | MerchantBearingReviewController / Views/MerchantBearingReview | 待审队列 + 通过 / 驳回（填理由） | /api/admin/merchant-bearings/pending\|approve\|reject | merchant.verify |
-| 替代品管理 | InterchangesController / Views/Interchanges | 列表 / 筛选（关键字 + 创建时间 + 来源）/ 新建（选源·目标型号）/ 编辑 / 删除 | /api/admin/interchanges（GET/POST/PUT/DELETE） | merchant.verify |
+| 替代品管理 | InterchangesController / Views/Interchanges | 列表 / 筛选（关键字 + 创建时间 + 来源）/ 新建（选源·目标型号）/ 编辑 / 删除 | /api/admin/interchanges（GET/POST/PUT/DELETE） | interchange.view（读）/ interchange.manage（写） |
 | ~~替代品审核~~ | ~~InterchangeReviewController / Views/InterchangeReview~~ | **已于 v1.42.0 移除**（替代品字典化：无候选流即无审核队列） | — | — |
 
-- 菜单：信息管理组新增"商品审核/替代品管理"入口（外组权限条件补 merchant.verify）；**v1.42.0 起"替代品审核"入口删除**。
+- 菜单：信息管理组新增"商品审核/替代品管理"入口（外组权限条件补 merchant.verify）；**v1.42.0 起"替代品审核"入口删除**；**v1.43.0 起"替代品管理"入口改由 `interchange.view` 控制**（本节权限列为历史值，已由 v1.43.0 更新）。
 - 修复：轴承列表"替代品"查看弹窗（原代理路由与字段名错配，恒加载失败）。
 - 商品列表在售状态列改按 API `saleState`/`reviewStatus` 映射展示。
 
@@ -235,3 +243,18 @@
 
 > 数据来源：权威网站抓取（Sync staging 审核后入库，进 API 即生效）或平台人工维护；商家/用户经"纠错"反馈，平台核实后维护。
 > 迁移（API 侧）：`RemoveInterchangeReview`（删三列与索引，先清除历史未生效候选行）。
+
+---
+
+## 本版增量（v1.43.0）：替代关系独立权限键（承 API《02 v1.53.0》《16-替代品治理设计 v2.0.1》）
+
+| 对象 | 变更 |
+|---|---|
+| 替代品管理页判权 | `InterchangesController` 类特性 `[PanelPermission("merchant.verify")]` → `[PanelPermission("interchange.view")]` |
+| 写按钮判权 | `Views/Interchanges/Index.cshtml`：`PanelPerms.Has(User, "interchange.manage")` 控制新建/编辑/删除按钮（原借用 `merchant.verify`） |
+| 菜单判权 | `Views/Shared/_Layout.cshtml`：「替代品管理」入口由 `interchange.view` 控制（原 `merchant.verify`） |
+| 权限分组与显示名 | `PermissionController`：新增 `interchange` → 「数据管理」分组映射；`interchange.view`/`interchange.manage` 显示名回退 |
+| API 端点 | `GET /api/admin/interchanges` 需 `interchange.view`；`POST/PUT/DELETE /api/admin/interchanges[/{id:guid}]` 需 `interchange.manage` |
+| 权限目录 | 32→34 键；迁移（API 侧）`AddInterchangePermissions` 幂等补插 `interchange.view`/`interchange.manage` 并给 Admin/Operator/Auditor 授权（Operator 18→20、Auditor 11→12） |
+
+> 说明：本版仅调整替代品管理相关的权限归属，页面功能与数据源不变；v1.37.0 增量表中替代品管理的权限列（merchant.verify）为历史记录，现状以本表为准。

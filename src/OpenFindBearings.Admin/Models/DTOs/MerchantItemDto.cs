@@ -33,5 +33,8 @@ public record MerchantItemDto(
     [property: JsonPropertyName("verifyRequested")] bool VerifyRequested = false,
     // 改动说明（v1.24.1）：对齐 API v1.31.0 DataSource 字段——解除归属按钮可用性判定
     // （None+Manual=提名已有可解除，None+Internet=公海不可；与 DetachMerchant 守卫同口径）
-    [property: JsonPropertyName("dataSource")] string? DataSource = null
+    [property: JsonPropertyName("dataSource")] string? DataSource = null,
+    // 改动说明（v2.20.0 商家卡级页）：对齐 API MerchantDto 的等级中文展示名，
+    // 列表直接展示，避免前端再维护一份枚举到中文的映射
+    [property: JsonPropertyName("gradeDisplay")] string? GradeDisplay = null
 );

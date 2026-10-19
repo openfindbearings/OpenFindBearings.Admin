@@ -1,10 +1,21 @@
-# Admin 功能需求与后端服务映射 v1.46.0
+# Admin 功能需求与后端服务映射 v1.47.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.46.0 → v1.47.0（2026-10-19 成交回执复核 + 商家卡级人工调级）
+
+1. **新增「成交回执」页**（`Controllers/SourcingController.cs` 增 `Feedbacks`/`RevokeFeedback` + `Views/Sourcing/Feedbacks.cshtml`）：代理 API `GET /api/admin/sourcing/feedbacks`（权限 `sourcing.view`）与 `POST /api/admin/sourcing/feedbacks/{responseId}/revoke`（权限 `merchant.grade.manage`）；
+   展示轴承型号 / 需求方 / 商家 / 洽谈结果 / 是否计分 / 未计分原因或复核留痕 / 回执时间，可按商户与结果筛选，支持「撤销计分 / 恢复计分」（需填原因，写审计）。
+2. **新增「商家卡级」页**（`Controllers/MerchantGradeController.cs` + `Views/MerchantGrade/Index.cshtml`）：代理既有 `GET /api/admin/merchants` 列表与新增 `POST /api/admin/merchants/{id}/grade`（权限 `merchant.grade.manage`）；
+   列表认证与卡级分列，操作列「调整卡级」弹窗填目标卡级 + 原因；**卡级仅可授予已认证商户**（API 侧拦截，未认证授予返回 400），调整写审计日志。
+3. **权限键**：新增 `merchant.grade.manage`（商家管理维度），由 API 迁移 `AddGradeManagePermission` 补插并授予 Admin/Operator；`merchant.grade.manage` 已加入 `PermissionController` 分组与中文名。
+4. **商家列表 DTO**（`Models/DTOs/MerchantItemDto.cs`）：新增 `GradeDisplay`（对齐 API `MerchantDto.gradeDisplay`），列表直接展示卡级中文名，前端不再维护枚举到中文的映射。
+5. **侧边栏**（`Views/Shared/_Layout.cshtml`）：寻货管理组加「成交回执」（`sourcing.view`）、商家管理组加「商家卡级」（`merchant.grade.manage`）。
+6. **背景**：API v1.57.0 把"选定"升级为"确认合作 + 成交回执"，且商家卡级改由"近 180 天计分成功撮合"驱动；管理侧必须能复核/撤销误计分与人工干预异常卡级，故补此两页。
 
 ### v1.45.0 → v1.46.0（2026-10-19 寻货治理列表标出「已删除」单）
 

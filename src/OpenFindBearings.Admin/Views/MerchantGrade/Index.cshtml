@@ -1,0 +1,219 @@
+@functions
+{
+    // 卡级中文兜底映射：API 已下发 gradeDisplay，仅在缺失时按枚举名回退
+    string GradeText(MerchantItemDto item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.GradeDisplay)) return item.GradeDisplay!;
+        return item.Grade switch
+        {
+            "Registered" => "注册商户",
+            "Bronze" => "铜卡",
+            "Silver" => "银卡",
+            "Gold" => "金卡",
+            _ => "未定级"
+        };
+    }
+}
+
+@{
+    ViewData["Title"] = "商家卡级";
+    var items = ViewBag.Items as List<MerchantItemDto> ?? [];
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var search = (string?)ViewBag.Search ?? "";
+    var error = (string?)ViewBag.Error;
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    // 分页统一保留搜索条件
+    string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}";
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-layer-group"></i> 商家卡级</h4>
+    <p class="text-muted">卡级仅可授予已认证商户；调整会写入审计日志</p>
+</div>
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0">商家列表 <small class="text-muted">(@totalCount 条)</small></h6>
+        <form class="d-flex gap-2" method="get">
+            <input type="text" name="search" value="@search" class="form-control form-control-sm" style="min-width:180px" placeholder="搜索商家名称..." />
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i></button>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>公司</th>
+                        <th>认证</th>
+                        <th>当前卡级</th>
+                        <th style="width:140px">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (items.Count > 0)
+                    {
+                        @foreach (var item in items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@(item.CompanyName ?? "-")</td>
+                                <td>
+                                    @if (item.IsVerified)
+                                    {
+                                        <span class="badge bg-primary">已认证</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">未认证</span>
+                                    }
+                                </td>
+                                <td><span class="badge bg-info text-dark">@GradeText(item)</span></td>
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary btn-adjust"
+                                            data-id="@item.Id"
+                                            data-name="@item.Name"
+                                            data-verified="@(item.IsVerified ? "true" : "false")">
+                                        <i class="fas fa-sliders"></i><span class="d-none d-sm-inline">调整卡级</span>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">暂无商家数据</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @if (totalPages > 1)
+    {
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(1)">首页</a>
+                        </li>
+                        <li class="page-item @(page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(page - 1)">&laquo;</a>
+                        </li>
+                        @{
+                            var rs = Math.Max(1, page - 2);
+                            var re = Math.Min(totalPages, page + 2);
+                        }
+                        @if (rs > 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        @for (var p = rs; p <= re; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" href="@PageUrl(p)">@p</a>
+                            </li>
+                        }
+                        @if (re < totalPages)
+                        {
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        }
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(page + 1)">&raquo;</a>
+                        </li>
+                        <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(totalPages)">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>
+
+@* 调整卡级弹窗：未认证商户禁用铜卡及以上，避免无效请求（API 同样会 400 拒绝） *@
+<div class="modal fade" id="gradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">调整商家卡级</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">商家</label>
+                    <div id="gradeMerchantName" class="form-control-plaintext"></div>
+                </div>
+                <div class="alert alert-warning py-2 small d-none" id="gradeVerifiedWarn">
+                    该商户未认证，仅可设为注册商户；如需授予铜卡及以上，请先完成认证。
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">目标卡级 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="gradeSelect">
+                        <option value="1">1 注册商户</option>
+                        <option value="2">2 铜卡</option>
+                        <option value="3">3 银卡</option>
+                        <option value="4">4 金卡</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">调整原因 <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="gradeReason" rows="3" placeholder="申诉核实依据或异常处理说明（必填，写入审计日志）"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-sm btn-primary" id="gradeConfirmBtn">确认调整</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let gradeMerchantId = null;
+
+        // 打开调整卡级弹窗：未认证商户禁用 2/3/4 档，默认落在注册商户
+        $('.btn-adjust').on('click', function () {
+            gradeMerchantId = $(this).data('id');
+            const verified = $(this).data('verified') === true;
+            $('#gradeMerchantName').text($(this).data('name') || '');
+            $('#gradeVerifiedWarn').toggleClass('d-none', verified);
+            $('#gradeSelect option').prop('disabled', false);
+            if (!verified) {
+                $('#gradeSelect option[value!="1"]').prop('disabled', true);
+            }
+            $('#gradeSelect').val('1');
+            $('#gradeReason').val('');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).show();
+        });
+
+        // 提交调级：原因必填，成功后刷新列表
+        $('#gradeConfirmBtn').on('click', function () {
+            if (!gradeMerchantId) return;
+            const grade = parseInt($('#gradeSelect').val(), 10);
+            const reason = $('#gradeReason').val().trim();
+            if (!reason) { showToast('warning', '请填写调整原因'); return; }
+            $.post('@Url.Action("Adjust")',
+                { id: gradeMerchantId, grade: grade, reason: reason },
+                function (r) {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
+                    showToast(r.success ? 'success' : 'error', r.message || (r.success ? '卡级已调整' : '操作失败'));
+                    if (r.success) setTimeout(() => location.reload(), 600);
+                }).fail(function () {
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
+                    showToast('error', '服务异常');
+                });
+        });
+    </script>
+}

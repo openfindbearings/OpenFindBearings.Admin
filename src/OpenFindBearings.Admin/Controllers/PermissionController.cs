@@ -98,6 +98,8 @@ public class PermissionController : Controller
         "merchant.view" => "查看商家",
         "merchant.manage" => "编辑商家",
         "merchant.detach" => "解除商户归属",
+        // 改动说明（v2.20.0 商家卡级）：新增卡级人工调整权限的显示名兜底
+        "merchant.grade.manage" => "调整商家卡级",
         "sourcing.view" => "查看寻货",
         "sourcing.manage" => "寻货治理（下架）",
         "merchant.verify" => "认证审核",

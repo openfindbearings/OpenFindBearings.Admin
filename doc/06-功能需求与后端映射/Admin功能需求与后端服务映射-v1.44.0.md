@@ -1,10 +1,17 @@
-# Admin 功能需求与后端服务映射 v1.43.0
+# Admin 功能需求与后端服务映射 v1.44.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.43.0 → v1.44.0（2026-10-19 寻货治理视图透出「发布方式」：公开招标 / 邀标）
+
+1. **列表加列**（`Views/Sourcing/Index.cshtml`）：状态列之后新增「发布方式」列——`isPrivate` 为真显示 `邀标 N 家` 徽标（`badge bg-info text-dark`），否则「公开招标」；空态行 `colspan` 7→8。
+2. **详情弹窗加行**：新增「发布方式」一行，邀标显示"邀标（不进大厅，仅通知 N 家认证商家）"、公开显示"公开招标（进入寻货大厅，人人可应答）"。
+3. **行 DTO 补字段**（`Controllers/SourcingController.cs` 的 `SourcingAdminItemDto`）：新增 `IsPrivate`/`InvitedCount`（对齐 API `GET /api/admin/sourcing/demands` 输出；详情弹窗直取 API 返回的 `isPrivate`/`invitedMerchantIds`）。
+4. **背景**：寻货自 API v1.54.0 起区分公开招标与邀标（受众与曝光范围不同），治理侧需一眼可辨"这单触达了谁"，否则无法判断投诉/下架影响面。
 
 ### v1.42.0 → v1.43.0（2026-10-18 替代关系独立权限键：替代品管理由 merchant.verify 改为 interchange.view/manage）
 

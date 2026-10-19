@@ -116,6 +116,10 @@ public class SourcingAdminItemDto
     public DateTime CreatedAt { get; set; }
     public DateTime ExpiryAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+    /// <summary>改动说明（v1.44.0 公开招标/邀标）：曝光范围——true=邀标（不进公开大厅，仅收件商家可见）</summary>
+    public bool IsPrivate { get; set; }
+    /// <summary>邀标收件人家数（公开单恒 0；治理视图用于判断触达范围）</summary>
+    public int InvitedCount { get; set; }
 }
 
 /// <summary>列表数据包（API 匿名对象 {items,total} 对齐）</summary>

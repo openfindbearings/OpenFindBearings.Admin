@@ -1,10 +1,17 @@
-# Admin 功能需求与后端服务映射 v1.45.0
+# Admin 功能需求与后端服务映射 v1.46.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.45.0 → v1.46.0（2026-10-19 寻货治理列表标出「已删除」单）
+
+1. **行 DTO 补字段**（`Controllers/SourcingController.cs` 的 `SourcingAdminItemDto`）：新增 `IsDeleted`（对齐 API `GET /api/admin/sourcing/demands` 新输出的 `isDeleted`）。
+2. **列表标出已删除单**（`Views/Sourcing/Index.cshtml`）：型号列在单号后按 `IsDeleted` 渲染 `已删除` 徽标（`badge bg-secondary`）。
+3. **详情弹窗标出已删除单**：标题行状态徽标后追加 `已删除` 徽标（详情接口同步输出 `isDeleted`）。
+4. **背景**：API v1.56.0 起寻货治理列表**显式包含软删单**（原硬排除 `IsDeleted`，发布人撤销的终态单从管理员视野消失，无从审计）。既然单子重新出现，就必须能一眼分辨"在库单 / 已被发布人删除的单"，故两处均加标记。
 
 ### v1.44.0 → v1.45.0（2026-10-19 寻货应答报表明细按行渲染 + 发布方身份）
 
@@ -270,3 +277,16 @@
 | 权限目录 | 32→34 键；迁移（API 侧）`AddInterchangePermissions` 幂等补插 `interchange.view`/`interchange.manage` 并给 Admin/Operator/Auditor 授权（Operator 18→20、Auditor 11→12） |
 
 > 说明：本版仅调整替代品管理相关的权限归属，页面功能与数据源不变；v1.37.0 增量表中替代品管理的权限列（merchant.verify）为历史记录，现状以本表为准。
+
+---
+
+## 本版增量（v1.46.0）：寻货治理「已删除」标记
+
+| 对象 | 变更 |
+|---|---|
+| 寻货列表 | `Views/Sourcing/Index.cshtml` 型号列在单号后按 `IsDeleted` 渲染 `已删除` 徽标 |
+| 寻货详情 | 详情弹窗标题行状态徽标后按 `d.isDeleted` 渲染 `已删除` 徽标 |
+| 行 DTO | `SourcingAdminItemDto` 新增 `IsDeleted` |
+| API 侧（本版背景） | `GET /api/admin/sourcing/demands` 改传 `includeDeleted: true` 并输出 `isDeleted`（详情同步输出） |
+
+> 说明：本版只做治理可见性标注，寻货页其余功能与判权不变。

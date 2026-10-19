@@ -124,6 +124,8 @@ public class SourcingAdminItemDto
     public string? PublisherType { get; set; }
     /// <summary>发布商户名称（商户名义发布时的责任主体；个人名义为空）</summary>
     public string? PublisherMerchantName { get; set; }
+    /// <summary>改动说明（v1.45.0 治理可见性）：软删标记——治理列表纳入发布人已删单，需在列表中标出，避免误判为在库单</summary>
+    public bool IsDeleted { get; set; }
 }
 
 /// <summary>列表数据包（API 匿名对象 {items,total} 对齐）</summary>

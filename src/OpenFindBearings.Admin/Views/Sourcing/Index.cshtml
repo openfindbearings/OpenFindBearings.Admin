@@ -51,7 +51,14 @@
                     @foreach (var item in items)
                     {
                         <tr>
-                            <td><strong>寻 @item.PartNumber</strong></td>
+                            <td>
+                                <strong>寻 @item.PartNumber</strong>
+                                @* 改动说明（v1.45.0 治理可见性）：发布人已软删的单仍在治理列表可见，标出"已删除"以防误读 *@
+                                @if (item.IsDeleted)
+                                {
+                                    <span class="badge bg-secondary ms-1">已删除</span>
+                                }
+                            </td>
                             <td><small>@string.Join(" / ", new[] { item.Brand, item.Quantity, item.Region }.Where(s => !string.IsNullOrWhiteSpace(s)))</small></td>
                             <td><span class="@statusBadge.GetValueOrDefault(item.Status, "badge bg-secondary")">@(statusNames.GetValueOrDefault(item.Status, "未知"))</span></td>
                             @* 改动说明（v1.44.0 公开招标/邀标）：治理视图需区分公开招标与邀标（触达范围不同） *@
@@ -134,7 +141,7 @@
             const respStatus = { 1: '待处理', 2: '已选定', 3: '未选中' };
             // 改动说明（v2.13.2 色值统一）：详情弹窗原硬编码 bg-secondary 与列表 statusBadge 冲突，改用同一色表
             const statusBadge = { 1: 'badge bg-success', 2: 'badge bg-primary', 3: 'badge bg-secondary', 4: 'badge bg-secondary', 5: 'badge bg-danger' };
-            let html = `<h6>寻 ${esc(d.partNumber)} <span class="${statusBadge[d.status] || 'badge bg-secondary'}">${statusMap[d.status] || d.status}</span></h6>
+            let html = `<h6>寻 ${esc(d.partNumber)} <span class="${statusBadge[d.status] || 'badge bg-secondary'}">${statusMap[d.status] || d.status}</span>${d.isDeleted ? ' <span class="badge bg-secondary">已删除</span>' : ''}</h6>
                 <table class="table table-sm"><tbody>
                 <tr><td style="width:110px">品牌/数量/交期/地区</td><td>${[esc(d.brand), esc(d.quantity), esc(d.expectedDelivery), esc(d.region)].filter(Boolean).join(' / ') || '—'}</td></tr>
                 <tr><td>补充说明</td><td>${esc(d.description) || '—'}</td></tr>

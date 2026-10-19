@@ -57,7 +57,7 @@
                    外组条件补权限键保证仅持该权限者也能见到本组 *@
                 @* 改动说明（v2.17.0 替代品字典化）：替代品改用 interchange.view，外组条件随之替换
                    （merchant.verify 已无本组条目依赖，去除避免僵尸条件） *@
-                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "interchange.view"))
+                @if (HasPerm("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.grade.manage", "interchange.view"))
                 {
                 <li class="has-sub">
                     <a href="#" class="nav-link toggle-sub" data-target="sub-info">
@@ -87,6 +87,11 @@
                         {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
                         }
+                        @* 改动说明（v2.20.0 商家卡级）：卡级管理归入商家管理维度，紧随商家列表，按 merchant.grade.manage 显示 *@
+                        @if (HasPerm("merchant.grade.manage"))
+                        {
+                        <li><a asp-controller="MerchantGrade" asp-action="Index" class="nav-link" data-page="merchant-grade"><i class="fas fa-circle"></i><span>商家卡级</span></a></li>
+                        }
                     </ul>
                 </li>
                 }
@@ -115,6 +120,8 @@
                         @if (HasPerm("sourcing.view"))
                         {
                         <li><a asp-controller="Sourcing" asp-action="Index" class="nav-link" data-page="sourcing"><i class="fas fa-circle"></i><span>寻货管理</span></a></li>
+                        @* 改动说明（v2.20.0 成交回执）：寻货成交回执复核入口，与寻货管理同组，按 sourcing.view 显示 *@
+                        <li><a asp-controller="Sourcing" asp-action="Feedbacks" class="nav-link" data-page="sourcing-feedbacks"><i class="fas fa-circle"></i><span>成交回执</span></a></li>
                         }
                         @* 改动说明（v2.18.0 通用扩展点）：并入扩展模块声明在"审核"分组的菜单项（开源无模块=无） *@
                         @foreach (var module in Modules)

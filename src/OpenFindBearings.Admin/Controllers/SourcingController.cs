@@ -100,6 +100,87 @@ public class SourcingController : Controller
             return Json(new { success = false, message = "服务异常" });
         }
     }
+
+    /// <summary>
+    /// 成交回执记录（v2.20.0 管理侧复核）：分页查看需求方回执，可按商户与结果筛选，
+    /// 含是否计分、未计分原因与复核留痕（sourcing.view）
+    /// </summary>
+    [PanelPermission("sourcing.view")]
+    public async Task<IActionResult> Feedbacks(Guid? merchantId, int? outcome, int page = 1, int pageSize = 20)
+    {
+        var apiBase = ApiUrlResolver.Api(_config);
+        var client = _factory.CreateClient("ApiClient");
+        var url = $"{apiBase}/api/admin/sourcing/feedbacks?page={page}&pageSize={pageSize}";
+        if (merchantId.HasValue)
+            url += $"&merchantId={merchantId.Value}";
+        if (outcome.HasValue)
+            url += $"&outcome={outcome.Value}";
+        try
+        {
+            var resp = await client.GetAsync(url);
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                var apiResp = JsonSerializer.Deserialize<ApiResponse<SourcingFeedbackListData>>(json, JsonOpts);
+                ViewBag.Items = apiResp?.Data?.Items ?? [];
+                ViewBag.Total = apiResp?.Data?.Total ?? 0;
+            }
+        }
+        catch { }
+        ViewBag.MerchantId = merchantId;
+        ViewBag.Outcome = outcome;
+        ViewBag.Page = page;
+        ViewBag.PageSize = pageSize;
+        return View();
+    }
+
+    /// <summary>
+    /// 撤销或恢复成交回执计分（merchant.grade.manage）：counted=false 撤销计分，counted=true 恢复计分，
+    /// API 会同步重算商家卡级并记录复核原因
+    /// </summary>
+    [HttpPost]
+    [PanelPermission("merchant.grade.manage")]
+    public async Task<IActionResult> RevokeFeedback(Guid responseId, bool counted, string? reason)
+    {
+        var apiBase = ApiUrlResolver.Api(_config);
+        var client = _factory.CreateClient("ApiClient");
+        try
+        {
+            var resp = await client.PostAsJsonAsync(
+                $"{apiBase}/api/admin/sourcing/feedbacks/{responseId}/revoke",
+                new { counted, reason });
+            var json = await resp.Content.ReadAsStringAsync();
+            if (resp.IsSuccessStatusCode)
+            {
+                var message = ExtractApiMessage(json) ?? (counted ? "已恢复计分" : "已撤销计分");
+                return Json(new { success = true, message });
+            }
+            return Json(new { success = false, message = ExtractApiMessage(json) ?? "操作失败" });
+        }
+        catch
+        {
+            return Json(new { success = false, message = "服务异常" });
+        }
+    }
+
+    /// <summary>
+    /// 从 API 响应中提取可读文案：优先 message（ApiResponse），其次 detail（ProblemDetails）
+    /// </summary>
+    private static string? ExtractApiMessage(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("message", out var message)
+                && !string.IsNullOrWhiteSpace(message.GetString()))
+                return message.GetString();
+            if (doc.RootElement.TryGetProperty("detail", out var detail)
+                && !string.IsNullOrWhiteSpace(detail.GetString()))
+                return detail.GetString();
+        }
+        catch { }
+        return null;
+    }
 }
 
 /// <summary>Admin 寻货列表行（对齐 API /api/admin/sourcing/demands items）</summary>
@@ -132,5 +213,45 @@ public class SourcingAdminItemDto
 public class SourcingListData
 {
     public List<SourcingAdminItemDto> Items { get; set; } = [];
+    public int Total { get; set; }
+}
+
+/// <summary>Admin 成交回执行（对齐 API /api/admin/sourcing/feedbacks items）</summary>
+public class SourcingFeedbackDto
+{
+    /// <summary>应答记录 ID（撤销/恢复计分的操作键）</summary>
+    public Guid ResponseId { get; set; }
+    /// <summary>所属寻货需求 ID</summary>
+    public Guid DemandId { get; set; }
+    /// <summary>轴承型号（需求型号）</summary>
+    public string? PartNumber { get; set; }
+    /// <summary>应答商家 ID</summary>
+    public Guid MerchantId { get; set; }
+    /// <summary>应答商家名称</summary>
+    public string? MerchantName { get; set; }
+    /// <summary>需求发布人昵称</summary>
+    public string? PublisherName { get; set; }
+    /// <summary>需求发布商户名称（商户名义发布时有值）</summary>
+    public string? PublisherMerchantName { get; set; }
+    /// <summary>回执结果数值（0 谈成 / 1 没货 / 2 加价 / 3 拖延 / 4 其他）</summary>
+    public int Outcome { get; set; }
+    /// <summary>回执结果中文标签（API 下发口径）</summary>
+    public string? OutcomeLabel { get; set; }
+    /// <summary>需求方填写的回执原因</summary>
+    public string? Reason { get; set; }
+    /// <summary>是否计入商家卡级成功撮合次数</summary>
+    public bool Counted { get; set; }
+    /// <summary>未计分复核留痕（反刷校验或管理侧复核说明）</summary>
+    public string? FlagNote { get; set; }
+    /// <summary>回执关联的选定时间</summary>
+    public DateTime? AdoptedAt { get; set; }
+    /// <summary>回执提交时间</summary>
+    public DateTime? FeedbackAt { get; set; }
+}
+
+/// <summary>成交回执列表数据包（API 匿名对象 {items,total} 对齐）</summary>
+public class SourcingFeedbackListData
+{
+    public List<SourcingFeedbackDto> Items { get; set; } = [];
     public int Total { get; set; }
 }

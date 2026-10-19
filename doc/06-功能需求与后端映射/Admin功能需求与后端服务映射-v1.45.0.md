@@ -1,10 +1,15 @@
-# Admin 功能需求与后端服务映射 v1.44.0
+# Admin 功能需求与后端服务映射 v1.45.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.44.0 → v1.45.0（2026-10-19 寻货应答报表明细按行渲染 + 发布方身份）
+
+1. **应答明细改按行渲染**（`Views/Sourcing/Index.cshtml` 详情弹窗）：应答自 API v1.5.0 起为多行标书（型号/报价/库存/交期挂在 `items[]` 行上），原实现读顶层 `x.price`/`x.stock`/`x.leadTime`（早已不存在）导致**所有应答恒显示"仅留言"**、治理视图看不到任何报价；改为遍历 `x.items` 逐行渲染型号与可选报价/库存/交期。
+2. **发布人列补发布方身份**（列表 + 详情）：新增 `SourcingAdminItemDto.PublisherType`/`PublisherMerchantName`（对齐 API `GET /api/admin/sourcing/demands`、详情新增的 `publisherMerchantId`/`publisherMerchantName`/`publisherType`）——商户名义发布的单在发布人列下方标注商户名，详情行显示"商户名义 / 个人名义"，便于治理判断责任主体。
 
 ### v1.43.0 → v1.44.0（2026-10-19 寻货治理视图透出「发布方式」：公开招标 / 邀标）
 

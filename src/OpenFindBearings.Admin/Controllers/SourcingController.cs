@@ -120,6 +120,10 @@ public class SourcingAdminItemDto
     public bool IsPrivate { get; set; }
     /// <summary>邀标收件人家数（公开单恒 0；治理视图用于判断触达范围）</summary>
     public int InvitedCount { get; set; }
+    /// <summary>改动说明（v1.44.0）：发布方身份——个人名义 / 商户名义（治理时需知道责任主体）</summary>
+    public string? PublisherType { get; set; }
+    /// <summary>发布商户名称（商户名义发布时的责任主体；个人名义为空）</summary>
+    public string? PublisherMerchantName { get; set; }
 }
 
 /// <summary>列表数据包（API 匿名对象 {items,total} 对齐）</summary>

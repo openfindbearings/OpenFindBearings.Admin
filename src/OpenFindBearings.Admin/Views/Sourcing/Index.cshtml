@@ -66,7 +66,14 @@
                                 }
                             </td>
                             <td>@item.ResponseCount</td>
-                            <td>@item.PublisherName</td>
+                            @* 改动说明（v1.44.0）：发布人列补发布方身份（商户名义单标注商户名，治理时需知道责任主体） *@
+                            <td>
+                                @item.PublisherName
+                                @if (item.PublisherType == "merchant" && !string.IsNullOrWhiteSpace(item.PublisherMerchantName))
+                                {
+                                    <div><small class="text-muted">@item.PublisherMerchantName</small></div>
+                                }
+                            </td>
                             <td><small data-utc="@item.CreatedAt.ToString("yyyy-MM-ddTHH:mm:ssZ")"></small></td>
                             <td>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="showDetail('@item.Id')" title="详情"><i class="fas fa-eye"></i><span class="d-none d-sm-inline">详情</span></button>
@@ -133,15 +140,19 @@
                 <tr><td>补充说明</td><td>${esc(d.description) || '—'}</td></tr>
                 @* 改动说明（v1.44.0 公开招标/邀标）：详情透出发布方式与邀标收件人家数 *@
                 <tr><td>发布方式</td><td>${d.isPrivate ? '邀标（不进大厅，仅通知 ' + ((d.invitedMerchantIds || []).length) + ' 家认证商家）' : '公开招标（进入寻货大厅，人人可应答）'}</td></tr>
-                <tr><td>发布人</td><td>${esc(d.publisherName)}（${esc(d.publisherMobile) || '未留手机号'}）</td></tr>
+                <tr><td>发布人</td><td>${esc(d.publisherName)}（${esc(d.publisherMobile) || '未留手机号'}）${d.publisherType === 'merchant' ? ' · 商户名义：' + esc(d.publisherMerchantName) : ' · 个人名义'}</td></tr>
                 <tr><td>发布/过期</td><td>${d.createdAt ? new Date(d.createdAt).toLocaleString('zh-CN') : ''} · ${d.expiryAt ? new Date(d.expiryAt).toLocaleString('zh-CN') : ''}</td></tr>
                 </tbody></table><h6>应答（${(d.responses || []).length}）</h6>`;
             if ((d.responses || []).length === 0) html += '<p class="text-muted">尚无应答</p>';
             for (const x of d.responses || []) {
+                // 改动说明（v1.44.0 修正）：应答自 v1.5.0 起是多行标书（报价/库存/交期挂在 items[] 行上），
+                // 原按顶层 x.price/x.stock/x.leadTime 渲染恒为空、所有应答都显示"仅留言"，此处改按行渲染
+                const items = (x.items || []);
+                const rows = items.map(i => `<div class="small">${esc(i.partNumber) || '—'}${[i.price != null ? '¥' + i.price + '/只' : '', i.stock ? '库存 ' + i.stock : '', i.leadTime ? '交期 ' + i.leadTime : ''].filter(Boolean).length ? ' · ' + [i.price != null ? '¥' + i.price + '/只' : '', i.stock ? '库存 ' + i.stock : '', i.leadTime ? '交期 ' + i.leadTime : ''].filter(Boolean).join(' · ') : ''}</div>`).join('');
                 html += `<div class="border rounded p-2 mb-2">
                     <div class="d-flex justify-content-between"><strong>${esc(x.merchantName)} ${x.isVerified ? '<span class="badge bg-primary">已认证</span>' : ''}</strong>
                     <span class="text-muted small">${respStatus[x.status] || x.status} · ${x.createdAt ? new Date(x.createdAt).toLocaleString('zh-CN') : ''}</span></div>
-                    <div class="small">${[x.price != null ? '¥' + x.price + '/只' : '', x.stock ? '库存 ' + x.stock : '', x.leadTime ? '交期 ' + x.leadTime : ''].filter(Boolean).join(' · ') || '仅留言'}</div>
+                    ${rows || '<div class="small text-muted">未填型号行</div>'}
                     <div>${esc(x.remark)}</div></div>`;
             }
             body.innerHTML = html;

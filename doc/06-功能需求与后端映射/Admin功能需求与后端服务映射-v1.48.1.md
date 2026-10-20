@@ -1,10 +1,24 @@
-# Admin 功能需求与后端服务映射 v1.47.2
+# Admin 功能需求与后端服务映射 v1.48.1
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.48.0 → v1.48.1（2026-10-20 牌级在售状态口径修正）
+
+1. **在售状态按实时件数判定**（`Views/MerchantGrade/Index.cshtml` + `Models/DTOs/MerchantItemDto.cs`）：列表「在售状态」改为读取 API 新下发的 `onSaleCount`/`onSaleMin`，显示 `在售达标 N/M` 或 `在售不足 N/M`；此前用"当前牌级 &gt; 普通"反推，牌级未及时重算时会误报达标。
+2. **背景**：API v1.58.1 在 `GET /api/admin/merchants` 的 `MerchantDto` 增 `onSaleCount`/`onSaleMin`，管理页据此展示真实在售状态。
+
+### v1.47.2 → v1.48.0（2026-10-20 商家卡级改牌级 + 有效期制）
+
+1. **牌级页改名与字段扩展**（`Controllers/MerchantGradeController.cs` + `Views/MerchantGrade/Index.cshtml`）：
+   「商家卡级」改为「商家牌级」，侧栏与页面标题同步；列表新增「有效期至」（`gradePeriodEndAt`，普通档显示横线）与「在售状态」（保级中显示 `保级至 yyyy-MM-dd`、已认证达标显示 `达标`、未认证显示 `未认证`）。
+2. **DTO 补字段**（`Models/DTOs/MerchantItemDto.cs`）：新增 `GradePeriodStartAt`/`GradePeriodEndAt`/`GradeGraceUntil`（对齐 API `MerchantDto`）。
+3. **调级弹窗文案**：档位改 1 普通 / 2 铜牌 / 3 银牌 / 4 金牌；未认证提示改为"仅可设为普通"；调级成功后按新档位重发一期。
+4. **纠错联动文案**（`Views/Correction/Index.cshtml`）：卡级申诉相关提示统一改"牌级"，行为不变（采纳不自动改级，仍需二次确认）。
+5. **背景**：API v1.58.0 将牌级改为 180 天有效期制（升级/续期重发一期、到期按本期成交续期或降档、在售连续不足直接降普通），管理侧必须能看到"哪一期、何时到期、当前是否在保级"，否则无法解释商家掉级与处理申诉。
 
 ### v1.47.1 → v1.47.2（2026-10-20 寻货术语统一）
 

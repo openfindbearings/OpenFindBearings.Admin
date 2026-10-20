@@ -8,10 +8,10 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 商家卡级管理（v2.20.0）：查看商家当前卡级并人工调整。
-/// 卡级规则由 API 实时计算，本页只承担申诉核实后的补偿与异常刷分核实后的降级；
-/// 未认证商户不得授予卡级，调整会写入 API 审计日志（merchant.grade.manage）。
-/// 数据全部代理 OpenFindBearings.Api 的 /api/admin/merchants（Admin 不直连业务库）
+/// 商家牌级管理（v1.48.1，v1.48.0 有效期制适配）：查看商家当前牌级与人工调整；
+/// 牌级由 API 实时计算，本页只做治理动作和异常刷新后的结果核对。
+/// 未认证商户不得授予牌级（API 校验并写日志，权限 merchant.grade.manage）。
+/// 数据全部来自 OpenFindBearings.Api 的 /api/admin/merchants（Admin 不直连业务库）
 /// </summary>
 [Authorize]
 [PanelPermission("merchant.grade.manage")]
@@ -29,9 +29,10 @@ public class MerchantGradeController : Controller
     }
 
     /// <summary>
-    /// 商家卡级列表：名称/公司/认证状态/当前卡级 + 调级入口（merchant.grade.manage）。
+    /// 商家牌级列表：名称/公司/认证状态/当前牌级 + 有效期 + 调级入口（merchant.grade.manage）。
     /// 改动说明（v1.47.1 卡级申诉联动）：支持从纠错审核页带 merchantId/merchantName/reason/grade 跳入，
     /// 页面顶部提示申诉来源并预填调级弹窗——采纳纠错本身不改级，必须在此二次确认（权责分离）
+    /// 改动说明（v1.48.0 有效期制）：列表新增有效期止与在售保级状态
     /// </summary>
     public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string search = "",
         Guid? merchantId = null, string? merchantName = null, string? reason = null, int? grade = null)
@@ -72,8 +73,8 @@ public class MerchantGradeController : Controller
     }
 
     /// <summary>
-    /// 人工调整商家卡级（merchant.grade.manage）：grade 取 1 注册商户 / 2 铜卡 / 3 银卡 / 4 金卡，
-    /// API 对未认证商户授予高卡级返回 400，文案透传给前端提示
+    /// 人工调整商家牌级（merchant.grade.manage）：grade 取 1 普通 / 2 铜牌 / 3 银牌 / 4 金牌，
+    /// API 对未认证商户授予高牌级返回 400，文案透传给前端提示；调级成功会重起一个有效期
     /// </summary>
     [HttpPost]
     public async Task<IActionResult> Adjust(Guid id, int grade, string? reason)

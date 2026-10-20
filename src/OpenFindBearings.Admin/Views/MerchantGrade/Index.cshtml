@@ -1,22 +1,23 @@
 @functions
 {
-    // 卡级中文兜底映射：API 已下发 gradeDisplay，仅在缺失时按枚举名回退
+    // 牌级中文兜底映射：API 已下发 gradeDisplay，仅在缺失时按枚举名回退
+    // 改动说明（v1.48.0 有效期制）：枚举 Registered 改名 Ordinary，显示名统一为"普通/铜牌/银牌/金牌"
     string GradeText(MerchantItemDto item)
     {
         if (!string.IsNullOrWhiteSpace(item.GradeDisplay)) return item.GradeDisplay!;
         return item.Grade switch
         {
-            "Registered" => "注册商户",
-            "Bronze" => "铜卡",
-            "Silver" => "银卡",
-            "Gold" => "金卡",
+            "Ordinary" => "普通",
+            "Bronze" => "铜牌",
+            "Silver" => "银牌",
+            "Gold" => "金牌",
             _ => "未定级"
         };
     }
 }
 
 @{
-    ViewData["Title"] = "商家卡级";
+    ViewData["Title"] = "商家牌级";
     var items = ViewBag.Items as List<MerchantItemDto> ?? [];
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
@@ -34,8 +35,8 @@
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-layer-group"></i> 商家卡级</h4>
-    <p class="text-muted">卡级仅可授予已认证商户；调整会写入审计日志</p>
+    <h4><i class="fas fa-layer-group"></i> 商家牌级</h4>
+    <p class="text-muted">牌级由认证、在售与本期成交共同决定；在售达标后起一期，期内达下一档即时升级并重发，到期按本期成交续期或降档；在售不足先进保级期，逾期落普通。人工调整写审计日志。</p>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -50,7 +51,7 @@
     <div class="alert alert-warning">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div>
-                <strong><i class="fas fa-circle-exclamation"></i> 来自商家卡级申诉</strong>
+                <strong><i class="fas fa-circle-exclamation"></i> 来自商家牌级申诉</strong>
                 <div class="small mt-1">
                     商家：<strong>@(string.IsNullOrWhiteSpace(appealName) ? appealId.ToString() : appealName)</strong>
                     @if (!string.IsNullOrWhiteSpace(appealReason))
@@ -58,10 +59,10 @@
                         <span class="ms-2 text-muted">申诉理由：@appealReason</span>
                     }
                 </div>
-                <div class="small text-muted mt-1">采纳纠错不会自动调整卡级；请核实后在弹窗内选择目标卡级并填写原因。</div>
+                <div class="small text-muted mt-1">采纳纠错不会自动调整牌级；请核实后在弹窗内选择目标牌级并填写原因。</div>
             </div>
             <button type="button" class="btn btn-sm btn-primary" id="btnAppealAdjust">
-                <i class="fas fa-sliders"></i> 调整该商户卡级
+                <i class="fas fa-sliders"></i> 调整该商户牌级
             </button>
         </div>
     </div>
@@ -83,7 +84,9 @@
                         <th>名称</th>
                         <th>公司</th>
                         <th>认证</th>
-                        <th>当前卡级</th>
+                        <th>当前牌级</th>
+                        <th>有效期至</th>
+                        <th>在售状态</th>
                         <th style="width:140px">操作</th>
                     </tr>
                 </thead>
@@ -106,13 +109,48 @@
                                     }
                                 </td>
                                 <td><span class="badge bg-info text-dark">@GradeText(item)</span></td>
+                                @* 改动说明（v1.48.0 有效期制）：牌级带到期日；普通档无有效期，显示横线 *@
+                                <td>
+                                    @if (item.GradePeriodEndAt.HasValue)
+                                    {
+                                        <span data-utc="@item.GradePeriodEndAt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")">@item.GradePeriodEndAt.Value.ToString("yyyy-MM-dd")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.GradeGraceUntil.HasValue)
+                                    {
+                                        <span class="badge bg-warning text-dark" title="在售不足，保级至">
+                                            保级至 @item.GradeGraceUntil.Value.ToString("yyyy-MM-dd")
+                                        </span>
+                                    }
+                                    else if (!item.IsVerified)
+                                    {
+                                        <span class="badge bg-secondary">未认证</span>
+                                    }
+                                    else if (item.OnSaleCount.HasValue && item.OnSaleMin.HasValue && item.OnSaleCount.Value < item.OnSaleMin.Value)
+                                    {
+                                        <span class="badge bg-secondary" title="公域可见在售件数不足，牌级按普通展示">在售不足 @item.OnSaleCount/@item.OnSaleMin</span>
+                                    }
+                                    else if (item.OnSaleCount.HasValue && item.OnSaleMin.HasValue)
+                                    {
+                                        <span class="badge bg-success">在售达标 @item.OnSaleCount/@item.OnSaleMin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary" title="已认证但在售不足，牌级为普通">在售不足</span>
+                                    }
+                                </td>
                                 <td>
                                     <button type="button"
                                             class="btn btn-sm btn-outline-primary btn-adjust"
                                             data-id="@item.Id"
                                             data-name="@item.Name"
                                             data-verified="@(item.IsVerified ? "true" : "false")">
-                                        <i class="fas fa-sliders"></i><span class="d-none d-sm-inline">调整卡级</span>
+                                        <i class="fas fa-sliders"></i><span class="d-none d-sm-inline">调整牌级</span>
                                     </button>
                                 </td>
                             </tr>
@@ -120,7 +158,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="5" class="text-center text-muted py-4">暂无商家数据</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-4">暂无商家数据</td></tr>
                     }
                 </tbody>
             </table>
@@ -170,12 +208,12 @@
     }
 </div>
 
-@* 调整卡级弹窗：未认证商户禁用铜卡及以上，避免无效请求（API 同样会 400 拒绝） *@
+@* 调整牌级弹窗：未认证商户禁用铜牌及以上，避免无效请求（API 同样会 400 拒绝） *@
 <div class="modal fade" id="gradeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">调整商家卡级</h6>
+                <h6 class="modal-title">调整商家牌级</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -184,15 +222,15 @@
                     <div id="gradeMerchantName" class="form-control-plaintext"></div>
                 </div>
                 <div class="alert alert-warning py-2 small d-none" id="gradeVerifiedWarn">
-                    该商户未认证，仅可设为注册商户；如需授予铜卡及以上，请先完成认证。
+                    该商户未认证，仅可设为普通；如需授予铜牌及以上，请先完成认证。
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">目标卡级 <span class="text-danger">*</span></label>
+                    <label class="form-label">目标牌级 <span class="text-danger">*</span></label>
                     <select class="form-select" id="gradeSelect">
-                        <option value="1">1 注册商户</option>
-                        <option value="2">2 铜卡</option>
-                        <option value="3">3 银卡</option>
-                        <option value="4">4 金卡</option>
+                        <option value="1">1 普通</option>
+                        <option value="2">2 铜牌</option>
+                        <option value="3">3 银牌</option>
+                        <option value="4">4 金牌</option>
                     </select>
                 </div>
                 <div class="mb-3">
@@ -214,7 +252,7 @@
 
         /**
          * 打开调级弹窗。
-         * 改动说明（v1.47.1）：从列表进入时 verified 已知（false 时禁用铜卡及以上）；
+         * 改动说明（v1.47.1）：从列表进入时 verified 已知（false 时禁用铜牌及以上）；
          *   从卡级申诉进入时认证态未知，传 null 不禁用档位，交由 API 校验（未认证授予卡级会 400）
          */
         function openGradeModal(id, name, verified, reason, grade) {
@@ -230,12 +268,12 @@
             bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).show();
         }
 
-        // 列表行：打开调整卡级弹窗（未认证商户禁用 2/3/4 档，默认落在注册商户）
+        // 列表行：打开调整牌级弹窗（未认证商户禁用 2/3/4 档，默认落在普通档）
         $('.btn-adjust').on('click', function () {
             openGradeModal($(this).data('id'), $(this).data('name'), $(this).data('verified') === true, '', 1);
         });
 
-        // 卡级申诉来源：进入页面即预填并弹出调级弹窗，按钮可再次打开
+        // 牌级申诉来源：进入页面即预填并弹出调级弹窗，按钮可再次打开
         @if (appealId.HasValue)
         {
             <text>
@@ -262,7 +300,7 @@
                 { id: gradeMerchantId, grade: grade, reason: reason },
                 function (r) {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
-                    showToast(r.success ? 'success' : 'error', r.message || (r.success ? '卡级已调整' : '操作失败'));
+                    showToast(r.success ? 'success' : 'error', r.message || (r.success ? '牌级已调整' : '操作失败'));
                     if (r.success) setTimeout(() => { location.href = '@Url.Action("Index")'; }, 600);
                 }).fail(function () {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();

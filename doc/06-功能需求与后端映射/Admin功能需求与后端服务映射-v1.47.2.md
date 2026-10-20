@@ -1,10 +1,16 @@
-# Admin 功能需求与后端服务映射 v1.47.1
+# Admin 功能需求与后端服务映射 v1.47.2
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.47.1 → v1.47.2（2026-10-20 寻货术语统一）
+
+1. **文案改词**（`Views/Sourcing/Index.cshtml`）：治理列表「发布方式」列与详情弹窗由 `邀标 N 家` / `公开招标` 改为 `邀请 N 家` / `公开`，并去除"招投标"类比措辞。
+2. **无契约变更**：`isPrivate`、`invitedCount`、`invitedMerchantIds` 字段与代理路径不变。
+3. **背景**：本平台做信息撮合，不设招投标流程，术语需与移动端「公开 / 邀请」保持一致。
 
 ### v1.47.0 → v1.47.1（2026-10-20 卡级申诉联动 + 联系方式查看留痕）
 
@@ -42,12 +48,12 @@
 1. **应答明细改按行渲染**（`Views/Sourcing/Index.cshtml` 详情弹窗）：应答自 API v1.5.0 起为多行标书（型号/报价/库存/交期挂在 `items[]` 行上），原实现读顶层 `x.price`/`x.stock`/`x.leadTime`（早已不存在）导致**所有应答恒显示"仅留言"**、治理视图看不到任何报价；改为遍历 `x.items` 逐行渲染型号与可选报价/库存/交期。
 2. **发布人列补发布方身份**（列表 + 详情）：新增 `SourcingAdminItemDto.PublisherType`/`PublisherMerchantName`（对齐 API `GET /api/admin/sourcing/demands`、详情新增的 `publisherMerchantId`/`publisherMerchantName`/`publisherType`）——商户名义发布的单在发布人列下方标注商户名，详情行显示"商户名义 / 个人名义"，便于治理判断责任主体。
 
-### v1.43.0 → v1.44.0（2026-10-19 寻货治理视图透出「发布方式」：公开招标 / 邀标）
+### v1.43.0 → v1.44.0（2026-10-19 寻货治理视图透出「发布方式」：公开 / 邀请）
 
-1. **列表加列**（`Views/Sourcing/Index.cshtml`）：状态列之后新增「发布方式」列——`isPrivate` 为真显示 `邀标 N 家` 徽标（`badge bg-info text-dark`），否则「公开招标」；空态行 `colspan` 7→8。
-2. **详情弹窗加行**：新增「发布方式」一行，邀标显示"邀标（不进大厅，仅通知 N 家认证商家）"、公开显示"公开招标（进入寻货大厅，人人可应答）"。
+1. **列表加列**（`Views/Sourcing/Index.cshtml`）：状态列之后新增「发布方式」列——`isPrivate` 为真显示 `邀请 N 家` 徽标（`badge bg-info text-dark`），否则「公开」；空态行 `colspan` 7→8。
+2. **详情弹窗加行**：新增「发布方式」一行，邀请显示"邀请（不进大厅，仅通知 N 家认证商家）"、公开显示"公开（进入寻货大厅，人人可应答）"。
 3. **行 DTO 补字段**（`Controllers/SourcingController.cs` 的 `SourcingAdminItemDto`）：新增 `IsPrivate`/`InvitedCount`（对齐 API `GET /api/admin/sourcing/demands` 输出；详情弹窗直取 API 返回的 `isPrivate`/`invitedMerchantIds`）。
-4. **背景**：寻货自 API v1.54.0 起区分公开招标与邀标（受众与曝光范围不同），治理侧需一眼可辨"这单触达了谁"，否则无法判断投诉/下架影响面。
+4. **背景**：寻货自 API v1.54.0 起区分公开与邀请（受众与曝光范围不同），治理侧需一眼可辨"这单触达了谁"，否则无法判断投诉/下架影响面。
 
 ### v1.42.0 → v1.43.0（2026-10-18 替代关系独立权限键：替代品管理由 merchant.verify 改为 interchange.view/manage）
 

@@ -61,15 +61,15 @@
                             </td>
                             <td><small>@string.Join(" / ", new[] { item.Brand, item.Quantity, item.Region }.Where(s => !string.IsNullOrWhiteSpace(s)))</small></td>
                             <td><span class="@statusBadge.GetValueOrDefault(item.Status, "badge bg-secondary")">@(statusNames.GetValueOrDefault(item.Status, "未知"))</span></td>
-                            @* 改动说明（v1.44.0 公开招标/邀标）：治理视图需区分公开招标与邀标（触达范围不同） *@
+                            @* 改动说明（v1.44.0 公开/邀请）：治理视图需区分公开与邀请（触达范围不同） *@
                             <td>
                                 @if (item.IsPrivate)
                                 {
-                                    <span class="badge bg-info text-dark">邀标 @item.InvitedCount 家</span>
+                                    <span class="badge bg-info text-dark">邀请 @item.InvitedCount 家</span>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-light text-dark">公开招标</span>
+                                    <span class="badge bg-light text-dark">公开</span>
                                 }
                             </td>
                             <td>@item.ResponseCount</td>
@@ -145,8 +145,8 @@
                 <table class="table table-sm"><tbody>
                 <tr><td style="width:110px">品牌/数量/交期/地区</td><td>${[esc(d.brand), esc(d.quantity), esc(d.expectedDelivery), esc(d.region)].filter(Boolean).join(' / ') || '—'}</td></tr>
                 <tr><td>补充说明</td><td>${esc(d.description) || '—'}</td></tr>
-                @* 改动说明（v1.44.0 公开招标/邀标）：详情透出发布方式与邀标收件人家数 *@
-                <tr><td>发布方式</td><td>${d.isPrivate ? '邀标（不进大厅，仅通知 ' + ((d.invitedMerchantIds || []).length) + ' 家认证商家）' : '公开招标（进入寻货大厅，人人可应答）'}</td></tr>
+                @* 改动说明（v1.44.0 公开/邀请）：详情透出发布方式与邀请收件人家数 *@
+                <tr><td>发布方式</td><td>${d.isPrivate ? '邀请（不进大厅，仅通知 ' + ((d.invitedMerchantIds || []).length) + ' 家认证商家）' : '公开（进入寻货大厅，人人可应答）'}</td></tr>
                 <tr><td>发布人</td><td>${esc(d.publisherName)}（${esc(d.publisherMobile) || '未留手机号'}）${d.publisherType === 'merchant' ? ' · 商户名义：' + esc(d.publisherMerchantName) : ' · 个人名义'}</td></tr>
                 <tr><td>发布/过期</td><td>${d.createdAt ? new Date(d.createdAt).toLocaleString('zh-CN') : ''} · ${d.expiryAt ? new Date(d.expiryAt).toLocaleString('zh-CN') : ''}</td></tr>
                 </tbody></table><h6>应答（${(d.responses || []).length}）</h6>`;

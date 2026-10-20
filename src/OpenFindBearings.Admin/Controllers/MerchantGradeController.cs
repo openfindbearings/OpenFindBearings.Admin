@@ -29,9 +29,12 @@ public class MerchantGradeController : Controller
     }
 
     /// <summary>
-    /// 商家卡级列表：名称/公司/认证状态/当前卡级 + 搜索与分页（merchant.grade.manage）
+    /// 商家卡级列表：名称/公司/认证状态/当前卡级 + 调级入口（merchant.grade.manage）。
+    /// 改动说明（v1.47.1 卡级申诉联动）：支持从纠错审核页带 merchantId/merchantName/reason/grade 跳入，
+    /// 页面顶部提示申诉来源并预填调级弹窗——采纳纠错本身不改级，必须在此二次确认（权责分离）
     /// </summary>
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string search = "")
+    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string search = "",
+        Guid? merchantId = null, string? merchantName = null, string? reason = null, int? grade = null)
     {
         var apiBase = ApiUrlResolver.Api(_config);
         var client = _factory.CreateClient("ApiClient");
@@ -60,6 +63,11 @@ public class MerchantGradeController : Controller
         ViewBag.Search = search;
         ViewBag.Page = page;
         ViewBag.PageSize = pageSize;
+        // 改动说明（v1.47.1）：申诉来源透传到视图，用于顶部提示与调级弹窗预填
+        ViewBag.AppealMerchantId = merchantId;
+        ViewBag.AppealMerchantName = merchantName;
+        ViewBag.AppealReason = reason;
+        ViewBag.AppealGrade = grade;
         return View();
     }
 

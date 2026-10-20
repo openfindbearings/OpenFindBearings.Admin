@@ -9,7 +9,7 @@
     string PageUrl(int p) => $"?status={currentStatus}&page={p}";
     // 改动说明：输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
     string BdTimeRaw(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
-    // 改动说明（v1.47.1 卡级申诉联动）：把纠错建议值（"金卡"/"银卡"/…或数字）折算成调级页枚举值，
+    // 改动说明（v1.47.1 卡级申诉联动）：把纠错建议值（"金牌"/"银牌"/…或数字）折算成调级页枚举值，
     //   无法识别时返回 0（调级页按默认档位处理，管理员须自行确认）
     int CorrectionGradeValue(string? suggested)
     {
@@ -93,7 +93,7 @@
                                 @if (currentStatus == "pending")
                                 {
                                     <td>
-                                        @* 改动说明（v1.47.1 卡级申诉联动）：卡级类纠错不自动改级，给「去调级」直达入口（预填商家与申诉理由） *@
+                                        @* 改动说明（v1.47.1 卡级申诉联动）：牌级类纠错不自动改级，给「去调级」直达入口（预填商家与申诉理由） *@
                                         @if (string.Equals(item.TargetType, "Merchant", StringComparison.OrdinalIgnoreCase)
                                              && string.Equals(item.FieldName, "merchantGrade", StringComparison.OrdinalIgnoreCase))
                                         {
@@ -167,11 +167,11 @@
         $('.btn-approve').on('click', function (e) {
             e.preventDefault();
             var id = $(this).data('id');
-            // 改动说明（v1.47.1 卡级申诉联动）：卡级类纠错采纳不改级（避免纠错审核成为绕开治理的改级后门），
+            // 改动说明（v1.47.1 卡级申诉联动）：牌级类纠错采纳不改级（避免纠错审核成为绕开治理的改级后门），
             //   文案先说清，管理员据需另走「去调级」并二次确认
             var isGrade = $(this).data('field') === 'merchantGrade';
             var msg = isGrade
-                ? '该条为商家卡级申诉：采纳只记录处理结果并通知提交人，不会自动调整卡级；如需改级请使用「去调级」。确认采纳？'
+                ? '该条为商家牌级申诉：采纳只记录处理结果并通知提交人，不会自动调整牌级；如需改级请使用「去调级」。确认采纳？'
                 : '采纳后将自动更新该条信息并通知提交人，确认？';
             showConfirm({ title: '采纳纠错', message: msg }).then(function (ok) {
                 if (!ok) return;

@@ -87,10 +87,10 @@
                         {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
                         }
-                        @* 改动说明（v2.20.0 商家卡级）：卡级管理归入商家管理维度，紧随商家列表，按 merchant.grade.manage 显示 *@
+                        @* 改动说明（v2.20.0 商家卡级）：牌级管理归入商家管理维度，紧随商家列表，按 merchant.grade.manage 显示 *@
                         @if (HasPerm("merchant.grade.manage"))
                         {
-                        <li><a asp-controller="MerchantGrade" asp-action="Index" class="nav-link" data-page="merchant-grade"><i class="fas fa-circle"></i><span>商家卡级</span></a></li>
+                        <li><a asp-controller="MerchantGrade" asp-action="Index" class="nav-link" data-page="merchant-grade"><i class="fas fa-circle"></i><span>商家牌级</span></a></li>
                         }
                     </ul>
                 </li>

@@ -36,5 +36,10 @@ public record MerchantItemDto(
     [property: JsonPropertyName("dataSource")] string? DataSource = null,
     // 改动说明（v2.20.0 商家卡级页）：对齐 API MerchantDto 的等级中文展示名，
     // 列表直接展示，避免前端再维护一份枚举到中文的映射
-    [property: JsonPropertyName("gradeDisplay")] string? GradeDisplay = null
+    [property: JsonPropertyName("gradeDisplay")] string? GradeDisplay = null,
+    // 改动说明（v1.48.0 有效期制）：对齐 API MerchantDto 新增的牌级有效期与在售保级截止，
+    // 列表展示"有效期至"与"在售不足保级中"状态
+    [property: JsonPropertyName("gradePeriodStartAt")] DateTime? GradePeriodStartAt = null,
+    [property: JsonPropertyName("gradePeriodEndAt")] DateTime? GradePeriodEndAt = null,
+    [property: JsonPropertyName("gradeGraceUntil")] DateTime? GradeGraceUntil = null
 );

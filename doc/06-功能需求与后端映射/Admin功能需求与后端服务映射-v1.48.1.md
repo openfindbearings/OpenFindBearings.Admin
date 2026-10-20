@@ -1,10 +1,15 @@
-# Admin 功能需求与后端服务映射 v1.48.0
+# Admin 功能需求与后端服务映射 v1.48.1
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.48.0 → v1.48.1（2026-10-20 牌级在售状态口径修正）
+
+1. **在售状态按实时件数判定**（`Views/MerchantGrade/Index.cshtml` + `Models/DTOs/MerchantItemDto.cs`）：列表「在售状态」改为读取 API 新下发的 `onSaleCount`/`onSaleMin`，显示 `在售达标 N/M` 或 `在售不足 N/M`；此前用"当前牌级 &gt; 普通"反推，牌级未及时重算时会误报达标。
+2. **背景**：API v1.58.1 在 `GET /api/admin/merchants` 的 `MerchantDto` 增 `onSaleCount`/`onSaleMin`，管理页据此展示真实在售状态。
 
 ### v1.47.2 → v1.48.0（2026-10-20 商家卡级改牌级 + 有效期制）
 

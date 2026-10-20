@@ -41,5 +41,8 @@ public record MerchantItemDto(
     // 列表展示"有效期至"与"在售不足保级中"状态
     [property: JsonPropertyName("gradePeriodStartAt")] DateTime? GradePeriodStartAt = null,
     [property: JsonPropertyName("gradePeriodEndAt")] DateTime? GradePeriodEndAt = null,
-    [property: JsonPropertyName("gradeGraceUntil")] DateTime? GradeGraceUntil = null
+    [property: JsonPropertyName("gradeGraceUntil")] DateTime? GradeGraceUntil = null,
+    // 改动说明（v1.48.1 审计修复）：对齐 API 下发的实时在售件数与阈值，页面不再用牌级反推在售状态
+    [property: JsonPropertyName("onSaleCount")] int? OnSaleCount = null,
+    [property: JsonPropertyName("onSaleMin")] int? OnSaleMin = null
 );

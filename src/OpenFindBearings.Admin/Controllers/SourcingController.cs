@@ -247,6 +247,8 @@ public class SourcingFeedbackDto
     public DateTime? AdoptedAt { get; set; }
     /// <summary>回执提交时间</summary>
     public DateTime? FeedbackAt { get; set; }
+    /// <summary>首次计分时间（成交归属牌级有效期的依据，v2.19.0）</summary>
+    public DateTime? CountedAt { get; set; }
 }
 
 /// <summary>成交回执列表数据包（API 匿名对象 {items,total} 对齐）</summary>

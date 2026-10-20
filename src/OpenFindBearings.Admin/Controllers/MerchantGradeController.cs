@@ -8,7 +8,7 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 商家牌级管理（v2.20.0，v2.19.0 有效期制适配）：查看商家当前牌级与人工调整；
+/// 商家牌级管理（v1.48.1，v1.48.0 有效期制适配）：查看商家当前牌级与人工调整；
 /// 牌级由 API 实时计算，本页只做治理动作和异常刷新后的结果核对。
 /// 未认证商户不得授予牌级（API 校验并写日志，权限 merchant.grade.manage）。
 /// 数据全部来自 OpenFindBearings.Api 的 /api/admin/merchants（Admin 不直连业务库）

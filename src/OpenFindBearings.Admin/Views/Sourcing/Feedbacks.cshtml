@@ -88,7 +88,13 @@
                                     }
                                 </td>
                                 @* 展示层统一由全局 data-utc 转换器按浏览器时区渲染 *@
-                                <td class="text-nowrap small" data-utc="@(item.FeedbackAt?.ToString("yyyy-MM-ddTHH:mm:ssZ") ?? "")">@(item.FeedbackAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                <td class="text-nowrap small">
+                                    <div data-utc="@(item.FeedbackAt?.ToString("yyyy-MM-ddTHH:mm:ssZ") ?? "")">@(item.FeedbackAt?.ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
+                                    @if (item.CountedAt.HasValue)
+                                    {
+                                        <div class="text-muted" data-utc="@item.CountedAt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ")">计分 @item.CountedAt.Value.ToString("yyyy-MM-dd HH:mm")</div>
+                                    }
+                                </td>
                                 <td>
                                     @if (PanelPerms.Has(User, "merchant.grade.manage"))
                                     {

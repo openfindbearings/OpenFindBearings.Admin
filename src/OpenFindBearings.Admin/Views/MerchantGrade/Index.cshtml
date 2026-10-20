@@ -23,6 +23,11 @@
     var pageSize = (int)(ViewBag.PageSize ?? 20);
     var search = (string?)ViewBag.Search ?? "";
     var error = (string?)ViewBag.Error;
+    // 改动说明（v1.47.1 卡级申诉联动）：从纠错审核页跳入时携带的申诉上下文
+    var appealId = ViewBag.AppealMerchantId as Guid?;
+    var appealName = ViewBag.AppealMerchantName as string;
+    var appealReason = ViewBag.AppealReason as string;
+    var appealGrade = ViewBag.AppealGrade as int?;
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     // 分页统一保留搜索条件
     string PageUrl(int p) => $"?page={p}&pageSize={pageSize}&search={Uri.EscapeDataString(search)}";
@@ -36,6 +41,30 @@
 @if (!string.IsNullOrEmpty(error))
 {
     <div class="alert alert-danger">@error</div>
+}
+
+@* 申诉来源提示（v1.47.1）：采纳纠错不会自动改级——纠错审的是"信息有误"，调级改的是"商家公信力"，
+   两者合并会让纠错审核变成绕开治理的改级后门，故此处二次确认后才提交（写审计） *@
+@if (appealId.HasValue)
+{
+    <div class="alert alert-warning">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <strong><i class="fas fa-circle-exclamation"></i> 来自商家卡级申诉</strong>
+                <div class="small mt-1">
+                    商家：<strong>@(string.IsNullOrWhiteSpace(appealName) ? appealId.ToString() : appealName)</strong>
+                    @if (!string.IsNullOrWhiteSpace(appealReason))
+                    {
+                        <span class="ms-2 text-muted">申诉理由：@appealReason</span>
+                    }
+                </div>
+                <div class="small text-muted mt-1">采纳纠错不会自动调整卡级；请核实后在弹窗内选择目标卡级并填写原因。</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" id="btnAppealAdjust">
+                <i class="fas fa-sliders"></i> 调整该商户卡级
+            </button>
+        </div>
+    </div>
 }
 
 <div class="card">
@@ -183,20 +212,45 @@
     <script>
         let gradeMerchantId = null;
 
-        // 打开调整卡级弹窗：未认证商户禁用 2/3/4 档，默认落在注册商户
-        $('.btn-adjust').on('click', function () {
-            gradeMerchantId = $(this).data('id');
-            const verified = $(this).data('verified') === true;
-            $('#gradeMerchantName').text($(this).data('name') || '');
-            $('#gradeVerifiedWarn').toggleClass('d-none', verified);
+        /**
+         * 打开调级弹窗。
+         * 改动说明（v1.47.1）：从列表进入时 verified 已知（false 时禁用铜卡及以上）；
+         *   从卡级申诉进入时认证态未知，传 null 不禁用档位，交由 API 校验（未认证授予卡级会 400）
+         */
+        function openGradeModal(id, name, verified, reason, grade) {
+            gradeMerchantId = id;
+            $('#gradeMerchantName').text(name || '');
+            $('#gradeVerifiedWarn').toggleClass('d-none', verified !== false);
             $('#gradeSelect option').prop('disabled', false);
-            if (!verified) {
+            if (verified === false) {
                 $('#gradeSelect option[value!="1"]').prop('disabled', true);
             }
-            $('#gradeSelect').val('1');
-            $('#gradeReason').val('');
+            $('#gradeSelect').val(grade ? String(grade) : '1');
+            $('#gradeReason').val(reason || '');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).show();
+        }
+
+        // 列表行：打开调整卡级弹窗（未认证商户禁用 2/3/4 档，默认落在注册商户）
+        $('.btn-adjust').on('click', function () {
+            openGradeModal($(this).data('id'), $(this).data('name'), $(this).data('verified') === true, '', 1);
         });
+
+        // 卡级申诉来源：进入页面即预填并弹出调级弹窗，按钮可再次打开
+        @if (appealId.HasValue)
+        {
+            <text>
+            const appeal = {
+                id: '@appealId',
+                name: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(appealName ?? string.Empty)),
+                reason: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(appealReason ?? string.Empty)),
+                grade: @(appealGrade ?? 0)
+            };
+            $('#btnAppealAdjust').on('click', function () {
+                openGradeModal(appeal.id, appeal.name, null, appeal.reason, appeal.grade);
+            });
+            openGradeModal(appeal.id, appeal.name, null, appeal.reason, appeal.grade);
+            </text>
+        }
 
         // 提交调级：原因必填，成功后刷新列表
         $('#gradeConfirmBtn').on('click', function () {
@@ -209,7 +263,7 @@
                 function (r) {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
                     showToast(r.success ? 'success' : 'error', r.message || (r.success ? '卡级已调整' : '操作失败'));
-                    if (r.success) setTimeout(() => location.reload(), 600);
+                    if (r.success) setTimeout(() => { location.href = '@Url.Action("Index")'; }, 600);
                 }).fail(function () {
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
                     showToast('error', '服务异常');

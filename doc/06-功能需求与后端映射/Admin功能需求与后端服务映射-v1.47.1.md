@@ -1,10 +1,23 @@
-# Admin 功能需求与后端服务映射 v1.47.0
+# Admin 功能需求与后端服务映射 v1.47.1
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.47.0 → v1.47.1（2026-10-20 卡级申诉联动 + 联系方式查看留痕）
+
+1. **纠错审核页「去调级」直达**（`Models/DTOs/CorrectionItemDto.cs` 补 `TargetId`；`Views/Correction/Index.cshtml`）：
+   目标为 `Merchant` 且字段为 `merchantGrade` 的待审纠错单，操作列新增「去调级」——跳转 `MerchantGrade/Index` 并携带 `merchantId`/`merchantName`/`reason`/`grade`（建议值按"金/银/铜/注册"折算 4/3/2/1）。
+   采纳该类纠错**不会自动改级**（避免纠错审核变成绕开治理的改级后门），确认文案已明确说明。
+2. **商家卡级页申诉预填**（`Controllers/MerchantGradeController.cs` + `Views/MerchantGrade/Index.cshtml`）：
+   `Index` 接受申诉上下文参数，页面顶部显示「来自商家卡级申诉」提示（商家、申诉理由），进入即预填并弹出调级弹窗（认证态未知时不禁用档位，交由 API 400 拦截）。
+   调级成功后跳转干净路径，避免申诉参数导致弹窗反复弹出。
+3. **需求方手机号查看留痕**：Admin 仅详情抽屉显示完整号码（列表页不下发号码，无需脱敏处理）；
+   API `GET /api/admin/sourcing/demands/{id}` 每次下发手机号时写审计 `Action=ViewPublisherContact`、`EntityType=SourcingDemand`，
+   用于"运营可取证"与"批量导出风险"的分离（审计失败不影响详情返回）。
+4. **回执未计分原因**（`Views/Sourcing/Feedbacks.cshtml`）：随 API v1.57.1 的 `myFeedback.note`，复核页「未计分原因 / 复核留痕」列直接展示原因文本。
 
 ### v1.46.0 → v1.47.0（2026-10-19 成交回执复核 + 商家卡级人工调级）
 

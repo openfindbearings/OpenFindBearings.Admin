@@ -64,7 +64,10 @@ public class CorrectionController : Controller
         var client = _factory.CreateClient("ApiClient");
         try
         {
-            var resp = await client.PostAsync($"{ApiBase()}/api/admin/corrections/{id}/approve", null);
+            // 改动说明：API 该端点以复杂类型绑定请求体（非空值类型参数视为必填），
+            // 空 body 会被框架判为 415/400；改发空 JSON 对象，交由 API 用路由 id 与登录态补全字段
+            var resp = await client.PostAsync($"{ApiBase()}/api/admin/corrections/{id}/approve",
+                new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
             var json = await resp.Content.ReadAsStringAsync();
             if (resp.IsSuccessStatusCode)
             {

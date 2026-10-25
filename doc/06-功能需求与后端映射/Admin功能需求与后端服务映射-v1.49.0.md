@@ -1,10 +1,17 @@
-# Admin 功能需求与后端服务映射 v1.48.1
+# Admin 功能需求与后端服务映射 v1.49.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.48.1 → v1.49.0（2026-10-25 型号线索待建档）
+
+1. **新增型号线索页**（`Controllers/DataController.cs` + `Views/Data/BearingLeads.cshtml`）：`BearingLeads` 列表按 `status=pending|ignored|resolved`、`keyword`、分页读取 API `/api/admin/bearing-leads`；`IgnoreLead` / `RestoreLead` 两个写动作。
+2. **轴承列表加入口与预填**（`Views/Data/Bearings.cshtml`）：顶部「型号线索」按钮；带 `newPartNumber` / `newBrand` 查询参数进入时自动打开新建弹窗并预填，用于线索页「去建档」一跳到位。
+3. **背景**：移动端发布寻货 / 应答报价的型号是自由文本，平台型号库未收录时既不能定向匹配也无法上架，此前这些型号静默丢失；API v2.21.0 起把"库里根本没有的型号"记为线索，管理侧需要出口决定是否建档。
+4. **权限**：列表沿用 `bearing.view`，忽略/恢复需 `bearing.edit`，建档保存沿用 `bearing.create`；不新增权限键。
 
 ### v1.48.0 → v1.48.1（2026-10-20 牌级在售状态口径修正）
 
@@ -334,3 +341,17 @@
 | API 侧（本版背景） | `GET /api/admin/sourcing/demands` 改传 `includeDeleted: true` 并输出 `isDeleted`（详情同步输出） |
 
 > 说明：本版只做治理可见性标注，寻货页其余功能与判权不变。
+
+---
+
+## 本版增量（v1.49.0）：型号线索待建档
+
+| Admin 对象 | 上游端点 | 权限 |
+|---|---|---|
+| `GET /Data/BearingLeads?status=&keyword=&page=&pageSize=` | `GET /api/admin/bearing-leads` | `bearing.view` |
+| `POST /Data/IgnoreLead/{id}` | `POST /api/admin/bearing-leads/{id}/ignore` | `bearing.edit` |
+| `POST /Data/RestoreLead/{id}` | `POST /api/admin/bearing-leads/{id}/restore` | `bearing.edit` |
+| `GET /Data/Bearings?newPartNumber=&newBrand=`（预填，不新增端点） | `GET /api/admin/bearings` | `bearing.view` |
+
+> 三态由 API 判定：待建档（未忽略且库中无同型号）、已忽略（`isIgnored`）、已入库（库中已有同型号，忽略大小写）。「去建档」跳轴承列表并自动打开新建弹窗，保存后线索自动转已入库。
+> 说明：本版只新增读取与忽略/恢复，不引入线索状态机迁移、不新增权限键，也不做自动入库。

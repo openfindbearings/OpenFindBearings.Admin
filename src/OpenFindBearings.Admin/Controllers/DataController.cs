@@ -147,6 +147,76 @@ public class DataController : Controller
 
     #endregion
 
+    #region 型号线索
+
+    /// <summary>
+    /// 型号线索列表（分页）
+    /// 改动说明（v1.49.0 型号线索）：展示发布寻货/商家应答中出现、但平台型号库未收录的型号，
+    /// 按出现次数累积；状态为计算态（待建档 / 已忽略 / 已入库），供管理员判断是否建档
+    /// </summary>
+    public async Task<IActionResult> BearingLeads(string? status = "pending", string? search = null, int page = 1, int pageSize = 20)
+    {
+        // 改动说明（v1.49.0）：status=all 表示不限状态（不向 API 传 status），其余原样透传
+        var statusValue = string.IsNullOrWhiteSpace(status) ? "pending" : status.Trim().ToLowerInvariant();
+        var apiStatus = statusValue == "all" ? null : statusValue;
+
+        var client = _factory.CreateClient("ApiClient");
+        var url = $"{ApiBase()}/api/admin/bearing-leads?page={page}&pageSize={pageSize}";
+        if (apiStatus != null)
+            url += $"&status={Uri.EscapeDataString(apiStatus)}";
+        if (!string.IsNullOrWhiteSpace(search))
+            url += $"&keyword={Uri.EscapeDataString(search)}";
+
+        var resp = await client.GetAsync(url);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var errBody = await resp.Content.ReadAsStringAsync();
+            _logger.LogWarning("型号线索请求失败: {Status} {Url} {Body}", resp.StatusCode, url, errBody);
+            return View(new BearingLeadListViewModel { Status = statusValue, Search = search, Page = page, PageSize = pageSize });
+        }
+
+        var json = await resp.Content.ReadAsStringAsync();
+        var apiResp = JsonSerializer.Deserialize<ApiResponse<PagedData<BearingLeadItemDto>>>(json, JsonOpts);
+        return View(new BearingLeadListViewModel
+        {
+            Items = apiResp?.Data?.Items ?? [],
+            TotalCount = apiResp?.Data?.TotalCount ?? 0,
+            Page = page,
+            PageSize = pageSize,
+            Status = statusValue,
+            Search = search
+        });
+    }
+
+    /// <summary>
+    /// 忽略型号线索，POST /api/admin/bearing-leads/{id}/ignore
+    /// 改动说明（v1.49.0 型号线索）：忽略只影响待建档列表展示，出现次数仍继续累积，可随时恢复
+    /// </summary>
+    [HttpPost]
+    [PanelPermission("bearing.edit")]
+    public async Task<IActionResult> IgnoreLead(Guid id, string? status, string? search, int page = 1)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearing-leads/{id}/ignore", null);
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "已忽略该型号线索" : $"忽略失败: {resp.StatusCode}";
+        return RedirectToAction("BearingLeads", new { status, search, page });
+    }
+
+    /// <summary>
+    /// 恢复型号线索，POST /api/admin/bearing-leads/{id}/restore
+    /// </summary>
+    [HttpPost]
+    [PanelPermission("bearing.edit")]
+    public async Task<IActionResult> RestoreLead(Guid id, string? status, string? search, int page = 1)
+    {
+        var client = _factory.CreateClient("ApiClient");
+        var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearing-leads/{id}/restore", null);
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "已恢复该型号线索" : $"恢复失败: {resp.StatusCode}";
+        return RedirectToAction("BearingLeads", new { status, search, page });
+    }
+
+    #endregion
+
     #region 品牌
 
     /// <summary>

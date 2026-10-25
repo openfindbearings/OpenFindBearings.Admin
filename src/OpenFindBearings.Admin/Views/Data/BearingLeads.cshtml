@@ -1,0 +1,139 @@
+@model BearingLeadListViewModel
+@functions
+{
+    // 输出 UTC ISO 串，交全局 data-utc 转换器按浏览器时区渲染
+    string TimeRaw(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+    // 状态中文名（与 API 返回的 StatusText 同口径，仅在兜底时使用）
+    string StatusBadgeClass(string? status) => status switch
+    {
+        "Ignored" => "bg-secondary",
+        "Resolved" => "bg-success",
+        _ => "bg-warning text-dark"
+    };
+}
+@{
+    ViewData["Title"] = "型号线索";
+    // 翻页与筛选保留当前状态与关键词
+    string FilterQuery() => (!string.IsNullOrWhiteSpace(Model.Status) ? $"&status={Uri.EscapeDataString(Model.Status)}" : "")
+        + (!string.IsNullOrWhiteSpace(Model.Search) ? $"&search={Uri.EscapeDataString(Model.Search)}" : "");
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}{FilterQuery()}";
+    var currentStatus = string.IsNullOrWhiteSpace(Model.Status) ? "pending" : Model.Status;
+}
+
+<div class="card">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0">型号线索 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a class="btn btn-outline-secondary" asp-action="Bearings">
+                <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">返回轴承列表</span>
+            </a>
+            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
+                <select name="status" class="form-select form-select-sm" style="width:130px" title="状态">
+                    <option value="pending" selected="@(currentStatus == "pending" ? "selected" : null)">待建档</option>
+                    <option value="ignored" selected="@(currentStatus == "ignored" ? "selected" : null)">已忽略</option>
+                    <option value="resolved" selected="@(currentStatus == "resolved" ? "selected" : null)">已入库</option>
+                    <option value="all" selected="@(currentStatus == "all" ? "selected" : null)">全部</option>
+                </select>
+                <input type="text" name="search" value="@Model.Search" class="form-control form-control-sm" placeholder="搜索型号..." style="min-width:140px" />
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i> 筛选</button>
+            </form>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>型号</th>
+                    <th>品牌</th>
+                    <th class="text-end">出现次数</th>
+                    <th>最近来源</th>
+                    <th>首次出现</th>
+                    <th>最近出现</th>
+                    <th>状态</th>
+                    <th style="width:170px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">暂无型号线索</td></tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><strong>@item.PartNumber</strong></td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Brand) ? "-" : item.Brand)</td>
+                        <td class="text-end">@item.OccurrenceCount</td>
+                        <td><span class="badge bg-light text-dark">@item.SourceText</span></td>
+                        <td><span data-utc="@TimeRaw(item.FirstSeenAt)">@item.FirstSeenAt.ToString("yyyy-MM-dd HH:mm")</span></td>
+                        <td><span data-utc="@TimeRaw(item.LastSeenAt)">@item.LastSeenAt.ToString("yyyy-MM-dd HH:mm")</span></td>
+                        <td><span class="badge @StatusBadgeClass(item.Status)">@item.StatusText</span></td>
+                        <td>
+                            @if (item.Status == "Pending")
+                            {
+                                @* 去建档：跳轴承列表并预填型号/品牌，由 Bearings 页脚本自动打开新建弹窗 *@
+                                <a class="btn btn-sm btn-outline-success"
+                                   asp-action="Bearings"
+                                   asp-route-newPartNumber="@item.PartNumber"
+                                   asp-route-newBrand="@item.Brand">
+                                    <i class="fas fa-plus"></i> 去建档
+                                </a>
+                                @if (PanelPerms.Has(User, "bearing.edit"))
+                                {
+                                    <form method="post" asp-action="IgnoreLead" asp-route-id="@item.Id" asp-route-status="@Model.Status" asp-route-search="@Model.Search" asp-route-page="@Model.Page" class="d-inline" data-confirm="确认忽略该型号线索？忽略后可随时恢复">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="忽略"><i class="fas fa-eye-slash"></i></button>
+                                    </form>
+                                }
+                            }
+                            else if (item.Status == "Ignored" && PanelPerms.Has(User, "bearing.edit"))
+                            {
+                                <form method="post" asp-action="RestoreLead" asp-route-id="@item.Id" asp-route-status="@Model.Status" asp-route-search="@Model.Search" asp-route-page="@Model.Page" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="恢复"><i class="fas fa-undo"></i> 恢复</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">已入库，无需操作</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">共 @Model.TotalPages 页 / @Model.TotalCount 条</small>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(1)">首页</a>
+                        </li>
+                        <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.Page - 1)">&laquo;</a>
+                        </li>
+                        @{
+                            var rangeStart = Math.Max(1, Model.Page - 2);
+                            var rangeEnd = Math.Min(Model.TotalPages, Model.Page + 2);
+                            for (var i = rangeStart; i <= rangeEnd; i++)
+                            {
+                                <li class="page-item @(i == Model.Page ? "active" : "")">
+                                    <a class="page-link" href="@PageUrl(i)">@i</a>
+                                </li>
+                            }
+                        }
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.Page + 1)">&raquo;</a>
+                        </li>
+                        <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@PageUrl(Model.TotalPages)">尾页</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    }
+</div>

@@ -26,6 +26,10 @@
                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
             </button>
             }
+            @* 改动说明（v1.49.0 型号线索）：发布/应答中出现但型号库未收录的型号，管理员可在此判断是否建档 *@
+            <a class="btn btn-outline-primary" asp-action="BearingLeads" title="型号库未收录的型号线索">
+                <i class="fas fa-lightbulb"></i> <span class="d-none d-sm-inline">型号线索</span>
+            </a>
             <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索型号..." style="min-width:140px" />
                 @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源（互联网/非互联网），供仪表盘"新增"柱下钻核对 *@
@@ -164,7 +168,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">型号 <span class="text-danger">*</span></label>
-                        <input type="text" name="partNumber" class="form-control" required />
+                        <input type="text" name="partNumber" id="createBearingPartNumber" class="form-control" required />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">旧型号</label>
@@ -172,7 +176,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">品牌</label>
-                        <input type="text" name="brandName" class="form-control" />
+                        <input type="text" name="brandName" id="createBearingBrand" class="form-control" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">类型</label>
@@ -309,5 +313,20 @@ document.querySelectorAll('.btn-merchants').forEach(function(btn){
         }).catch(function(){document.getElementById('merchantsBody').innerHTML='<tr><td colspan="2" class="text-center text-danger">加载失败</td></tr>';});
     });
 });
+
+// 改动说明（v1.49.0 型号线索）：从线索页"去建档"跳回本页时（?newPartNumber=...&newBrand=...），
+//   自动预填新建弹窗并展开，省去管理员手抄型号
+(function(){
+    var qs = new URLSearchParams(window.location.search);
+    var pn = qs.get('newPartNumber');
+    if (!pn) return;
+    var pnInput = document.getElementById('createBearingPartNumber');
+    if (pnInput) pnInput.value = pn;
+    var brand = qs.get('newBrand');
+    var brandInput = document.getElementById('createBearingBrand');
+    if (brandInput && brand) brandInput.value = brand;
+    var modalEl = document.getElementById('createBearingModal');
+    if (modalEl && window.bootstrap) new bootstrap.Modal(modalEl).show();
+})();
 </script>
 }

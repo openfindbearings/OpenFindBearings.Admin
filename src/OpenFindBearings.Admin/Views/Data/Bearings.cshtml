@@ -27,9 +27,14 @@
             </button>
             }
             @* 改动说明（v1.49.0 型号线索）：发布/应答中出现但型号库未收录的型号，管理员可在此判断是否建档 *@
+            @* 改动说明（v1.49.1）：入口按 bearing.view 显隐——线索页与 API 端点都要求该权限，
+   无权限者进来只会看到 403 被吞成的空列表 *@
+            @if (PanelPerms.Has(User, "bearing.view"))
+            {
             <a class="btn btn-outline-primary" asp-action="BearingLeads" title="型号库未收录的型号线索">
                 <i class="fas fa-lightbulb"></i> <span class="d-none d-sm-inline">型号线索</span>
             </a>
+            }
             <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
                 <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索型号..." style="min-width:140px" />
                 @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源（互联网/非互联网），供仪表盘"新增"柱下钻核对 *@
@@ -166,6 +171,8 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    @* 改动说明（v1.49.1 去建档可用性修复）：API 建档强制 BrandId/BearingTypeId 与内径/外径/宽度，
+        原弹窗只发文本品牌名与类型名，保存必然校验失败；品牌/类型改为字典下拉，类型名由下拉文本带出 *@
                     <div class="mb-3">
                         <label class="form-label">型号 <span class="text-danger">*</span></label>
                         <input type="text" name="partNumber" id="createBearingPartNumber" class="form-control" required />
@@ -175,12 +182,48 @@
                         <input type="text" name="oldNumber" class="form-control" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">品牌</label>
-                        <input type="text" name="brandName" id="createBearingBrand" class="form-control" />
+                        <label class="form-label">品牌 <span class="text-danger">*</span></label>
+                        <select name="brandId" id="createBearingBrandId" class="form-select" required>
+                            <option value="">请选择品牌</option>
+                            @foreach (var b in Model.Brands)
+                            {
+                                <option value="@b.Id">@b.Name</option>
+                            }
+                        </select>
+                        @if (Model.Brands.Count == 0)
+                        {
+                            <div class="form-text text-danger">品牌字典为空，请先到品牌管理新建品牌</div>
+                        }
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">类型</label>
-                        <input type="text" name="bearingType" class="form-control" />
+                        <label class="form-label">类型 <span class="text-danger">*</span></label>
+                        <select name="bearingTypeId" id="createBearingTypeId" class="form-select" required
+                                onchange="var o=this.options[this.selectedIndex];document.getElementById('createBearingTypeName').value=(this.value?o.text:'');">
+                            <option value="">请选择类型</option>
+                            @foreach (var bt in Model.BearingTypes)
+                            {
+                                <option value="@bt.Id">@bt.Name</option>
+                            }
+                        </select>
+                        <input type="hidden" name="bearingType" id="createBearingTypeName" />
+                        @if (Model.BearingTypes.Count == 0)
+                        {
+                            <div class="form-text text-danger">类型字典为空，请先到轴承类型管理新建类型</div>
+                        }
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <label class="form-label">内径 (mm) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="innerDiameter" class="form-control" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">外径 (mm) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="outerDiameter" class="form-control" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">宽度 (mm) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="width" class="form-control" required />
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">描述</label>
@@ -316,15 +359,23 @@ document.querySelectorAll('.btn-merchants').forEach(function(btn){
 
 // 改动说明（v1.49.0 型号线索）：从线索页"去建档"跳回本页时（?newPartNumber=...&newBrand=...），
 //   自动预填新建弹窗并展开，省去管理员手抄型号
+// 改动说明（v1.49.1）：品牌改为字典下拉，预填按选项文本匹配（未匹配到则留给管理员选择）
 (function(){
     var qs = new URLSearchParams(window.location.search);
     var pn = qs.get('newPartNumber');
     if (!pn) return;
     var pnInput = document.getElementById('createBearingPartNumber');
     if (pnInput) pnInput.value = pn;
-    var brand = qs.get('newBrand');
-    var brandInput = document.getElementById('createBearingBrand');
-    if (brandInput && brand) brandInput.value = brand;
+    var brand = (qs.get('newBrand') || '').trim().toLowerCase();
+    var brandSelect = document.getElementById('createBearingBrandId');
+    if (brandSelect && brand) {
+        for (var i = 0; i < brandSelect.options.length; i++) {
+            if (brandSelect.options[i].text.trim().toLowerCase() === brand) {
+                brandSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
     var modalEl = document.getElementById('createBearingModal');
     if (modalEl && window.bootstrap) new bootstrap.Modal(modalEl).show();
 })();

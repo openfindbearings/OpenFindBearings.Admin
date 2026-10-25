@@ -36,6 +36,55 @@ public class DataController : Controller
 
     private string ApiBase() => ApiUrlResolver.Api(_config);
 
+    /// <summary>
+    /// 读取上游错误正文中的可读原因（detail/title/message），取不到时回退状态码
+    /// 改动说明（v1.49.1）：新建/线索操作失败时只显示 400/500 无法定位原因，需把校验消息透给管理员
+    /// </summary>
+    private static async Task<string> ReadErrorAsync(HttpResponseMessage resp)
+    {
+        try
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                using var doc = JsonDocument.Parse(body);
+                foreach (var key in new[] { "detail", "title", "message" })
+                {
+                    if (doc.RootElement.ValueKind == JsonValueKind.Object
+                        && doc.RootElement.TryGetProperty(key, out var v)
+                        && !string.IsNullOrWhiteSpace(v.GetString()))
+                        return v.GetString()!;
+                }
+                // ProblemDetails 的校验错误在 errors 字典里
+                if (doc.RootElement.ValueKind == JsonValueKind.Object
+                    && doc.RootElement.TryGetProperty("errors", out var errors)
+                    && errors.ValueKind == JsonValueKind.Object)
+                {
+                    var msgs = new List<string>();
+                    foreach (var p in errors.EnumerateObject())
+                    {
+                        if (p.Value.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var x in p.Value.EnumerateArray())
+                            {
+                                var s = x.GetString();
+                                if (!string.IsNullOrWhiteSpace(s)) msgs.Add(s!);
+                            }
+                        }
+                        else
+                        {
+                            var s = p.Value.GetString();
+                            if (!string.IsNullOrWhiteSpace(s)) msgs.Add(s!);
+                        }
+                    }
+                    if (msgs.Count > 0) return string.Join("；", msgs);
+                }
+            }
+        }
+        catch { }
+        return resp.StatusCode.ToString();
+    }
+
     #region 轴承
 
     /// <summary>
@@ -58,11 +107,15 @@ public class DataController : Controller
         else if (string.Equals(sourceFilter, "noninternet", StringComparison.OrdinalIgnoreCase))
             url += "&internetSource=false";
         var resp = await client.GetAsync(url);
+        // 改动说明（v1.49.1 去建档可用性修复）：新建弹窗需要品牌/类型下拉与三项尺寸，
+        //   列表页同时预取两份字典数据，避免管理员点"去建档"后遇到必失败的表单
+        var brands = await LoadBrandsAsync(client);
+        var bearingTypes = await LoadBearingTypesAsync(client);
         if (!resp.IsSuccessStatusCode)
         {
             var errBody = await resp.Content.ReadAsStringAsync();
             _logger.LogWarning("API 请求失败: {Status} {Url} {Body}", resp.StatusCode, url, errBody);
-            return View(new BearingListViewModel());
+            return View(new BearingListViewModel { Brands = brands, BearingTypes = bearingTypes });
         }
 
         var json = await resp.Content.ReadAsStringAsync();
@@ -77,21 +130,80 @@ public class DataController : Controller
             IncludeDeleted = includeDeleted,
             DateFrom = dateFrom,
             DateTo = dateTo,
-            SourceFilter = sourceFilter
+            SourceFilter = sourceFilter,
+            Brands = brands,
+            BearingTypes = bearingTypes
         });
     }
 
     /// <summary>
+    /// 拉取品牌字典（新建轴承弹窗下拉），失败只记日志并返回空列表
+    /// 改动说明（v1.49.1）：API 建档强制 BrandId，文本品牌名无法满足契约
+    /// </summary>
+    private async Task<List<BrandItemDto>> LoadBrandsAsync(HttpClient client)
+    {
+        try
+        {
+            var resp = await client.GetAsync($"{ApiBase()}/api/admin/brands");
+            if (!resp.IsSuccessStatusCode) return [];
+            var json = await resp.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ApiResponse<List<BrandItemDto>>>(json, JsonOpts)?.Data ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "拉取品牌列表失败");
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// 拉取轴承类型字典（新建轴承弹窗下拉），失败只记日志并返回空列表
+    /// </summary>
+    private async Task<List<BearingTypeItemDto>> LoadBearingTypesAsync(HttpClient client)
+    {
+        try
+        {
+            var resp = await client.GetAsync($"{ApiBase()}/api/admin/bearing-types");
+            if (!resp.IsSuccessStatusCode) return [];
+            var json = await resp.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<ApiResponse<List<BearingTypeItemDto>>>(json, JsonOpts)?.Data ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "拉取轴承类型列表失败");
+            return [];
+        }
+    }
+
+    /// <summary>
     /// 创建轴承，POST /api/admin/bearings
+    /// 改动说明（v1.49.1 去建档可用性修复）：补齐 API 契约要求的 BrandId/BearingTypeId 与三项尺寸，
+    ///   原实现只发文本品牌名与类型名，校验必然失败（新建功能长期不可用）
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CreateBearing(string partNumber, string? oldNumber, string? description, string? brandName, string? bearingType)
+    [PanelPermission("bearing.create")]
+    public async Task<IActionResult> CreateBearing(string partNumber, string? oldNumber, string? description,
+        Guid brandId, Guid bearingTypeId, string bearingType,
+        decimal innerDiameter, decimal outerDiameter, decimal width)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { partNumber, oldNumber, description, brandName, bearingType };
+        var body = new
+        {
+            partNumber,
+            oldNumber,
+            description,
+            bearingType,
+            brandId,
+            bearingTypeId,
+            innerDiameter,
+            outerDiameter,
+            width
+        };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearings", content);
-        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "轴承已创建" : $"创建失败: {resp.StatusCode}";
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+            ? "轴承已创建"
+            : $"创建失败: {await ReadErrorAsync(resp)}";
         return RedirectToAction("Bearings");
     }
 
@@ -153,12 +265,22 @@ public class DataController : Controller
     /// 型号线索列表（分页）
     /// 改动说明（v1.49.0 型号线索）：展示发布寻货/商家应答中出现、但平台型号库未收录的型号，
     /// 按出现次数累积；状态为计算态（待建档 / 已忽略 / 已入库），供管理员判断是否建档
+    /// 改动说明（v1.49.1）：收紧为 bearing.view（与 API 端点一致，原控制器级 OR 权限会让只有
+    ///   merchant.view 的管理员进来看到"暂无线索"，实际是 403 被吞成空列表）
     /// </summary>
+    [PanelPermission("bearing.view")]
     public async Task<IActionResult> BearingLeads(string? status = "pending", string? search = null, int page = 1, int pageSize = 20)
     {
-        // 改动说明（v1.49.0）：status=all 表示不限状态（不向 API 传 status），其余原样透传
+        // 改动说明（v1.49.1）：非法 status 回落到 pending——原实现原样透传会让 API 静默返回"全部"，
+        //   而视图仍按非法值渲染下拉，出现"显示待建档、数据却是全部"的错位
         var statusValue = string.IsNullOrWhiteSpace(status) ? "pending" : status.Trim().ToLowerInvariant();
+        if (statusValue is not ("pending" or "ignored" or "resolved" or "all"))
+            statusValue = "pending";
         var apiStatus = statusValue == "all" ? null : statusValue;
+
+        // 改动说明（v1.49.1）：分页夹取 1..100，与 API 侧一致，避免 pageSize=0/超大时 TotalPages 错位
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/bearing-leads?page={page}&pageSize={pageSize}";
@@ -172,6 +294,8 @@ public class DataController : Controller
         {
             var errBody = await resp.Content.ReadAsStringAsync();
             _logger.LogWarning("型号线索请求失败: {Status} {Url} {Body}", resp.StatusCode, url, errBody);
+            // 改动说明（v1.49.1）：失败必须显式提示，不能与"确实没有线索"共用空态
+            TempData["Error"] = $"型号线索加载失败：{await ReadErrorAsync(resp)}";
             return View(new BearingLeadListViewModel { Status = statusValue, Search = search, Page = page, PageSize = pageSize });
         }
 
@@ -198,7 +322,9 @@ public class DataController : Controller
     {
         var client = _factory.CreateClient("ApiClient");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearing-leads/{id}/ignore", null);
-        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "已忽略该型号线索" : $"忽略失败: {resp.StatusCode}";
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+            ? "已忽略该型号线索"
+            : $"忽略失败：{await ReadErrorAsync(resp)}";
         return RedirectToAction("BearingLeads", new { status, search, page });
     }
 
@@ -211,7 +337,9 @@ public class DataController : Controller
     {
         var client = _factory.CreateClient("ApiClient");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearing-leads/{id}/restore", null);
-        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "已恢复该型号线索" : $"恢复失败: {resp.StatusCode}";
+        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode
+            ? "已恢复该型号线索"
+            : $"恢复失败：{await ReadErrorAsync(resp)}";
         return RedirectToAction("BearingLeads", new { status, search, page });
     }
 

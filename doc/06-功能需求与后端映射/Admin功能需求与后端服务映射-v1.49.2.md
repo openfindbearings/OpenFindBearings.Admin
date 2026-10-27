@@ -1,10 +1,23 @@
-# Admin 功能需求与后端服务映射 v1.49.0
+# Admin 功能需求与后端服务映射 v1.49.2
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.49.1 → v1.49.2（2026-10-27 轴承主图维护）
+
+1. **轴承编辑弹窗加图片维护**（`Views/Data/Bearings.cshtml` + `Controllers/DataController.cs`）：3D/2D 文件选择、当前图预览、「清空」勾选，表单 `enctype=multipart/form-data`。
+2. **接口映射**：文本字段仍走 `PUT /api/admin/bearings/{id:guid}`；图片按需走 `POST /api/admin/bearings/{id:guid}/images`（API v2.21.3 新增，multipart，`bearing.edit`）。文本成功、图片失败时文本保留并提示图片失败原因。
+3. **权限**：`EditBearing` 显式声明 `bearing.edit`，与新建（`bearing.create`）口径一致。
+4. **不做**：图片纠错审核入口不开放；商家实拍图不在本模块，后续由商家商品资料维护。
+
+### v1.49.0 → v1.49.1（2026-10-25 去建档可用性修复）
+
+1. **新建轴承弹窗补必填项**（`Views/Data/Bearings.cshtml` + `DataController.CreateBearing`）：品牌下拉、类型下拉与内径/外径/宽度，修复"线索去建档保存必然校验失败"。
+2. **线索页权限收紧**：`BearingLeads` 动作显式要求 `bearing.view`，入口按同一权限显隐。
+3. **失败原因透传**：新建、线索忽略/恢复与列表加载失败时显示上游 `detail`/`title`/`errors` 可读原因。
 
 ### v1.48.1 → v1.49.0（2026-10-25 型号线索待建档）
 
@@ -354,4 +367,15 @@
 | `GET /Data/Bearings?newPartNumber=&newBrand=`（预填，不新增端点） | `GET /api/admin/bearings` | `bearing.view` |
 
 > 三态由 API 判定：待建档（未忽略且库中无同型号）、已忽略（`isIgnored`）、已入库（库中已有同型号，忽略大小写）。「去建档」跳轴承列表并自动打开新建弹窗，保存后线索自动转已入库。
+
+---
+
+## 本版增量（v1.49.2）：轴承主图维护
+
+| Admin 对象 | 上游端点 | 权限 |
+|---|---|---|
+| `POST /Data/EditBearing/{id}`（文本字段） | `PUT /api/admin/bearings/{id:guid}` | `bearing.edit` |
+| `POST /Data/EditBearing/{id}`（3D/2D 图片，multipart） | `POST /api/admin/bearings/{id:guid}/images` | `bearing.edit` |
+
+> 同一弹窗一次提交：先 PUT 文本，成功后再按需 POST 图片（未选文件且未勾清空则跳过）。图片失败不回滚文本，提示改为"轴承信息已更新，但图片更新失败: 原因"。
 > 说明：本版只新增读取与忽略/恢复，不引入线索状态机迁移、不新增权限键，也不做自动入库。

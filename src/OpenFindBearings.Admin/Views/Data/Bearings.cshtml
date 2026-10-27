@@ -1,4 +1,5 @@
 @model BearingListViewModel
+@inject IConfiguration Configuration
 @functions
 {
     // 改动说明（v1.40.0 创建时间列）：输出 UTC ISO 串，交全局 data-utc 转换器按浏览器时区渲染
@@ -6,6 +7,8 @@
 }
 @{
     ViewData["Title"] = "轴承列表";
+    // 改动说明（v1.49.2）：型号主图预览需要媒体前缀；相对路径（/uploads/...）由 BFF 媒体路由提供
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "").TrimEnd('/');
     // 改动说明（v1.40.0 下钻筛选）：分页/查询保留搜索、已删除、创建时间区间与来源
     string FilterQuery() => $"&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}"
         + (!string.IsNullOrWhiteSpace(Model.DateFrom) ? $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}" : "")
@@ -243,7 +246,7 @@
 <div class="modal fade" id="editBearingModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="post" asp-action="EditBearing">
+            <form method="post" asp-action="EditBearing" enctype="multipart/form-data">
                 <div class="modal-header">
                     <h6 class="modal-title">编辑轴承</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -270,6 +273,34 @@
                         <label class="form-label">描述</label>
                         <textarea name="description" id="bearingDescription" class="form-control" rows="2"></textarea>
                     </div>
+                    @* 改动说明（v1.49.2）：运营直接维护型号主图（认型号），商家实拍图在商品资料里维护，两者互不覆盖 *@
+                    <div class="mb-3">
+                        <label class="form-label">3D 效果图</label>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <img id="bearingImage3DPreview" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid rgba(0,0,0,.12);display:none" />
+                            <span id="bearingImage3DEmpty" class="text-muted small">暂无图片</span>
+                        </div>
+                        <input type="file" name="image3D" id="bearingImage3DFile" class="form-control form-control-sm"
+                               accept="image/jpeg,image/png,image/webp" />
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" name="clearImage3D" value="true" id="bearingClearImage3D" />
+                            <label class="form-check-label small text-muted" for="bearingClearImage3D">清空该图（同时选择文件时以文件为准）</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">2D 效果图</label>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <img id="bearingImage2DPreview" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid rgba(0,0,0,.12);display:none" />
+                            <span id="bearingImage2DEmpty" class="text-muted small">暂无图片</span>
+                        </div>
+                        <input type="file" name="image2D" id="bearingImage2DFile" class="form-control form-control-sm"
+                               accept="image/jpeg,image/png,image/webp" />
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" name="clearImage2D" value="true" id="bearingClearImage2D" />
+                            <label class="form-check-label small text-muted" for="bearingClearImage2D">清空该图（同时选择文件时以文件为准）</label>
+                        </div>
+                    </div>
+                    <div class="form-text">支持 JPG、PNG、WEBP，单张不超过 5MB。型号主图用于搜索结果与型号识别，保存后标记为人工维护，互联网同步不会覆盖。</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -309,6 +340,26 @@
 
 @section Scripts {
 <script>
+// 改动说明（v1.49.2）：型号主图预览与本地选图预览；相对路径拼媒体前缀，绝对外链原样使用
+var BEARING_MEDIA_BASE = '@(mediaBase)';
+function bearingImageSrc(url) {
+    if (!url) return '';
+    return /^https?:\/\//i.test(url) ? url : BEARING_MEDIA_BASE + url;
+}
+function setBearingImagePreview(slot, url) {
+    var img = document.getElementById('bearingImage' + slot + 'Preview');
+    var empty = document.getElementById('bearingImage' + slot + 'Empty');
+    var src = bearingImageSrc(url);
+    if (src) {
+        img.src = src;
+        img.style.display = '';
+        empty.style.display = 'none';
+    } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        empty.style.display = '';
+    }
+}
 function openEditBearing(item) {
     document.getElementById('bearingId').value = item.id;
     document.getElementById('bearingPartNumber').value = item.partNumber || '';
@@ -316,8 +367,32 @@ function openEditBearing(item) {
     document.getElementById('bearingBrandName').value = item.brandName || '';
     document.getElementById('bearingBearingType').value = item.bearingType || '';
     document.getElementById('bearingDescription').value = item.description || '';
+    // 每次打开重置文件选择与清空标记，避免上一次操作残留
+    ['3D', '2D'].forEach(function (slot) {
+        document.getElementById('bearingImage' + slot + 'File').value = '';
+        document.getElementById('bearingClearImage' + slot).checked = false;
+    });
+    setBearingImagePreview('3D', item.image3DUrl);
+    setBearingImagePreview('2D', item.image2DUrl);
     new bootstrap.Modal(document.getElementById('editBearingModal')).show();
 }
+// 选文件时取消"清空"并显示本地预览；勾选"清空"时丢弃已选文件并清空预览
+['3D', '2D'].forEach(function (slot) {
+    document.getElementById('bearingImage' + slot + 'File').addEventListener('change', function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        document.getElementById('bearingClearImage' + slot).checked = false;
+        var img = document.getElementById('bearingImage' + slot + 'Preview');
+        img.src = URL.createObjectURL(file);
+        img.style.display = '';
+        document.getElementById('bearingImage' + slot + 'Empty').style.display = 'none';
+    });
+    document.getElementById('bearingClearImage' + slot).addEventListener('change', function () {
+        if (!this.checked) return;
+        document.getElementById('bearingImage' + slot + 'File').value = '';
+        setBearingImagePreview(slot, '');
+    });
+});
 document.querySelectorAll('.btn-interchange').forEach(function(btn){
     btn.addEventListener('click',function(){
         var id=this.dataset.id, name=this.dataset.name;

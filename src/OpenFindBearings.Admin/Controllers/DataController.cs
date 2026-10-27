@@ -208,16 +208,61 @@ public class DataController : Controller
     }
 
     /// <summary>
-    /// 编辑轴承，PUT /api/admin/bearings/{id}
+    /// 编辑轴承：先更新文本字段（PUT /api/admin/bearings/{id}），再按需上传/替换/清空主图
+    /// （POST /api/admin/bearings/{id}/images，multipart）。主图属平台资产，运营直接维护、不走纠错审核。
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> EditBearing(Guid id, string? partNumber, string? oldNumber, string? description, string? brandName, string? bearingType)
+    [PanelPermission("bearing.edit")]
+    public async Task<IActionResult> EditBearing(Guid id, string? partNumber, string? oldNumber, string? description,
+        string? brandName, string? bearingType, IFormFile? image3D, IFormFile? image2D,
+        bool clearImage3D = false, bool clearImage2D = false)
     {
         var client = _factory.CreateClient("ApiClient");
+
+        // 文本字段先保存：失败时不再提交图片，避免出现"图改了、文本没改"的半状态
         var body = new { partNumber, oldNumber, description, brandName, bearingType };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PutAsync($"{ApiBase()}/api/admin/bearings/{id}", content);
-        TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "轴承已更新" : $"更新失败: {resp.StatusCode}";
+        if (!resp.IsSuccessStatusCode)
+        {
+            TempData["Error"] = $"轴承更新失败: {await ReadErrorAsync(resp)}";
+            return RedirectToAction("Bearings");
+        }
+
+        var hasImage3D = image3D is { Length: > 0 };
+        var hasImage2D = image2D is { Length: > 0 };
+        if (hasImage3D || hasImage2D || clearImage3D || clearImage2D)
+        {
+            // 改动说明（v1.49.2）：图片走 API 的对象存储端点（Admin 不直连业务库、也没有存储实现）
+            using var form = new MultipartFormDataContent();
+            if (hasImage3D)
+            {
+                var stream3D = image3D!.OpenReadStream();
+                var file3D = new StreamContent(stream3D);
+                file3D.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    image3D.ContentType ?? "application/octet-stream");
+                form.Add(file3D, "image3D", image3D.FileName);
+            }
+            if (hasImage2D)
+            {
+                var stream2D = image2D!.OpenReadStream();
+                var file2D = new StreamContent(stream2D);
+                file2D.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    image2D.ContentType ?? "application/octet-stream");
+                form.Add(file2D, "image2D", image2D.FileName);
+            }
+            form.Add(new StringContent(clearImage3D ? "true" : "false"), "clearImage3D");
+            form.Add(new StringContent(clearImage2D ? "true" : "false"), "clearImage2D");
+
+            var imageResp = await client.PostAsync($"{ApiBase()}/api/admin/bearings/{id}/images", form);
+            if (!imageResp.IsSuccessStatusCode)
+            {
+                TempData["Error"] = $"轴承信息已更新，但图片更新失败: {await ReadErrorAsync(imageResp)}";
+                return RedirectToAction("Bearings");
+            }
+        }
+
+        TempData["Success"] = "轴承已更新";
         return RedirectToAction("Bearings");
     }
 

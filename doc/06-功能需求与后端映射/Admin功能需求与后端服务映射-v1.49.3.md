@@ -1,10 +1,16 @@
-# Admin 功能需求与后端服务映射 v1.49.2
+# Admin 功能需求与后端服务映射 v1.49.3
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.49.2 → v1.49.3（2026-10-27 商品审核看商家实拍图）
+
+1. **审核列表新增「商家实拍图」列**（`Views/MerchantBearingReview/Index.cshtml`）：最多 3 张 44×44 缩略图并排，点击新窗口看原图；未上传显示「未上传」。相对路径补 `Media:PublicBaseUrl`，与轴承列表图片预览同口径。
+2. **DTO 透传**（`Controllers/MerchantBearingReviewController.cs`）：`PendingMerchantBearingRowDto` 新增 `merchantImageUrls`，对应 API `PendingMerchantBearingDto` 新字段。
+3. **口径**：审核看的是商家商品自己的实拍图；型号主图仍由「轴承列表」维护，两者互不覆盖。
 
 ### v1.49.1 → v1.49.2（2026-10-27 轴承主图维护）
 

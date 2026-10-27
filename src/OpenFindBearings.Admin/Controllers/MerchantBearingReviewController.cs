@@ -95,6 +95,12 @@ public class PendingMerchantBearingRowDto
     /// <summary>商家备注</summary>
     [JsonPropertyName("remarks")] public string? Remarks { get; set; }
 
+    /// <summary>
+    /// 商家上传的商品实拍图（v1.49.3，最多 3 张，首个为首图）
+    /// 改动说明：审核页展示商家自己的图，避免只看型号主图无法判断实物与描述是否相符
+    /// </summary>
+    [JsonPropertyName("merchantImageUrls")] public List<string> MerchantImageUrls { get; set; } = [];
+
     /// <summary>提交时间（UTC，展示层转本地）</summary>
     [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; }
 

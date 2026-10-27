@@ -1,3 +1,4 @@
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "商品审核";
     var items = ViewBag.Items as IEnumerable<PendingMerchantBearingRowDto> ?? [];
@@ -6,6 +7,9 @@
     var pageSize = (int)(ViewBag.PageSize ?? 20);
     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
     var error = (string?)ViewBag.Error;
+    // 改动说明（v1.49.3 商家商品图审核）：相对路径补媒体前缀，与轴承列表图片预览同口径
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "").TrimEnd('/');
+    string Img(string? u) => string.IsNullOrWhiteSpace(u) ? "" : (u.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? u : mediaBase + u);
 
     // 尺寸三元组展示（内径×外径×宽），全 0 视为未填
     string Dim(PendingBearingRefDto? b)
@@ -43,6 +47,7 @@
                         <th>商品型号</th>
                         <th class="d-none d-md-table-cell">曾用代号</th>
                         <th>品牌</th>
+                        <th class="d-none d-md-table-cell">商家实拍图</th>
                         <th class="d-none d-lg-table-cell">类型</th>
                         <th class="d-none d-md-table-cell">尺寸（内×外×宽）</th>
                         <th>价格描述</th>
@@ -60,6 +65,22 @@
                                 <td>@(item.Bearing?.PartNumber ?? "-")</td>
                                 <td class="d-none d-md-table-cell">@(item.Bearing?.OldNumber ?? "-")</td>
                                 <td>@(item.Bearing?.BrandName ?? "-")</td>
+                                @* 改动说明（v1.49.3）：审核必须能看到商家自己拍的图，否则只能凭型号码盲审 *@
+                                <td class="d-none d-md-table-cell">
+                                    @if (item.MerchantImageUrls.Count == 0)
+                                    {
+                                        <span class="text-muted small">未上传</span>
+                                    }
+                                    else
+                                    {
+                                        foreach (var img in item.MerchantImageUrls)
+                                        {
+                                            <a href="@Img(img)" target="_blank" rel="noopener">
+                                                <img src="@Img(img)" alt="商家实拍" style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin-right:4px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                    }
+                                </td>
                                 <td class="d-none d-lg-table-cell">@(item.Bearing?.BearingTypeName ?? "-")</td>
                                 <td class="d-none d-md-table-cell">@Dim(item.Bearing)</td>
                                 <td>@(string.IsNullOrWhiteSpace(item.PriceDescription) ? "-" : item.PriceDescription)</td>
@@ -73,7 +94,7 @@
                     }
                     else
                     {
-                        <tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无待审核商品</td></tr>
+                        <tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-check-circle fa-2x mb-2"></i><br />暂无待审核商品</td></tr>
                     }
                 </tbody>
             </table>

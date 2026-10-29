@@ -1,8 +1,8 @@
-# Admin 统一管理平台总体设计 v1.7.3
+﻿# Admin 统一管理平台总体设计 v1.7.4
 
-版本：v1.7.3
-日期：2026-10-18
-上一版：v1.7.2
+版本：v1.7.4
+日期：2026-10-29
+上一版：v1.7.3
 
 ## 概述
 
@@ -59,11 +59,12 @@ OpenFindBearings.Admin/
 |   +-- libman.json                    — 前端库清单（Bootstrap 5 + jQuery + Font Awesome 6）
 |   +-- Dockerfile                     — 多阶段构建，aspnet:10.0 / sdk:10.0，EXPOSE 8080/8081
 |   |
-|   +-- Controllers/                   — 17 个控制器
+|   +-- Controllers/                   — 18 个控制器
 |   |   +-- AccountController.cs       — Login/LoginAction/Callback/Logout/SignoutCallbackOidc/Profile
 |   |   +-- HomeController.cs          — 仪表盘 + /Home/Status + /Home/DashboardStats
 |   |   +-- DataController.cs          — 品牌/类型/轴承/商家列表与治理
 |   |   +-- CorrectionController.cs    — 信息纠错审核
+|   |   +-- FeedbackController.cs      — 意见反馈分诊与回复（v1.7.4）
 |   |   +-- MerchantVerifyController.cs — 入驻申请审批
 |   |   +-- DocumentController.cs      — 证照材料审核
 |   |   +-- MerchantBearingReviewController.cs — 商品审核
@@ -152,7 +153,7 @@ Admin 不直连任何数据库：仓库内无 `DbContext`、无 `DbSet`、无 EF
 
 ## 权限目录
 
-权限目录真相源为 API（`OpenFindBearings.Api` 基础设施层种子数据），经 `GET /api/admin/permissions` 暴露；Admin 的权限管理页只读展示并分组。目录为三段式「资源.动作」命名，共 34 个权限键：
+权限目录真相源为 API（`OpenFindBearings.Api` 基础设施层种子数据），经 `GET /api/admin/permissions` 暴露；Admin 的权限管理页只读展示并分组。目录为三段式「资源.动作」命名，共 36 个权限键：
 
 | 分组 | 权限键 |
 |------|--------|
@@ -160,12 +161,12 @@ Admin 不直连任何数据库：仓库内无 `DbContext`、无 `DbSet`、无 EF
 | 数据管理 | `bearing.view` `bearing.create` `bearing.edit` `bearing.delete` `brand.view` `brand.create` `brand.edit` `brand.delete` `type.view` `type.create` `type.edit` `type.delete` `interchange.view` `interchange.manage` |
 | 商家管理 | `merchant.view` `merchant.manage` `merchant.verify` `merchant.detach` |
 | 数据危险操作 | `data.restore` `data.harddelete` |
-| 审核管理 | `correction.review` `sourcing.view` `sourcing.manage` |
+| 审核管理 | `correction.review` `feedback.view` `feedback.edit` `sourcing.view` `sourcing.manage` |
 | 认证管理 | `user.view` `user.ban` `user.manage` `user.assign` `role.manage` `permission.view` |
 | 系统配置 | `system.view` `system.manage` `points.manage` |
 | 审计日志 | `audit.view` |
 
-预置角色与其权限点数量（数量随 API 种子数据而定，以 API 为准）：`Admin` 拥有全部 34 个权限键；`Operator` 为日常运营集（仪表盘、数据管理 view/create/edit、替代关系查看与维护、审核组、寻货治理、用户封禁，刻意不含删除/恢复/彻底删除/解除归属/角色分配）；`Auditor` 为只读监察集（各 view 键加替代关系查看与纠错审核、审计日志）。
+预置角色与其权限点数量（数量随 API 种子数据而定，以 API 为准）：`Admin` 拥有全部 36 个权限键；`Operator` 为日常运营集（仪表盘、数据管理 view/create/edit、替代关系查看与维护、审核组、寻货治理、用户封禁，刻意不含删除/恢复/彻底删除/解除归属/角色分配）；`Auditor` 为只读监察集（各 view 键加替代关系查看与纠错审核、审计日志）。
 
 ## 侧边栏导航
 
@@ -183,6 +184,7 @@ OpenFindBearings
 |   |   +-- 商家列表                merchant.view  (Data/Merchants)
 +-- 审核管理
 |   +-- 信息纠错审核                correction.review (Correction/Index)
+|   +-- 意见反馈                    feedback.view     (Feedback/Index)
 |   +-- 入驻申请审批                merchant.verify   (MerchantVerify/Index)
 |   +-- 证照材料审核                merchant.verify   (Document/Index)
 |   +-- 商品审核                    merchant.verify   (MerchantBearingReview/Index)
@@ -234,4 +236,5 @@ OpenFindBearings
 | v1.7.0 | 2026-09-11 | 代码审查对齐：(1) DTO 数量 13+→16；(2) ViewModel 数量 5→10；(3) Services 补充 AdminTokenService/PriceConfigService；(4) Views 补充 Role/Index+Permissions、Account/Profile、Data/ImportInventory；(5) Controllers 补充 RoleController（非 RolesController）、AccountController.Profile+SignoutCallbackOidc；(6) deploy 路径修正为项目根目录；(7) 补充 ingress.yaml/secret.yml 等部署文件；(8) 数据访问原则中纠错/营业执照/商家认证端点路径修正为 /api/admin/*；(9) 权限键 v1.5.0 changelog 中 21 个修正为 17 个 |
 | v1.7.1 | 2026-10-18 | 去除已移除的 Sync 集成残留：(1) 概述与架构总览删除 Sync 后端服务；(2) 数据访问原则删除同步数据审核/ETL 触发/映射管理/爬虫数据源清单四行；(3) 项目结构移除 SyncController/MappingController/ReviewController 及 Sync/Mapping/Review/Crawler 视图，并去掉库存导入（ImportInventory）；(4) 侧边栏删除映射信息、同步数据审核、任务管理及审计日志 Sync 源；(5) 权限键清单删除 etl.manage（17→16）；(6) 健康检查由 3 服务收敛为 2 服务（Api/Identity） |
 | v1.7.2 | 2026-10-18 | 全量对齐代码事实：(1) 删除「Admin 拥有独立 db_admin 数据库」及整个「数据库设计（db_admin）」章节，改为「无本地数据库（权限与角色由 API 托管）」，说明无 DbContext/迁移/实体/种子、无连接串，早期四表与本地 PermissionKey 枚举均已删；(2) 权限键清单按 API 目录校准为 32 键（原 16 键），标注真相源与访问端点；(3) RBAC 章节改为面板角色三档（Admin/Operator/Auditor）+ 面板角色与权限判定；(4) 项目结构按真实目录重写（新增 Authorization/Ext/Helpers/ViewComponents，删除已不存在的 Controllers/Views/Data/Models.Entities）；(5) LicenseController/Views/License 更正为 DocumentController/证照材料审核；(6) deploy/k3s/ 更正为仓库根 deploy/ 实际文件；(7) 侧边栏按当前 _Layout.cshtml 重写（补齐替代品管理/寻货管理/勋章管理/商城管理，命名对齐）；(8) 健康检查保持 2 服务并说明扩展项；(9) 新增通用扩展点章节；(10) 删除无从核实或已失效的 DTO/ViewModel/Entity 计数与 DataController Action 计数说法 |
+| v1.7.4 | 2026-10-29 | 意见反馈管理：新增 `FeedbackController`（列表分诊 + 一次性回复 + 状态流转）与侧边栏「审核管理 → 意见反馈」入口；权限键新增 `feedback.view`/`feedback.edit`（34→36），Admin 36 / Operator 22 / Auditor 13；控制器 17→18 |
 | v1.7.3 | 2026-10-18 | 替代关系独立权限键：权限键清单新增 `interchange.view`（查看替代关系）/ `interchange.manage`（维护替代关系）并入「数据管理」分组，清单 32→34 键；预置角色计数同步为 Admin 34 / Operator 20（增替代关系查看与维护）/ Auditor 12（增替代关系查看）；侧边栏「替代品管理」权限标注由 `merchant.verify` 改为 `interchange.view`（页内写按钮由 `interchange.manage` 控制） |

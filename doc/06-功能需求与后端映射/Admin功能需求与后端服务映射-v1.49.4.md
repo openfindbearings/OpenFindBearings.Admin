@@ -1,10 +1,18 @@
-# Admin 功能需求与后端服务映射 v1.49.3
+﻿# Admin 功能需求与后端服务映射 v1.49.4
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.49.3 → v1.49.4（2026-10-29 意见反馈管理）
+
+1. **新增「意见反馈」页**（`Controllers/FeedbackController.cs` + `Views/Feedback/Index.cshtml`）：侧边栏「审核管理」组入口（`feedback.view` 显隐）。
+2. **列表**：状态页签（全部/待处理/处理中/已处理/已关闭）+ 分类下拉（功能建议/问题反馈/内容举报/其他）+ 关键词（内容或联系方式）；列含分类、内容（含已有回复）、附件缩略图（点开原图）、提交人（昵称 + 脱敏手机号）、联系方式/客户端、状态、时间、操作。
+3. **回复**（`feedback.edit`）：`showPrompt` 必填内容 → `POST /api/admin/feedbacks/{id}/reply`，API 侧写入回复、置为已处理并发 `feedback_replied` 站内信。
+4. **状态流转**（`feedback.edit`）：行内下拉 + 「更新」→ `POST /api/admin/feedbacks/{id}/status`；仅分诊，不发通知；已回复的反馈不能退回待处理。
+5. **取数**：`GET /api/admin/feedbacks`，失败原因从 `detail`/`message` 透传到页面（不再显示"暂无数据"掩盖上游错误）。
 
 ### v1.49.2 → v1.49.3（2026-10-27 商品审核看商家实拍图）
 

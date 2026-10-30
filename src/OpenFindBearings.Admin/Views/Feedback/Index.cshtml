@@ -1,0 +1,236 @@
+@inject IConfiguration Configuration
+@{
+    ViewData["Title"] = "意见反馈";
+    var items = ViewBag.Items as IEnumerable<FeedbackItemDto> ?? Enumerable.Empty<FeedbackItemDto>();
+    var totalCount = (int)(ViewBag.TotalCount ?? 0);
+    var page = (int)(ViewBag.Page ?? 1);
+    var pageSize = (int)(ViewBag.PageSize ?? 20);
+    var currentStatus = (string?)ViewBag.CurrentStatus ?? "";
+    var currentCategory = (string?)ViewBag.CurrentCategory ?? "";
+    var keyword = (string?)ViewBag.Keyword ?? "";
+    var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    // 媒体 base：库内只存相对键，服务端拼公网前缀（与商品审核页同口径）
+    var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "").TrimEnd('/');
+    string Img(string? u) => string.IsNullOrWhiteSpace(u) ? "" : (u.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? u : mediaBase + u);
+    // 输出 UTC ISO 8601 字符串，由全局 data-utc JS 按浏览器时区显示
+    string Iso(DateTime? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm:ssZ") : "-";
+    string PageUrl(int p) =>
+        $"?status={Uri.EscapeDataString(currentStatus)}&category={Uri.EscapeDataString(currentCategory)}&keyword={Uri.EscapeDataString(keyword)}&page={p}";
+    var statusTabs = new[]
+    {
+        (Key: "", Label: "全部"),
+        (Key: "Pending", Label: "待处理"),
+        (Key: "Processing", Label: "处理中"),
+        (Key: "Resolved", Label: "已处理"),
+        (Key: "Closed", Label: "已关闭")
+    };
+    var categories = new[]
+    {
+        (Key: "", Label: "全部分类"),
+        (Key: "Suggestion", Label: "功能建议"),
+        (Key: "Bug", Label: "问题反馈"),
+        (Key: "ContentReport", Label: "内容举报"),
+        (Key: "Other", Label: "其他")
+    };
+}
+
+<div class="page-header">
+    <h4><i class="fas fa-comment-dots"></i> 意见反馈</h4>
+    <p class="text-muted">用户提交的建议、问题与举报；回复后状态置为已处理并通过站内信通知提交人</p>
+</div>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger">@ViewBag.Error</div>
+}
+
+<ul class="nav nav-tabs mb-3">
+    @foreach (var tab in statusTabs)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(currentStatus == tab.Key ? "active" : "")"
+               href="?status=@tab.Key&category=@Uri.EscapeDataString(currentCategory)&keyword=@Uri.EscapeDataString(keyword)">@tab.Label</a>
+        </li>
+    }
+</ul>
+
+<form method="get" class="row g-2 mb-3">
+    <input type="hidden" name="status" value="@currentStatus" />
+    <div class="col-auto">
+        <select class="form-select form-select-sm" name="category">
+            @foreach (var c in categories)
+            {
+                <option value="@c.Key" selected="@(currentCategory == c.Key)">@c.Label</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <input type="text" class="form-control form-control-sm" name="keyword" value="@keyword" placeholder="搜索反馈内容或联系方式" style="width:260px" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">筛选</button>
+        <a class="btn btn-sm btn-outline-secondary" asp-action="Index">重置</a>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (!items.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>暂无意见反馈</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width:90px">分类</th>
+                            <th>反馈内容</th>
+                            <th class="d-none d-md-table-cell" style="width:150px">附件</th>
+                            <th style="width:150px">提交人</th>
+                            <th class="d-none d-lg-table-cell" style="width:180px">联系方式 / 客户端</th>
+                            <th style="width:90px">状态</th>
+                            <th style="width:130px">提交时间</th>
+                            <th style="width:230px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in items)
+                        {
+                            var badgeClass = item.Status switch
+                            {
+                                "Resolved" => "bg-success",
+                                "Closed" => "bg-secondary",
+                                "Processing" => "bg-info",
+                                _ => "bg-warning text-dark"
+                            };
+                            <tr>
+                                <td><span class="badge bg-light text-dark">@item.CategoryText</span></td>
+                                <td style="max-width:420px">
+                                    <div class="small" style="white-space:pre-wrap;word-break:break-word">@item.Content</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.AdminReply))
+                                    {
+                                        <div class="small text-success mt-1" style="white-space:pre-wrap;word-break:break-word">
+                                            <i class="fas fa-reply me-1"></i>@item.AdminReply
+                                        </div>
+                                        <div class="text-muted small" data-utc="@Iso(item.RepliedAt)">回复于 @Iso(item.RepliedAt)</div>
+                                    }
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    @if (item.ImageUrls == null || item.ImageUrls.Count == 0)
+                                    {
+                                        <span class="text-muted small">无</span>
+                                    }
+                                    else
+                                    {
+                                        foreach (var img in item.ImageUrls)
+                                        {
+                                            <a href="@Img(img)" target="_blank" rel="noopener">
+                                                <img src="@Img(img)" alt="反馈附件" style="width:44px;height:44px;object-fit:cover;border-radius:6px;margin-right:4px;border:1px solid #dee2e6" />
+                                            </a>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    <div class="small">@(string.IsNullOrWhiteSpace(item.UserNickname) ? "用户" : item.UserNickname)</div>
+                                    <div class="text-muted small">@(item.UserMobile ?? "-")</div>
+                                </td>
+                                <td class="d-none d-lg-table-cell">
+                                    <div class="small">@(string.IsNullOrWhiteSpace(item.Contact) ? "-" : item.Contact)</div>
+                                    <div class="text-muted small text-truncate" style="max-width:170px" title="@item.ClientInfo">@(string.IsNullOrWhiteSpace(item.ClientInfo) ? "-" : item.ClientInfo)</div>
+                                </td>
+                                <td><span class="badge @badgeClass">@item.StatusText</span></td>
+                                <td class="text-muted small" data-utc="@Iso(item.CreatedAt)">@Iso(item.CreatedAt)</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success btn-reply" data-id="@item.Id">回复</button>
+                                    <select class="form-select form-select-sm d-inline-block btn-status-select" data-id="@item.Id" style="width:96px">
+                                        @foreach (var s in new[] { ("Pending", "待处理"), ("Processing", "处理中"), ("Resolved", "已处理"), ("Closed", "已关闭") })
+                                        {
+                                            <option value="@s.Item1" selected="@(item.Status == s.Item1)">@s.Item2</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-primary btn-status" data-id="@item.Id">更新</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">共 @totalPages 页 / @totalCount 条</small>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item @(page <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(1)">首页</a>
+                                </li>
+                                <li class="page-item @(page <= 1 ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(page - 1)">&laquo;</a>
+                                </li>
+                                @{
+                                    var rs = Math.Max(1, page - 2);
+                                    var re = Math.Min(totalPages, page + 2);
+                                }
+                                @if (rs > 1) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                @for (var i = rs; i <= re; i++)
+                                {
+                                    <li class="page-item @(i == page ? "active" : "")">
+                                        <a class="page-link" href="@PageUrl(i)">@i</a>
+                                    </li>
+                                }
+                                @if (re < totalPages) { <li class="page-item disabled"><span class="page-link">...</span></li> }
+                                <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(page + 1)">&raquo;</a>
+                                </li>
+                                <li class="page-item @(page >= totalPages ? "disabled" : "")">
+                                    <a class="page-link" href="@PageUrl(totalPages)">尾页</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // 意见反馈操作（v1.49.4）：回复=showPrompt 必填内容 → POST Reply（会发站内信）；
+    // 状态更新=读取行内下拉 → POST UpdateStatus（仅分诊，不发通知）
+    $(function () {
+        $('.btn-reply').on('click', function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            showPrompt({ title: '回复反馈', message: '填写回复内容（将通过站内信通知提交人）', required: true }).then(function (text) {
+                if (!text) return;
+                $.post('@Url.Action("Reply")', { id: id, reply: text })
+                    .done(function (r) {
+                        if (r.success) { showToast('success', r.message); setTimeout(function () { location.reload(); }, 800); }
+                        else { showToast('error', r.message); }
+                    })
+                    .fail(function () { showToast('error', '请求失败'); });
+            });
+        });
+
+        $('.btn-status').on('click', function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var status = $('.btn-status-select[data-id="' + id + '"]').val();
+            $.post('@Url.Action("UpdateStatus")', { id: id, status: status })
+                .done(function (r) {
+                    if (r.success) { showToast('success', r.message); setTimeout(function () { location.reload(); }, 600); }
+                    else { showToast('error', r.message); }
+                })
+                .fail(function () { showToast('error', '请求失败'); });
+        });
+    });
+</script>
+}

@@ -3,15 +3,13 @@ using OpenFindBearings.Admin.Helpers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenFindBearings.Admin.Models.DTOs;
 
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 商家牌级管理（v1.48.1，v1.48.0 有效期制适配）：查看商家当前牌级与人工调整；
-/// 牌级由 API 实时计算，本页只做治理动作和异常刷新后的结果核对。
+/// 商家牌级治理动作（v2.21.0 牌级整合）：牌级列表已并入商家列表（Data/Merchants），
+/// 本控制器只保留人工调级与旧入口兼容跳转；牌级由 API 实时计算。
 /// 未认证商户不得授予牌级（API 校验并写日志，权限 merchant.grade.manage）。
-/// 数据全部来自 OpenFindBearings.Api 的 /api/admin/merchants（Admin 不直连业务库）
 /// </summary>
 [Authorize]
 [PanelPermission("merchant.grade.manage")]
@@ -29,47 +27,23 @@ public class MerchantGradeController : Controller
     }
 
     /// <summary>
-    /// 商家牌级列表：名称/公司/认证状态/当前牌级 + 有效期 + 调级入口（merchant.grade.manage）。
-    /// 改动说明（v1.47.1 卡级申诉联动）：支持从纠错审核页带 merchantId/merchantName/reason/grade 跳入，
-    /// 页面顶部提示申诉来源并预填调级弹窗——采纳纠错本身不改级，必须在此二次确认（权责分离）
-    /// 改动说明（v1.48.0 有效期制）：列表新增有效期止与在售保级状态
+    /// 商家牌级列表入口（v2.21.0 牌级整合）：独立页已删除，牌级列与调级动作并入商家列表，
+    /// 此处保留为兼容跳转——旧书签与纠错页「去调级」链接带过来的参数原样转给 Data/Merchants。
     /// </summary>
-    public async Task<IActionResult> Index(int page = 1, int pageSize = 20, string search = "",
+    public IActionResult Index(int page = 1, int pageSize = 20, string search = "",
         Guid? merchantId = null, string? merchantName = null, string? reason = null, int? grade = null)
     {
-        var apiBase = ApiUrlResolver.Api(_config);
-        var client = _factory.CreateClient("ApiClient");
-        var url = $"{apiBase}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted=false";
-        if (!string.IsNullOrWhiteSpace(search))
-            url += $"&keyword={Uri.EscapeDataString(search)}";
-        try
+        return RedirectToAction("Merchants", "Data", new
         {
-            var resp = await client.GetAsync(url);
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = await resp.Content.ReadAsStringAsync();
-                var apiResp = JsonSerializer.Deserialize<ApiResponse<PagedData<MerchantItemDto>>>(json, JsonOpts);
-                ViewBag.Items = apiResp?.Data?.Items ?? [];
-                ViewBag.TotalCount = apiResp?.Data?.TotalCount ?? 0;
-            }
-            else
-            {
-                ViewBag.Error = "无法获取商家列表";
-            }
-        }
-        catch
-        {
-            ViewBag.Error = "连接 API 服务异常";
-        }
-        ViewBag.Search = search;
-        ViewBag.Page = page;
-        ViewBag.PageSize = pageSize;
-        // 改动说明（v1.47.1）：申诉来源透传到视图，用于顶部提示与调级弹窗预填
-        ViewBag.AppealMerchantId = merchantId;
-        ViewBag.AppealMerchantName = merchantName;
-        ViewBag.AppealReason = reason;
-        ViewBag.AppealGrade = grade;
-        return View();
+            page,
+            pageSize,
+            search,
+            verifiedOnly = "true",
+            merchantId,
+            merchantName,
+            reason,
+            grade
+        });
     }
 
     /// <summary>

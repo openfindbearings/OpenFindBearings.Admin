@@ -1,10 +1,19 @@
-﻿# Admin 功能需求与后端服务映射 v1.49.4
+﻿# Admin 功能需求与后端服务映射 v1.50.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.49.4 → v1.50.0（2026-11-04 商家列表收敛：页签、牌级整合、菜单命名）
+
+1. **商家列表页签调整**（`Views/Data/Merchants.cshtml` + `Controllers/DataController.cs`）：顺序改为「已认证 → 未认证 → 全部」，打开页面默认落在已认证（`verifiedOnly` 缺省按 `true`，「全部」显式传 `all`）。
+2. **未认证页签串数据修复**（API `MerchantRepository.SearchAsync`）：`verifiedOnly=false` 此前等于不过滤，导致未认证页签混入已认证商家；现改为双向过滤（true 仅已认证 / false 仅未认证）。
+3. **商家牌级并入商家列表**：删除侧边栏「商家牌级」入口与独立页 `Views/MerchantGrade/Index.cshtml`；商家列表新增「牌级」列（认证商家显示牌级徽标、保级或有效期提示，未认证显示横线）与「调级」按钮（`merchant.grade.manage`，仅已认证行）。`MerchantGradeController.Index` 保留为跳转到商家列表的兼容入口，`Adjust` 动作不变。
+4. **牌级申诉联动迁移**：纠错页「去调级」改跳 `Data/Merchants?verifiedOnly=true&merchantId=...`，商家列表渲染申诉提示条并预填调级弹窗；申诉跳转不再误触发「在售商品」弹窗。
+5. **菜单命名收口（四字）**：替代品管理→替代品、信息纠错审核→信息纠错、入驻申请审批→入驻申请、证照材料审核→证照材料、商品审核→商品上架；页面 `ViewData["Title"]` 与页头同步，「审核管理」分组名保留。
+6. **权限**：`DataController` 类级 `PanelPermission` 补 `merchant.grade.manage`，仅有调级权限的角色也能进入商家列表使用调级。
 
 ### v1.49.3 → v1.49.4（2026-10-29 意见反馈管理）
 

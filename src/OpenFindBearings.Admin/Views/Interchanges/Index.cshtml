@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "替代品管理";
+    ViewData["Title"] = "替代品";
     var items = ViewBag.Items as IEnumerable<InterchangeAdminRowDto> ?? [];
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
@@ -26,7 +26,7 @@ var canManage = PanelPerms.Has(User, "interchange.manage");
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-shuffle"></i> 替代品管理</h4>
+    <h4><i class="fas fa-shuffle"></i> 替代品</h4>
     <p class="text-muted">平台维护轴承替代关系标准（进 API 即生效、公域可见）：数据来自权威网站抓取或平台手动维护；商家/用户发现替代关系有误或缺失，通过"纠错"提交、由平台核实后维护</p>
 </div>
 

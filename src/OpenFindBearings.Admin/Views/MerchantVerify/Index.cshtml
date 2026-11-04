@@ -1,6 +1,6 @@
 @inject IConfiguration Config
 @{
-    ViewData["Title"] = "入驻申请审批";
+    ViewData["Title"] = "入驻申请";
     var items = ViewBag.Items as IEnumerable<MerchantItemDto> ?? [];
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
@@ -16,7 +16,7 @@
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-user-check"></i> 入驻申请审批</h4>
+    <h4><i class="fas fa-user-check"></i> 入驻申请</h4>
     <p class="text-muted">入驻审核通过使商户生效可被检索；认证（提交营业执照）用于提升商户资质等级，二者相互独立。点击行可打开详情抽屉核对全部申请资料</p>
 </div>
 

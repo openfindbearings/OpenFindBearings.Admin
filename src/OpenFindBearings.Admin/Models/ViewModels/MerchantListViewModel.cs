@@ -33,5 +33,17 @@ public record MerchantListViewModel
     /// <summary>排序方向（asc/desc）</summary>
     public string? SortOrder { get; set; }
 
+    /// <summary>牌级申诉来源商家 Id（从纠错页「去调级」跳入时有值，v2.21.0 牌级整合）</summary>
+    public Guid? AppealMerchantId { get; set; }
+
+    /// <summary>牌级申诉来源商家名称（仅用于提示条展示）</summary>
+    public string? AppealMerchantName { get; set; }
+
+    /// <summary>牌级申诉理由（预填调级弹窗的原因，仍可编辑）</summary>
+    public string? AppealReason { get; set; }
+
+    /// <summary>申诉建议牌级（预选目标档位，未认证时前端仍禁用铜牌及以上）</summary>
+    public int? AppealGrade { get; set; }
+
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
 }

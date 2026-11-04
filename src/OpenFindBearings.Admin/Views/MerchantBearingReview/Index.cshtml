@@ -1,6 +1,6 @@
 @inject IConfiguration Configuration
 @{
-    ViewData["Title"] = "商品审核";
+    ViewData["Title"] = "商品上架";
     var items = ViewBag.Items as IEnumerable<PendingMerchantBearingRowDto> ?? [];
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
@@ -24,7 +24,7 @@
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-box-open"></i> 商品审核</h4>
+    <h4><i class="fas fa-box-open"></i> 商品上架</h4>
     <p class="text-muted">商家提交上架的商品待平台审核，通过后即在售并对公域可见；驳回须填写原因，商家可见并可修改后重新提交</p>
 </div>
 
@@ -141,7 +141,7 @@
 
 @section Scripts {
 <script>
-    // 商品审核动作（v2.15.0）：浏览器调用 Program.cs 注册的代理端点
+    // 商品上架动作（v2.15.0）：浏览器调用 Program.cs 注册的代理端点
     //   POST /api/proxy/merchant-bearings/{id}/approve；POST .../{id}/reject（JSON 带 reason）。
     //   通过=showConfirm 确认；驳回=showPrompt 必填原因；成功后刷新列表（计数/分页同步）。
     var merchantBearingProxy = '@Url.Content("~/api/proxy/merchant-bearings")';

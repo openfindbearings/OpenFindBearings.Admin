@@ -11,7 +11,9 @@
 @using OpenFindBearings.Admin.Models.DTOs
 @{
     ViewData["Title"] = "商家列表";
-    var vo = Model.VerifiedOnly;
+    // 改动说明（v2.21.0 页签默认已认证）：verifiedOnly 三值 true/false/all，缺省一律按已认证
+    var vo = string.IsNullOrWhiteSpace(Model.VerifiedOnly) ? "true" : Model.VerifiedOnly;
+    var appealId = Model.AppealMerchantId;
     // 改动说明（v1.40.0 时间/来源筛选）：时间字段（注册/入驻）+ 起止日期 + 来源（互联网/非互联网）
     var dateField = string.Equals(Model.DateField, "onboarded", StringComparison.OrdinalIgnoreCase) ? "onboarded" : "registered";
     string DateQuery() =>
@@ -20,31 +22,65 @@
         + (!string.IsNullOrWhiteSpace(Model.SourceFilter) ? $"&sourceFilter={Model.SourceFilter}" : "");
     string SortQuery() => !string.IsNullOrWhiteSpace(Model.SortBy) ? $"&sortBy={Model.SortBy}&sortOrder={Model.SortOrder}" : "";
     // 分页/页签统一保留搜索、认证、时间/来源筛选与排序
-    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}&dateField={dateField}{DateQuery()}{SortQuery()}";
-    string TabUrl(string? v) => $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={v ?? ""}&dateField={dateField}{DateQuery()}{SortQuery()}";
+    string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo}&dateField={dateField}{DateQuery()}{SortQuery()}";
+    string TabUrl(string? v) => $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={v ?? "all"}&dateField={dateField}{DateQuery()}{SortQuery()}";
     // 列排序链接：已按该列排序时点击切换方向，否则默认最新在前
     string SortUrl(string field)
     {
         var next = (Model.SortBy == field && Model.SortOrder != "asc") ? "asc" : "desc";
-        return $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo ?? ""}&dateField={dateField}{DateQuery()}&sortBy={field}&sortOrder={next}";
+        return $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo}&dateField={dateField}{DateQuery()}&sortBy={field}&sortOrder={next}";
     }
+    // 牌级中文：优先用 API 下发的 gradeDisplay，缺失时按枚举名兜底
+    string GradeText(MerchantItemDto item) => !string.IsNullOrWhiteSpace(item.GradeDisplay)
+        ? item.GradeDisplay!
+        : item.Grade switch
+        {
+            "Bronze" => "铜牌",
+            "Silver" => "银牌",
+            "Gold" => "金牌",
+            _ => "普通"
+        };
     // 从 ViewBag 读取价格配置（由 DataController.Merchants 预加载，5 分钟缓存）
     var priceConfig = ViewBag.PriceConfig as PriceConfigDto ?? new PriceConfigDto();
     var showNegotiable = priceConfig.ShowNegotiableLabel;
     var numericSortable = priceConfig.NumericForSorting;
 }
 
+@* 改动说明（v2.21.0）：页签顺序改为 已认证 → 未认证 → 全部，打开页面默认落在已认证 *@
 <ul class="nav nav-tabs mb-3">
-    <li class="nav-item">
-        <a class="nav-link @(vo == null ? "active" : "")" href="@TabUrl(null)">全部</a>
-    </li>
     <li class="nav-item">
         <a class="nav-link @(vo == "true" ? "active" : "")" href="@TabUrl("true")">已认证</a>
     </li>
     <li class="nav-item">
         <a class="nav-link @(vo == "false" ? "active" : "")" href="@TabUrl("false")">未认证</a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link @(vo == "all" ? "active" : "")" href="@TabUrl("all")">全部</a>
+    </li>
 </ul>
+
+@* 改动说明（v2.21.0 牌级申诉联动）：从纠错页「去调级」跳入时的申诉提示条 *@
+@if (appealId.HasValue)
+{
+    <div class="alert alert-warning">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <strong><i class="fas fa-circle-exclamation"></i> 来自商家牌级申诉</strong>
+                <div class="small mt-1">
+                    商家：<strong>@(string.IsNullOrWhiteSpace(Model.AppealMerchantName) ? appealId.ToString() : Model.AppealMerchantName)</strong>
+                    @if (!string.IsNullOrWhiteSpace(Model.AppealReason))
+                    {
+                        <span class="ms-2 text-muted">申诉理由：@Model.AppealReason</span>
+                    }
+                </div>
+                <div class="small text-muted mt-1">采纳纠错不会自动调整牌级；请核实后在弹窗内选择目标牌级并填写原因。</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" id="btnAppealAdjust">
+                <i class="fas fa-sliders"></i> 调整该商户牌级
+            </button>
+        </div>
+    </div>
+}
 
 <div class="card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -84,7 +120,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive"><table class="table table-hover">
-            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("registeredat")" class="text-decoration-none" title="按注册时间排序">注册时间 <i class="fas fa-sort"></i></a></th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("onboardedat")" class="text-decoration-none" title="按入驻时间排序">入驻时间 <i class="fas fa-sort"></i></a></th><th>操作</th></tr></thead>
+            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th class="d-none d-md-table-cell">牌级</th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("registeredat")" class="text-decoration-none" title="按注册时间排序">注册时间 <i class="fas fa-sort"></i></a></th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("onboardedat")" class="text-decoration-none" title="按入驻时间排序">入驻时间 <i class="fas fa-sort"></i></a></th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -98,6 +134,25 @@
                             <td>@(item.ContactPerson ?? "-")</td>
                             <td>@(item.Phone ?? "-")</td>
                             <td>@(item.IsVerified ? "已认证" : "未认证")</td>
+                            @* 改动说明（v2.21.0 牌级整合）：未认证不显示牌级；认证商家显示牌级与保级/有效期提示 *@
+                            <td class="d-none d-md-table-cell">
+                                @if (item.IsVerified)
+                                {
+                                    <span class="badge bg-info text-dark">@GradeText(item)</span>
+                                    @if (item.GradeGraceUntil.HasValue)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1" title="在售不足，保级至">保级至 @item.GradeGraceUntil.Value.ToString("yyyy-MM-dd")</span>
+                                    }
+                                    else if (item.GradePeriodEndAt.HasValue)
+                                    {
+                                        <span class="small text-muted ms-1">至 @item.GradePeriodEndAt.Value.ToString("yyyy-MM-dd")</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
                             @* 改动说明（v1.40.0 注册/入驻时间列）：UTC ISO 串由全局 data-utc 转换器渲染 *@
                             <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.SubmittedAt)">@TimeRaw(item.SubmittedAt)</td>
                             <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.OnboardedAt)">@TimeRaw(item.OnboardedAt)</td>
@@ -107,6 +162,11 @@
                                 <button class="btn btn-sm btn-outline-primary" onclick='openEditMerchant(@Html.Raw(Json.Serialize(item)))' title="编辑"><i class="fas fa-pen"></i><span class="d-none d-sm-inline">编辑</span></button>
                                 }
                                 <button class="btn btn-sm btn-outline-info btn-on-sale" data-id="@item.Id" data-name="@item.Name" title="在售商品"><i class="fas fa-box"></i><span class="d-none d-sm-inline">在售商品</span></button>
+                                @* 改动说明（v2.21.0 牌级整合）：调级入口从独立页迁入，仅已认证商家可调（API 同样拒绝未认证授予铜牌及以上） *@
+                                @if (item.IsVerified && PanelPerms.Has(User, "merchant.grade.manage"))
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-adjust" data-id="@item.Id" data-name="@item.Name" title="调整牌级"><i class="fas fa-sliders"></i><span class="d-none d-sm-inline">调级</span></button>
+                                }
                                 @if (Model.IncludeDeleted)
                                 {
                                     @if (PanelPerms.Has(User, "data.restore"))
@@ -157,7 +217,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="10" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="11" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table></div>
@@ -325,8 +385,106 @@
 </div>
 
 
+@* 改动说明（v2.21.0 牌级整合）：调整牌级弹窗由商家牌级页迁入。
+   未认证商户禁用铜牌及以上，避免无效请求（API 同样会 400 拒绝） *@
+<div class="modal fade" id="gradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">调整商家牌级</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">商家</label>
+                    <div id="gradeMerchantName" class="form-control-plaintext"></div>
+                </div>
+                <div class="alert alert-warning py-2 small d-none" id="gradeVerifiedWarn">
+                    该商户未认证，仅可设为普通；如需授予铜牌及以上，请先完成认证。
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">目标牌级 <span class="text-danger">*</span></label>
+                    <select class="form-select" id="gradeSelect">
+                        <option value="1">1 普通</option>
+                        <option value="2">2 铜牌</option>
+                        <option value="3">3 银牌</option>
+                        <option value="4">4 金牌</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">调整原因 <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="gradeReason" rows="3" placeholder="申诉核实依据或异常处理说明（必填，写入审计日志）"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-sm btn-primary" id="gradeConfirmBtn">确认调整</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
+// 改动说明（v2.21.0 牌级整合）：调级弹窗逻辑随页面迁移；提交仍走 MerchantGrade/Adjust（权限 merchant.grade.manage）
+let gradeMerchantId = null;
+
+/**
+ * 打开调级弹窗：verified 为 false 时禁用铜牌及以上（未知认证态传 null，交 API 校验）。
+ */
+function openGradeModal(id, name, verified, reason, grade) {
+    gradeMerchantId = id;
+    $('#gradeMerchantName').text(name || '');
+    $('#gradeVerifiedWarn').toggleClass('d-none', verified !== false);
+    $('#gradeSelect option').prop('disabled', false);
+    if (verified === false) {
+        $('#gradeSelect option[value!="1"]').prop('disabled', true);
+    }
+    $('#gradeSelect').val(grade ? String(grade) : '1');
+    $('#gradeReason').val(reason || '');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).show();
+}
+
+// 列表行：已认证商家的「调级」按钮
+$('.btn-adjust').on('click', function () {
+    openGradeModal($(this).data('id'), $(this).data('name'), true, '', 1);
+});
+
+// 提交调级：原因必填，成功后刷新当前列表（保留页签与筛选）
+$('#gradeConfirmBtn').on('click', function () {
+    if (!gradeMerchantId) return;
+    const grade = parseInt($('#gradeSelect').val(), 10);
+    const reason = $('#gradeReason').val().trim();
+    if (!reason) { showToast('warning', '请填写调整原因'); return; }
+    $.post('@Url.Action("Adjust", "MerchantGrade")',
+        { id: gradeMerchantId, grade: grade, reason: reason },
+        function (r) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
+            showToast(r.success ? 'success' : 'error', r.message || (r.success ? '牌级已调整' : '操作失败'));
+            if (r.success) setTimeout(() => { location.reload(); }, 600);
+        }).fail(function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('gradeModal')).hide();
+            showToast('error', '服务异常');
+        });
+});
+
+@* 牌级申诉来源：进入页面即预填并弹出调级弹窗，提示条按钮可再次打开 *@
+@if (appealId.HasValue)
+{
+    <text>
+    const appeal = {
+        id: '@appealId',
+        name: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AppealMerchantName ?? string.Empty)),
+        reason: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AppealReason ?? string.Empty)),
+        grade: @(Model.AppealGrade ?? 0)
+    };
+    $('#btnAppealAdjust').on('click', function () {
+        openGradeModal(appeal.id, appeal.name, null, appeal.reason, appeal.grade);
+    });
+    openGradeModal(appeal.id, appeal.name, null, appeal.reason, appeal.grade);
+    </text>
+}
+
 function openEditMerchant(item) {
     document.getElementById('merchantId').value = item.id;
     document.getElementById('merchantName').value = item.name || '';
@@ -429,7 +587,12 @@ function loadOnSalePage(merchantId, page) {
 }
 
 // 从轴承“在售商家”页跳转过来时，自动打开对应商家的“在售商品”弹窗（复用现有弹窗）
+// 改动说明（v2.21.0）：牌级申诉跳转同样带 merchantId，此时不能再弹在售商品窗口，须排除
 (function(){
+    @if (appealId.HasValue)
+    {
+        <text>return;</text>
+    }
     var params = new URLSearchParams(location.search);
     var mid = params.get('merchantId');
     if (!mid) return;

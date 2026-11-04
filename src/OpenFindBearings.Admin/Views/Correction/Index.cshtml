@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "信息纠错审核";
+    ViewData["Title"] = "信息纠错";
     var items = ViewBag.Items as IEnumerable<CorrectionItemDto> ?? Enumerable.Empty<CorrectionItemDto>();
     var totalCount = (int)(ViewBag.TotalCount ?? 0);
     var page = (int)(ViewBag.Page ?? 1);
@@ -24,7 +24,7 @@
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-pen"></i> 信息纠错审核</h4>
+    <h4><i class="fas fa-pen"></i> 信息纠错</h4>
     <p class="text-muted">用户对轴承信息的纠错建议，可查看并处理每条纠错记录</p>
 </div>
 
@@ -97,8 +97,10 @@
                                         @if (string.Equals(item.TargetType, "Merchant", StringComparison.OrdinalIgnoreCase)
                                              && string.Equals(item.FieldName, "merchantGrade", StringComparison.OrdinalIgnoreCase))
                                         {
+                                            @* 改动说明（v2.21.0 牌级整合）：调级入口改跳商家列表（牌级列与弹窗已并入该页） *@
                                             <a class="btn btn-sm btn-outline-primary"
-                                               asp-controller="MerchantGrade" asp-action="Index"
+                                               asp-controller="Data" asp-action="Merchants"
+                                               asp-route-verifiedOnly="true"
                                                asp-route-merchantId="@item.TargetId"
                                                asp-route-merchantName="@item.TargetDisplay"
                                                asp-route-reason="@item.Reason"

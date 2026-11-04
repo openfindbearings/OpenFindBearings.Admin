@@ -13,7 +13,9 @@ namespace OpenFindBearings.Admin.Controllers;
 /// 数据管理控制器
 /// </summary>
 [Authorize]
-[PanelPermission("bearing.view", "brand.view", "type.view", "merchant.view")]
+// 改动说明（v2.21.0 牌级整合）：补 merchant.grade.manage——牌级列与调级动作已并入商家列表，
+//   仅有调级权限而无 merchant.view 的角色也要能进入该页
+[PanelPermission("bearing.view", "brand.view", "type.view", "merchant.view", "merchant.grade.manage")]
 public class DataController : Controller
 {
     private readonly IHttpClientFactory _factory;
@@ -587,14 +589,20 @@ public class DataController : Controller
     /// </summary>
     public async Task<IActionResult> Merchants(string? search, string? verifiedOnly, bool includeDeleted = false,
         string? dateField = null, string? dateFrom = null, string? dateTo = null, string? sourceFilter = null,
-        string? sortBy = null, string? sortOrder = null, int page = 1, int pageSize = 20)
+        string? sortBy = null, string? sortOrder = null, int page = 1, int pageSize = 20,
+        Guid? merchantId = null, string? merchantName = null, string? reason = null, int? grade = null)
     {
+        // 改动说明（v2.21.0 页签默认已认证）：verifiedOnly 取 true/false/all，缺省按已认证；
+        //   all 才向 API 不带过滤。此前缺省为 null（全部），与"商家以认证为主"的运营口径不符。
+        var vo = string.Equals(verifiedOnly, "false", StringComparison.OrdinalIgnoreCase) ? "false"
+            : string.Equals(verifiedOnly, "all", StringComparison.OrdinalIgnoreCase) ? "all"
+            : "true";
         var client = _factory.CreateClient("ApiClient");
         var url = $"{ApiBase()}/api/admin/merchants?page={page}&pageSize={pageSize}&includeDeleted={includeDeleted.ToString().ToLower()}";
         if (!string.IsNullOrWhiteSpace(search))
             url += $"&keyword={Uri.EscapeDataString(search)}";
-        if (!string.IsNullOrWhiteSpace(verifiedOnly))
-            url += $"&verifiedOnly={verifiedOnly}";
+        if (vo != "all")
+            url += $"&verifiedOnly={vo}";
         // 改动说明（v1.40.0 时间/来源筛选）：时间字段映射到注册/入驻区间（业务日历 yyyy-MM-dd），来源映射到 internetSource
         var useOnboarded = string.Equals(dateField, "onboarded", StringComparison.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(dateFrom))
@@ -625,7 +633,13 @@ public class DataController : Controller
             Page = page,
             PageSize = pageSize,
             Search = search,
-            VerifiedOnly = verifiedOnly,
+            VerifiedOnly = vo,
+            // 改动说明（v2.21.0 牌级申诉联动）：纠错页「去调级」跳到这里，携带商家与申诉上下文，
+            //   视图渲染提示条并预填调级弹窗（采纳纠错不改级，必须在此二次确认）
+            AppealMerchantId = merchantId,
+            AppealMerchantName = merchantName,
+            AppealReason = reason,
+            AppealGrade = grade,
             IncludeDeleted = includeDeleted,
             DateField = dateField,
             DateFrom = dateFrom,

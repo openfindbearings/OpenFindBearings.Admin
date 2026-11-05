@@ -4,27 +4,31 @@
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&includeDeleted={Model.IncludeDeleted.ToString().ToLower()}";
 }
 
-<div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">类型列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            @if (PanelPerms.Has(User, "type.create"))
-            {
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#typeModal" onclick="openCreateType()">
-                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
-            </button>
-            }
-            <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
-                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索类型..." style="min-width:140px" />
-                <div class="form-check d-none d-sm-block" style="white-space:nowrap">
-                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
-                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
-                </div>
-                <button class="btn btn-primary"><i class="fas fa-search"></i></button>
-            </form>
-        </div>
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-shapes"></i> 类型列表</h4>
+        <p>共 @Model.TotalCount 条；维护平台轴承类型字典。</p>
     </div>
+    <div class="page-actions">
+        @if (PanelPerms.Has(User, "type.create"))
+        {
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#typeModal" onclick="openCreateType()">
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
+        </button>
+        }
+    </div>
+</div>
+
+<div class="card">
     <div class="card-body p-0">
+        <form class="filter-bar" method="get">
+            <input type="text" name="search" value="@Model.Search" class="form-control filter-search" placeholder="搜索类型..." />
+            <div class="form-check filter-check">
+                <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") onchange="this.form.submit()" />
+                <label class="form-check-label" for="includeDeleted">显示已删除</label>
+            </div>
+            <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+        </form>
         <div class="table-responsive"><table class="table table-hover">
             <thead><tr><th>编码</th><th>名称</th><th>描述</th><th>轴承数</th><th>操作</th></tr></thead>
             <tbody>

@@ -10,28 +10,25 @@
     var statusBadge = new Dictionary<int, string> { [1] = "badge bg-success", [2] = "badge bg-primary", [3] = "badge bg-secondary", [4] = "badge bg-secondary", [5] = "badge bg-danger" };
 }
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0"><i class="fas fa-compass me-1"></i> 寻货治理</h6>
-        <small class="text-muted">先发后审：违规单下架后软删除并站内信通知发布人</small>
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-compass"></i> 寻货管理</h4>
+        <p>共 @total 条；先发后审，违规单下架后软删除并站内信通知发布人。</p>
     </div>
-    <div class="card-body pb-0">
-        <form method="get" class="row g-2 mb-3">
-            <div class="col-auto">
-                <select name="status" class="form-select form-select-sm">
-                    <option value="">全部状态</option>
-                    @foreach (var kv in statusNames)
-                    {
-                        <option value="@kv.Key" selected="@(curStatus == kv.Key)">@kv.Value</option>
-                    }
-                </select>
-            </div>
-            <div class="col-auto">
-                <input type="text" name="search" value="@curSearch" class="form-control form-control-sm" placeholder="型号关键词" />
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-primary">查询</button>
-            </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <form class="filter-bar" method="get">
+            <select name="status" class="form-select filter-select">
+                <option value="">全部状态</option>
+                @foreach (var kv in statusNames)
+                {
+                    <option value="@kv.Key" selected="@(curStatus == kv.Key)">@kv.Value</option>
+                }
+            </select>
+            <input type="text" name="search" value="@curSearch" class="form-control filter-search" placeholder="型号关键词" />
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
         </form>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">

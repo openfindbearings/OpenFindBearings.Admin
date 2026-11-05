@@ -1,10 +1,20 @@
-﻿# Admin 功能需求与后端服务映射 v1.50.0
+﻿# Admin 功能需求与后端服务映射 v1.51.0
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.50.0 → v1.51.0（2026-11-05 菜单收敛与列表页视觉统一）
+
+1. **侧栏顺序调整**（`Views/Shared/_Layout.cshtml`）：信息管理组改为 品牌列表 → 类型列表 → 轴承列表 → 商家列表 → 替代品（替代品由品牌列表之前移到商家列表之后）；审核管理组开源项改为 信息纠错 → 入驻申请 → 证照材料 → 商品上架 → 寻货管理 → 成交回执 → 意见反馈（意见反馈移到开源项末尾），闭源「同步数据」由扩展模块渲染在全部开源项之后。
+2. **勋章管理并入系统配置**：删除侧栏独立「勋章管理」入口；`ConfigController.Index` 预算勋章目录（`GET /api/admin/achievements`）传 `ViewBag.Achievements`，系统配置新增第 8 个页签 achievements，表格主体迁入 `Views/Config/_Achievements.cshtml`；`AchievementController.Index` 改为 `RedirectToAction("Index","Config",{tab="achievements"})` 兼容旧链接，`Update` 保存后回跳该页签；权限仍为 `system.view` 查看、`system.manage` 编辑。
+3. **列表页统一三段式**：品牌、类型、轴承、商家、型号线索、替代品、寻货七个列表页改为「页头（标题 + 说明 + 右侧主操作）→ 独立过滤条 → 表格卡片」；过滤条件从页头或 `card-header` 内拆出为独立 `.filter-bar` 卡片，分页移出表格卡片单独渲染。
+4. **全局样式**（`wwwroot/css/site.css`）：新增 `.page-header` / `.page-actions` / `.filter-bar` / `.filter-group` 规则，补齐此前 `.page-header` 一直无样式（仅裸 h4）的缺口并修复第 539 行被写坏的注释；随 7 个页面一并落地。
+5. **小屏适配**：≤576px 页头纵向堆叠、主操作按钮换行，过滤条内各控件逐项占满整行，表格沿用 `table-responsive` 横向滚动；「新建」按钮窄屏折叠为「+」图标并保留 `title`。
+6. **命名收口**：侧栏与页面标题「寻货治理」改「寻货管理」，`PermissionController` 中 `sourcing.manage` 权限显示名由「寻货治理（下架）」改为「寻货下架」，权限键本身未改动。闭源独有「同步数据审核」在 `Ext/SyncAdminModule.cs` 与 `Views/Review/Index.cshtml` 改为「同步数据」，仪表盘统计卡片保留完整词。
+7. **无后端契约变更**：仅视图、样式与控制器取数（勋章目录预加载）改动，API/BFF 与权限键均未变；闭源独有改动只在 FindBearings.Admin，合入时需同步两份视图。
 
 ### v1.49.4 → v1.50.0（2026-11-04 商家列表收敛：页签、牌级整合、菜单命名）
 

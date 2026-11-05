@@ -2,13 +2,12 @@ using OpenFindBearings.Admin.Authorization;
 using OpenFindBearings.Admin.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
 /// 成就目录管理控制器（v2.1.0 成就子系统）：代理 API /api/admin/achievements。
-/// 列表 system.view 可见；编辑/启停 system.manage（复用既有键，免新增权限迁移）
+/// 列表已并入系统配置页（v2.22.0），本控制器保留编辑提交与旧链接跳转。
 /// </summary>
 [Authorize]
 [PanelPermission("system.view")]
@@ -25,50 +24,11 @@ public class AchievementController : Controller
         _logger = logger;
     }
 
-    /// <summary>成就目录列表页（按范围/分类分组展示，含停用项）</summary>
-    public async Task<IActionResult> Index()
-    {
-        var apiBase = ApiUrlResolver.Api(_config);
-        var client = _factory.CreateClient("ApiClient");
-        try
-        {
-            var resp = await client.GetAsync($"{apiBase}/api/admin/achievements");
-            if (resp.IsSuccessStatusCode)
-            {
-                var body = await resp.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("data", out var d))
-                {
-                    var items = d.EnumerateArray().Select(x => new AchievementRowVm
-                    {
-                        Id = x.GetProperty("id").GetGuid(),
-                        Key = x.GetProperty("key").GetString() ?? "",
-                        Name = x.GetProperty("name").GetString() ?? "",
-                        Description = x.GetProperty("description").GetString() ?? "",
-                        Scope = x.GetProperty("scope").GetInt32(),
-                        Category = x.GetProperty("category").GetString() ?? "",
-                        MetricKey = x.GetProperty("metricKey").GetString() ?? "",
-                        ProgressTarget = x.GetProperty("progressTarget").GetInt32(),
-                        MetaPoints = x.GetProperty("metaPoints").GetInt32(),
-                        // 改动说明（API v2.12.0 等级玩法）：成就纯荣誉化，rewardPoints 字段已从 API 删除
-                        TitleReward = x.TryGetProperty("titleReward", out var tr) && tr.ValueKind == JsonValueKind.String ? tr.GetString() : null,
-                        ImageKey = x.TryGetProperty("imageKey", out var ik) && ik.ValueKind == JsonValueKind.String ? ik.GetString() : null,
-                        Rare = x.GetProperty("rare").GetBoolean(),
-                        Hidden = x.GetProperty("hidden").GetBoolean(),
-                        Enabled = x.GetProperty("enabled").GetBoolean()
-                    }).ToList();
-                    return View(items);
-                }
-            }
-            TempData["Error"] = $"成就目录加载失败: {resp.StatusCode}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "成就目录拉取异常");
-            TempData["Error"] = $"成就目录拉取失败: {ex.Message}";
-        }
-        return View(new List<AchievementRowVm>());
-    }
+    /// <summary>
+    /// 旧独立列表页入口（v2.22.0 菜单收敛）：列表已并入系统配置的"勋章管理"tab，
+    /// 此动作只做兼容跳转，保留旧书签与旧链接可用
+    /// </summary>
+    public IActionResult Index() => RedirectToAction("Index", "Config", new { tab = "achievements" });
 
     /// <summary>编辑成就（阈值/称号/启停/勋章图键；v2.12.0 起不含发币字段——成就纯荣誉化）</summary>
     [HttpPost]
@@ -89,7 +49,8 @@ public class AchievementController : Controller
         {
             TempData["Error"] = $"更新失败: {ex.Message}";
         }
-        return RedirectToAction("Index");
+        // 改动说明（v2.22.0 菜单收敛）：保存后回到系统配置的勋章管理 tab
+        return RedirectToAction("Index", "Config", new { tab = "achievements" });
     }
 }
 

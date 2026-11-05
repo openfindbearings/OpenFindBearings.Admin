@@ -26,8 +26,18 @@ var canManage = PanelPerms.Has(User, "interchange.manage");
 }
 
 <div class="page-header">
-    <h4><i class="fas fa-shuffle"></i> 替代品</h4>
-    <p class="text-muted">平台维护轴承替代关系标准（进 API 即生效、公域可见）：数据来自权威网站抓取或平台手动维护；商家/用户发现替代关系有误或缺失，通过"纠错"提交、由平台核实后维护</p>
+    <div>
+        <h4><i class="fas fa-shuffle"></i> 替代品</h4>
+        <p class="text-muted">平台维护轴承替代关系标准（进 API 即生效、公域可见）：数据来自权威网站抓取或平台手动维护；商家/用户发现替代关系有误或缺失，通过"纠错"提交、由平台核实后维护。共 @totalCount 条</p>
+    </div>
+    <div class="page-actions">
+        @if (canManage)
+        {
+        <button class="btn btn-success" onclick="openCreateInterchange()">
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建替代关系</span>
+        </button>
+        }
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -36,36 +46,25 @@ var canManage = PanelPerms.Has(User, "interchange.manage");
 }
 
 <div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <span>替代关系（@totalCount 条）</span>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            @if (canManage)
-            {
-            <button class="btn btn-success" onclick="openCreateInterchange()">
-                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建替代关系</span>
-            </button>
-            }
-            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
-                <input type="text" name="keyword" value="@keyword" class="form-control" placeholder="型号/品牌关键字..." style="min-width:180px" />
-                @* 改动说明（v2.17.0 替代品字典化）：去掉"审核状态"筛选 *@
-                @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源，供仪表盘"替代品·新增"柱下钻核对 *@
-                <input type="date" name="createdFrom" value="@createdFrom" class="form-control form-control-sm" style="width:150px" title="创建起始日期（含）" />
-                <span class="text-muted small">~</span>
-                <input type="date" name="createdTo" value="@createdTo" class="form-control form-control-sm" style="width:150px" title="创建截止日期（含）" />
-                <select name="sourceFilter" class="form-select form-select-sm" style="width:130px" title="来源">
-                    <option value="" selected="@(string.IsNullOrWhiteSpace(sourceFilter) ? "selected" : null)">全部来源</option>
-                    <option value="internet" selected="@(sourceFilter == "internet" ? "selected" : null)">仅互联网</option>
-                    <option value="noninternet" selected="@(sourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
-                </select>
-                <input type="hidden" name="pageSize" value="@pageSize" />
-                <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
-                @if (!string.IsNullOrWhiteSpace(createdFrom) || !string.IsNullOrWhiteSpace(createdTo) || !string.IsNullOrWhiteSpace(sourceFilter))
-                {
-                    <a class="btn btn-outline-secondary" href="?keyword=@Uri.EscapeDataString(keyword ?? "")" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
-                }
-            </form>
-        </div>
-    </div>
+    <form class="filter-bar" method="get">
+        <input type="text" name="keyword" value="@keyword" class="form-control filter-search" placeholder="型号/品牌关键字..." />
+        @* 改动说明（v2.17.0 替代品字典化）：去掉"审核状态"筛选 *@
+        @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源，供仪表盘"替代品·新增"柱下钻核对 *@
+        <input type="date" name="createdFrom" value="@createdFrom" class="form-control filter-date" title="创建起始日期（含）" />
+        <span class="text-muted small">~</span>
+        <input type="date" name="createdTo" value="@createdTo" class="form-control filter-date" title="创建截止日期（含）" />
+        <select name="sourceFilter" class="form-select filter-select" title="来源">
+            <option value="" selected="@(string.IsNullOrWhiteSpace(sourceFilter) ? "selected" : null)">全部来源</option>
+            <option value="internet" selected="@(sourceFilter == "internet" ? "selected" : null)">仅互联网</option>
+            <option value="noninternet" selected="@(sourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
+        </select>
+        <input type="hidden" name="pageSize" value="@pageSize" />
+        <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+        @if (!string.IsNullOrWhiteSpace(createdFrom) || !string.IsNullOrWhiteSpace(createdTo) || !string.IsNullOrWhiteSpace(sourceFilter))
+        {
+            <a class="btn btn-outline-secondary" href="?keyword=@Uri.EscapeDataString(keyword ?? "")" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
+        }
+    </form>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">

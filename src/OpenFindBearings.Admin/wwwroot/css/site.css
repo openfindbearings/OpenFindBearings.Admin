@@ -269,7 +269,47 @@ body.dark-theme .form-check-label { color: var(--text-primary); }
   .main-content { margin-left: 0; }
 }
 
-/ ===== Misc ===== */
+/* ===== Page header / filter bar（v2.22.0 列表页统一为"页头 + 筛选条 + 表格"三段式） ===== */
+
+.page-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .75rem; margin: 0 0 1rem; }
+
+.page-header > div:first-child { min-width: 0; }
+
+.page-header h4 { margin: 0; font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+
+.page-header h4 i { color: #0d6efd; font-size: .95em; }
+
+.page-header p { margin: .25rem 0 0; font-size: .85rem; color: var(--text-muted); }
+
+.page-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .75rem 1rem; border-bottom: 1px solid var(--border-light); }
+
+.filter-bar .form-control, .filter-bar .form-select { width: auto; height: 38px; }
+
+.filter-bar .filter-search { flex: 1 1 200px; min-width: 150px; max-width: 360px; }
+
+.filter-bar .filter-date { flex: 0 0 150px; }
+
+.filter-bar .filter-select { flex: 0 0 auto; min-width: 120px; }
+
+.filter-bar .filter-check { display: flex; align-items: center; gap: .35rem; white-space: nowrap; margin: 0; }
+
+@media (max-width: 576px) {
+
+  .page-header { flex-direction: column; align-items: stretch; }
+
+  .page-actions .btn { flex: 1 1 auto; }
+
+  .filter-bar .filter-search { flex: 1 1 100%; max-width: none; }
+
+  .filter-bar .filter-date { flex: 1 1 calc(50% - .25rem); }
+
+  .filter-bar .filter-select { flex: 1 1 100%; }
+
+  .filter-bar .btn { flex: 1 1 auto; }
+
+}
 
 /* ===== Card header toolbar ===== */
 .card-header .btn { height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; min-width: 64px; justify-content: center; }

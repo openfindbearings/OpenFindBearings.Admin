@@ -8,8 +8,8 @@ using OpenFindBearings.Admin.Models.DTOs;
 namespace OpenFindBearings.Admin.Controllers;
 
 /// <summary>
-/// 寻货治理（v1.35.0）：全状态需求列表 + 详情抽屉（需求全文/应答明细/发布人联系方式）+ 违规下架。
-/// 先发后审模式：发布即上线，本页承担事后治理（下架软删并站内信通知发布人）。
+/// 寻货管理（v1.35.0）：全状态需求列表 + 详情抽屉（需求全文/应答明细/发布人联系方式）+ 违规下架。
+/// 先发后审模式：发布即上线，本页承担事后管理（下架软删并站内信通知发布人）。
 /// 数据全部代理 OpenFindBearings.Api 的 /api/admin/sourcing/*（Admin 不直连业务库）
 /// </summary>
 [Authorize]

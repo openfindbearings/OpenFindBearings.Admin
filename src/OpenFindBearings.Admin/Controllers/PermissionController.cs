@@ -101,7 +101,7 @@ public class PermissionController : Controller
         // 改动说明（v2.20.0 商家卡级）：新增卡级人工调整权限的显示名兜底
         "merchant.grade.manage" => "调整商家卡级",
         "sourcing.view" => "查看寻货",
-        "sourcing.manage" => "寻货治理（下架）",
+        "sourcing.manage" => "寻货下架",
         "merchant.verify" => "认证审核",
         "correction.review" => "纠错审核",
         "role.manage" => "角色管理",

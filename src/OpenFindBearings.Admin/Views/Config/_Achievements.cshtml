@@ -1,17 +1,15 @@
-@model List<AchievementRowVm>
 @inject IConfiguration Configuration
 @{
-    ViewData["Title"] = "勋章管理";
-    // 改动说明（v2.1.0 成就子系统）：勋章目录管理页——列表按 范围/分类 分组，
-    // 编辑走单一模态框（JS 填充），启停即时生效（API 实时读，不发版）
-    // 改动说明（v2.6.0）：新增勋章图列与模态内"上传/替换图片"（走 /api/proxy/achievements/{id}/image 代理上传）
+    // 改动说明（v2.22.0 菜单收敛）：原独立勋章管理页主体迁入系统配置最后一个 tab，
+    // 数据由 ConfigController.LoadAchievementsAsync 预加载到 ViewBag.Achievements
+    var achievements = ViewBag.Achievements as List<AchievementRowVm> ?? new List<AchievementRowVm>();
     string ScopeName(int s) => s == 1 ? "个人" : "商户";
     var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://<your-bff-domain>").TrimEnd('/');
 }
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>勋章目录（@Model.Count 个）</span>
+        <span>勋章目录（@achievements.Count 个）</span>
         <span class="text-muted small">勋章点为只加不花的荣誉分；解锁只点亮不发币（纯荣誉，货币激励见"等级段位"tab 升档礼）</span>
     </div>
     <div class="card-body p-0">
@@ -33,7 +31,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var a in Model.OrderBy(x => x.Scope).ThenBy(x => x.Category).ThenBy(x => x.Key))
+                    @foreach (var a in achievements.OrderBy(x => x.Scope).ThenBy(x => x.Category).ThenBy(x => x.Key))
                     {
                         <tr>
                             <td><code class="small">@a.Key</code></td>
@@ -82,13 +80,13 @@
     </div>
 </div>
 
-<!-- 编辑勋章模态框 -->
+<!-- 编辑勋章模态框（表单提交到 AchievementController.Update，保存后回跳本 tab） -->
 <div class="modal fade" id="editAchModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-<form method="post" asp-action="Update">
-                    <input type="hidden" name="id" id="achId" />
-                    <input type="hidden" name="imageKey" id="achImageKey" />
+            <form method="post" asp-controller="Achievement" asp-action="Update">
+                <input type="hidden" name="id" id="achId" />
+                <input type="hidden" name="imageKey" id="achImageKey" />
                 <div class="modal-header">
                     <h6 class="modal-title">编辑勋章</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -146,12 +144,12 @@
     </div>
 </div>
 
-@section Scripts {
 <script>
     // v2.6.0 勋章图：媒体 base 用于预览（与列表缩略图同源）
     const ACH_MEDIA_BASE = '@(mediaBase)';
     let achUploading = false;
 
+    // 按 imageKey 切换预览图与占位文案
     function achRenderImage(imageKey) {
         const preview = document.getElementById('achImagePreview');
         const empty = document.getElementById('achImageEmpty');
@@ -165,6 +163,7 @@
         }
     }
 
+    // 编辑按钮：把 data-* 回填到模态表单
     document.querySelectorAll('.btn-edit-ach').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.getElementById('achId').value = btn.dataset.id;
@@ -190,6 +189,7 @@
         fileInput.click();
     });
 
+    // 上传文件并处理成功/失败提示
     function doAchUpload(file) {
         const status = document.getElementById('achImageStatus');
         if (!file) { status.textContent = '未选择文件'; return; }
@@ -218,4 +218,3 @@
             });
     }
 </script>
-}

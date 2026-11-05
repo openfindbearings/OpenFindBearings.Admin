@@ -21,25 +21,29 @@
     var currentStatus = string.IsNullOrWhiteSpace(Model.Status) ? "pending" : Model.Status;
 }
 
-<div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">型号线索 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            <a class="btn btn-outline-secondary" asp-action="Bearings">
-                <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">返回轴承列表</span>
-            </a>
-            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
-                <select name="status" class="form-select form-select-sm" style="width:130px" title="状态">
-                    <option value="pending" selected="@(currentStatus == "pending" ? "selected" : null)">待建档</option>
-                    <option value="ignored" selected="@(currentStatus == "ignored" ? "selected" : null)">已忽略</option>
-                    <option value="resolved" selected="@(currentStatus == "resolved" ? "selected" : null)">已入库</option>
-                    <option value="all" selected="@(currentStatus == "all" ? "selected" : null)">全部</option>
-                </select>
-                <input type="text" name="search" value="@Model.Search" class="form-control form-control-sm" placeholder="搜索型号..." style="min-width:140px" />
-                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-search"></i> 筛选</button>
-            </form>
-        </div>
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-lightbulb"></i> 型号线索</h4>
+        <p>共 @Model.TotalCount 条；发布/应答中出现但平台型号库未收录的型号，可判断是否建档。</p>
     </div>
+    <div class="page-actions">
+        <a class="btn btn-outline-secondary" asp-action="Bearings">
+            <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">返回轴承列表</span>
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <form class="filter-bar" method="get">
+        <select name="status" class="form-select filter-select" title="状态">
+            <option value="pending" selected="@(currentStatus == "pending" ? "selected" : null)">待建档</option>
+            <option value="ignored" selected="@(currentStatus == "ignored" ? "selected" : null)">已忽略</option>
+            <option value="resolved" selected="@(currentStatus == "resolved" ? "selected" : null)">已入库</option>
+            <option value="all" selected="@(currentStatus == "all" ? "selected" : null)">全部</option>
+        </select>
+        <input type="text" name="search" value="@Model.Search" class="form-control filter-search" placeholder="搜索型号..." />
+        <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> 筛选</button>
+    </form>
     <div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
             <thead>

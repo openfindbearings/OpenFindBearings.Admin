@@ -39,6 +39,8 @@ public class ConfigController : Controller
         // 改动说明（v2.12.0 等级玩法）：段位档位表 tab（阈值/段位名/升档礼/启停，实时生效）
         await LoadPointLevelsAsync(client, apiBase);
         await LoadMerchantTasksAsync(client, apiBase);
+        // 改动说明（v2.22.0 菜单收敛）：勋章目录自独立页并入本页最后一个 tab
+        await LoadAchievementsAsync(client, apiBase);
         try
         {
             var resp = await client.GetAsync($"{apiBase}/api/admin/config");
@@ -72,6 +74,51 @@ public class ConfigController : Controller
              TempData["Error"] = $"获取配置失败: {ex.Message}";
          }
          return View();
+    }
+
+    /// <summary>
+    /// 拉取勋章目录供"勋章管理"tab 渲染（v2.22.0 自 AchievementController.Index 迁入）。
+    /// 失败不阻塞配置页，仅记录告警并置空列表。
+    /// </summary>
+    private async Task LoadAchievementsAsync(HttpClient client, string apiBase)
+    {
+        ViewBag.Achievements = new List<AchievementRowVm>();
+        try
+        {
+            var resp = await client.GetAsync($"{apiBase}/api/admin/achievements");
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("获取成就目录返回非成功状态: {StatusCode}", (int)resp.StatusCode);
+                return;
+            }
+
+            var body = await resp.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("data", out var d) || d.ValueKind != JsonValueKind.Array)
+                return;
+
+            ViewBag.Achievements = d.EnumerateArray().Select(x => new AchievementRowVm
+            {
+                Id = x.GetProperty("id").GetGuid(),
+                Key = x.GetProperty("key").GetString() ?? "",
+                Name = x.GetProperty("name").GetString() ?? "",
+                Description = x.GetProperty("description").GetString() ?? "",
+                Scope = x.GetProperty("scope").GetInt32(),
+                Category = x.GetProperty("category").GetString() ?? "",
+                MetricKey = x.GetProperty("metricKey").GetString() ?? "",
+                ProgressTarget = x.GetProperty("progressTarget").GetInt32(),
+                MetaPoints = x.GetProperty("metaPoints").GetInt32(),
+                TitleReward = x.TryGetProperty("titleReward", out var tr) && tr.ValueKind == JsonValueKind.String ? tr.GetString() : null,
+                ImageKey = x.TryGetProperty("imageKey", out var ik) && ik.ValueKind == JsonValueKind.String ? ik.GetString() : null,
+                Rare = x.GetProperty("rare").GetBoolean(),
+                Hidden = x.GetProperty("hidden").GetBoolean(),
+                Enabled = x.GetProperty("enabled").GetBoolean()
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取成就目录失败");
+        }
     }
 
     /// <summary>

@@ -81,6 +81,13 @@
             <i class="fas fa-users me-1"></i>商家任务
         </button>
     </li>
+    @* v2.22.0 菜单收敛：勋章管理并入系统配置，作为最后一个页签 *@
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-achievements-tab" data-bs-toggle="tab" data-bs-target="#tab-achievements"
+                type="button" role="tab" data-tabkey="achievements">
+            <i class="fas fa-trophy me-1"></i>勋章管理
+        </button>
+    </li>
 </ul>
 
 <div class="tab-content">
@@ -391,6 +398,11 @@
                 </div>
             </form>
         </div>
+    </div>
+
+    @* v2.22.0 菜单收敛：勋章目录主体见 _Achievements 分部视图 *@
+    <div class="tab-pane fade" id="tab-achievements" role="tabpanel" aria-labelledby="tab-achievements-tab">
+        @await Html.PartialAsync("_Achievements")
     </div>
 </div>
 

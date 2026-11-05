@@ -77,15 +77,14 @@
                         {
                         <li><a asp-controller="Data" asp-action="Bearings" class="nav-link" data-page="data-bearings"><i class="fas fa-circle"></i><span>轴承列表</span></a></li>
                         }
-                        @* 改动说明（v2.16.0 替代品治理）：平台替代关系管理入口，与轴承列表同置基础信息区 *@
-                        @* 改动说明（v2.17.0 替代品字典化）：替代关系属主数据，权限由 merchant.verify 改为 interchange.view *@
-                        @if (HasPerm("interchange.view"))
-                        {
-                        <li><a asp-controller="Interchanges" asp-action="Index" class="nav-link" data-page="interchanges"><i class="fas fa-circle"></i><span>替代品</span></a></li>
-                        }
                         @if (HasPerm("merchant.view"))
                         {
                         <li><a asp-controller="Data" asp-action="Merchants" class="nav-link" data-page="data-merchants"><i class="fas fa-circle"></i><span>商家列表</span></a></li>
+                        }
+                        @* 改动说明（v2.22.0 菜单次序）：替代品移到商家列表之后，基础信息按"品牌/类型/型号/商家/替代关系"排列 *@
+                        @if (HasPerm("interchange.view"))
+                        {
+                        <li><a asp-controller="Interchanges" asp-action="Index" class="nav-link" data-page="interchanges"><i class="fas fa-circle"></i><span>替代品</span></a></li>
                         }
                         @* 改动说明（v2.21.0 牌级整合）：删除「商家牌级」独立入口——牌级列与调级动作并入商家列表，
                            仅已认证行显示调级按钮（权限仍为 merchant.grade.manage），避免两份同一数据源的列表 *@
@@ -103,11 +102,6 @@
                         {
                         <li><a asp-controller="Correction" asp-action="Index" class="nav-link" data-page="correction"><i class="fas fa-circle"></i><span>信息纠错</span></a></li>
                         }
-                        @* 改动说明（v1.49.4 意见反馈）：用户提交的建议/问题/举报，按 feedback.view 显示 *@
-                        @if (HasPerm("feedback.view"))
-                        {
-                        <li><a asp-controller="Feedback" asp-action="Index" class="nav-link" data-page="feedback"><i class="fas fa-circle"></i><span>意见反馈</span></a></li>
-                        }
                         @if (HasPerm("merchant.verify"))
                         {
                     @* 改动说明：应运营要求，入驻申请前置到证照材料之前（主链路优先）；v2.7.0 执照审核泛化为证照材料队列 *@
@@ -124,6 +118,11 @@
                         <li><a asp-controller="Sourcing" asp-action="Index" class="nav-link" data-page="sourcing"><i class="fas fa-circle"></i><span>寻货管理</span></a></li>
                         @* 改动说明（v2.20.0 成交回执）：寻货成交回执复核入口，与寻货管理同组，按 sourcing.view 显示 *@
                         <li><a asp-controller="Sourcing" asp-action="Feedbacks" class="nav-link" data-page="sourcing-feedbacks"><i class="fas fa-circle"></i><span>成交回执</span></a></li>
+                        }
+                        @* 改动说明（v2.22.0 菜单次序）：意见反馈移到开源审核项末尾；闭源扩展模块项仍排在其后 *@
+                        @if (HasPerm("feedback.view"))
+                        {
+                        <li><a asp-controller="Feedback" asp-action="Index" class="nav-link" data-page="feedback"><i class="fas fa-circle"></i><span>意见反馈</span></a></li>
                         }
                         @* 改动说明（v2.18.0 通用扩展点）：并入扩展模块声明在"审核"分组的菜单项（开源无模块=无） *@
                         @foreach (var module in Modules)
@@ -163,13 +162,7 @@
                 }
                 @if (HasPerm("system.view"))
                 {
-                @* 改动说明（v2.6.0 菜单次序）：勋章管理/商城管理提到审计日志前，
-                   审计日志与系统配置恒居末尾（业务功能优先、审计与配置殿后） *@
-                <li>
-                    <a asp-controller="Achievement" asp-action="Index" class="nav-link" data-page="achievement">
-                        <i class="fas fa-trophy"></i><span>勋章管理</span>
-                    </a>
-                </li>
+                @* 改动说明（v2.22.0 菜单收敛）：勋章管理并入系统配置页签，不再占顶级菜单；商城管理保留 *@
                 <li>
                     <a asp-controller="Mall" asp-action="Index" class="nav-link" data-page="mall">
                         <i class="fas fa-store"></i><span>商城管理</span>

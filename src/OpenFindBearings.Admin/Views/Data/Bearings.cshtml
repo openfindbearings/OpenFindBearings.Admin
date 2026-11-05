@@ -17,51 +17,55 @@
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}{FilterQuery()}";
 }
 
-<div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">轴承列表 <small class="text-muted">(@Model.TotalCount 条)</small></h6>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            @if (PanelPerms.Has(User, "bearing.create"))
-            {
-            @* 改动说明（v2.13.2 死链修复）：原 target=#bearingModal（不存在）且 onclick=openCreateBearing()（未定义），
-   点击无反应；真实模态为 #createBearingModal *@
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBearingModal">
-                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
-            </button>
-            }
-            @* 改动说明（v1.49.0 型号线索）：发布/应答中出现但型号库未收录的型号，管理员可在此判断是否建档 *@
-            @* 改动说明（v1.49.1）：入口按 bearing.view 显隐——线索页与 API 端点都要求该权限，
-   无权限者进来只会看到 403 被吞成的空列表 *@
-            @if (PanelPerms.Has(User, "bearing.view"))
-            {
-            <a class="btn btn-outline-primary" asp-action="BearingLeads" title="型号库未收录的型号线索">
-                <i class="fas fa-lightbulb"></i> <span class="d-none d-sm-inline">型号线索</span>
-            </a>
-            }
-            <form class="d-flex flex-wrap gap-2 align-items-center" method="get">
-                <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="搜索型号..." style="min-width:140px" />
-                @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源（互联网/非互联网），供仪表盘"新增"柱下钻核对 *@
-                <input type="date" name="dateFrom" value="@Model.DateFrom" class="form-control form-control-sm" style="width:150px" title="创建起始日期（含）" />
-                <span class="text-muted small">~</span>
-                <input type="date" name="dateTo" value="@Model.DateTo" class="form-control form-control-sm" style="width:150px" title="创建截止日期（含）" />
-                <select name="sourceFilter" class="form-select form-select-sm" style="width:130px" title="来源">
-                    <option value="" selected="@(string.IsNullOrWhiteSpace(Model.SourceFilter) ? "selected" : null)">全部来源</option>
-                    <option value="internet" selected="@(Model.SourceFilter == "internet" ? "selected" : null)">仅互联网</option>
-                    <option value="noninternet" selected="@(Model.SourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
-                </select>
-                <div class="form-check d-none d-sm-block" style="white-space:nowrap">
-                    <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") />
-                    <label class="form-check-label" for="includeDeleted">显示已删除</label>
-                </div>
-                <button class="btn btn-primary"><i class="fas fa-search"></i></button>
-                @if (!string.IsNullOrWhiteSpace(Model.DateFrom) || !string.IsNullOrWhiteSpace(Model.DateTo) || !string.IsNullOrWhiteSpace(Model.SourceFilter))
-                {
-                    <a class="btn btn-outline-secondary" href="?search=@Uri.EscapeDataString(Model.Search ?? "")&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
-                }
-            </form>
-        </div>
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-bolt"></i> 轴承列表</h4>
+        <p>共 @Model.TotalCount 条；平台型号主数据，支持按型号、来源与创建时间筛选。</p>
     </div>
+    <div class="page-actions">
+        @if (PanelPerms.Has(User, "bearing.create"))
+        {
+        @* 改动说明（v2.13.2 死链修复）：原 target=#bearingModal（不存在）且 onclick=openCreateBearing()（未定义），
+   点击无反应；真实模态为 #createBearingModal *@
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBearingModal">
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建</span>
+        </button>
+        }
+        @* 改动说明（v1.49.0 型号线索）：发布/应答中出现但型号库未收录的型号，管理员可在此判断是否建档 *@
+        @* 改动说明（v1.49.1）：入口按 bearing.view 显隐——线索页与 API 端点都要求该权限，
+   无权限者进来只会看到 403 被吞成的空列表 *@
+        @if (PanelPerms.Has(User, "bearing.view"))
+        {
+        <a class="btn btn-outline-primary" asp-action="BearingLeads" title="型号库未收录的型号线索">
+            <i class="fas fa-lightbulb"></i> <span class="d-none d-sm-inline">型号线索</span>
+        </a>
+        }
+    </div>
+</div>
+
+<div class="card">
     <div class="card-body p-0">
+        <form class="filter-bar" method="get">
+            <input type="text" name="search" value="@Model.Search" class="form-control filter-search" placeholder="搜索型号..." />
+            @* 改动说明（v1.40.0 下钻筛选）：创建时间区间 + 来源（互联网/非互联网），供仪表盘"新增"柱下钻核对 *@
+            <input type="date" name="dateFrom" value="@Model.DateFrom" class="form-control filter-date" title="创建起始日期（含）" />
+            <span class="text-muted small">~</span>
+            <input type="date" name="dateTo" value="@Model.DateTo" class="form-control filter-date" title="创建截止日期（含）" />
+            <select name="sourceFilter" class="form-select filter-select" title="来源">
+                <option value="" selected="@(string.IsNullOrWhiteSpace(Model.SourceFilter) ? "selected" : null)">全部来源</option>
+                <option value="internet" selected="@(Model.SourceFilter == "internet" ? "selected" : null)">仅互联网</option>
+                <option value="noninternet" selected="@(Model.SourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
+            </select>
+            <div class="form-check filter-check">
+                <input class="form-check-input" type="checkbox" name="includeDeleted" value="true" id="includeDeleted" @(Model.IncludeDeleted ? "checked" : "") />
+                <label class="form-check-label" for="includeDeleted">显示已删除</label>
+            </div>
+            <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+            @if (!string.IsNullOrWhiteSpace(Model.DateFrom) || !string.IsNullOrWhiteSpace(Model.DateTo) || !string.IsNullOrWhiteSpace(Model.SourceFilter))
+            {
+                <a class="btn btn-outline-secondary" href="?search=@Uri.EscapeDataString(Model.Search ?? "")&includeDeleted=@Model.IncludeDeleted.ToString().ToLower()" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
+            }
+        </form>
         <div class="table-responsive"><table class="table table-hover">
             <thead><tr><th>型号</th><th>旧型号</th><th>品牌</th><th>类型</th><th>英文名</th><th class="d-none d-md-table-cell">来源</th><th class="d-none d-md-table-cell">创建时间</th><th>操作</th></tr></thead>
             <tbody>

@@ -1,10 +1,14 @@
-﻿# Admin 功能需求与后端服务映射 v1.51.0
+﻿# Admin 功能需求与后端服务映射 v1.51.1
 
 ## 概述
 
 本文档整理 Admin 后台全部功能需求，逐一标注实际实现状态。✅ = 已实现，❌ = 待实现。
 
 ## 变更日志
+
+### v1.51.0 → v1.51.1（2026-11-06 文档清理）
+
+1. 删除与现网实现不符的批量导入相关描述，功能清单与开源版实际能力一致。
 
 ### v1.50.0 → v1.51.0（2026-11-05 菜单收敛与列表页视觉统一）
 
@@ -191,8 +195,8 @@
 
 1. **功能门控升级为代码摘除**：`Features:SyncIntegration` 开关连同被控代码整体移出开源仓——
    - 控制器删除：SyncController（ETL 同步）、ReviewController（同步数据审核）、MappingController（品牌/型号映射维护）整文件；HomeController 的 DataSources（数据源页）与 Crawler（爬虫触发页）action；DataController 的库存导入三动作（页面/模板下载/提交）；AuditLogController 的 `source=sync` 审计源分支。
-   - 视图删除：`Views/Sync|Review|Mapping|Crawler/` 四目录、`Views/Data/ImportInventory.cshtml`、Merchants 页 Excel 导入弹窗与 JS。
-   - 基础设施删除：Program.cs `SyncClient` HttpClient 注册与 `/api/proxy/excel/*`、`/api/proxy/etl/*` 代理端点；ServiceHealthService 的 Sync 探测项；_Layout 三处菜单块（同步审核/ETL 与爬虫/映射信息/库存导入）与 syncOn 门控变量；PermissionController 三个显示名（merchant.import/review.sync/sync.run）。
+   - 视图删除：`Views/Sync|Review|Mapping|Crawler/` 四目录、`Views/Data/ImportInventory.cshtml`、Merchants 页对应弹窗与 JS。
+   - 基础设施删除：Program.cs `SyncClient` HttpClient 注册与 `/api/proxy/etl/*` 等代理端点；ServiceHealthService 的 Sync 探测项；_Layout 三处菜单块（同步审核/ETL 与爬虫/映射信息/库存导入）与 syncOn 门控变量；PermissionController 三个显示名（merchant.import/review.sync/sync.run）。
    - 配置删除：appsettings `Features` 节与 `ApiUrls:FindBearingsSync` 键；deploy 模板 `ApiUrls__FindBearingsSync` env。
 2. **配套 API 摘除**（见 API《02 v1.46.0》）：/api/sync 端点组、import-context、config/reliability、SeedData 权限目录五键（merchant.import/mapping.view/mapping.manage/review.sync/sync.run）。
 3. **保留说明**：商家 `DataSource=Crawler` 枚举为平台核心业务属性（互联网数据来源标记，展示与守卫逻辑在用）不摘；DashboardStats 去 Sync 聚合、仪表盘同步数据待处理卡删除，仅呈现本 API 自身统计。

@@ -67,7 +67,6 @@ public record AuditLogItemDto(
         "Config" => "配置",
         "Audit" => "审核",
         "Image" => "图片",
-        "Excel" => "Excel",
         "Manual" => "手工",
         "MerchantBearing" => "商家轴承",
         "Brand" => "品牌",

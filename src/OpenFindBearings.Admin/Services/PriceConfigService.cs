@@ -6,7 +6,7 @@ namespace OpenFindBearings.Admin.Services;
 
 /// <summary>
 /// 价格配置服务：缓存 API 端 /api/admin/config/price 的返回值（5 分钟 TTL）
-/// 供在售商品弹窗、Excel 导入等场景使用
+/// 供在售商品弹窗等场景使用
 /// </summary>
 public class PriceConfigService
 {

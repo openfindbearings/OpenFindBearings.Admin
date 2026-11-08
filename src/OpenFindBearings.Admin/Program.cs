@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -22,6 +23,19 @@ builder.Configuration.AddJsonFile("appsettings.pro.json", optional: true, reload
 //   会把部署时注入的环境变量（如各服务基地址）盖回镜像内默认值。现追加一次环境变量源，
 //   保证优先级：appsettings.json < 扩展覆盖配置 < 环境变量（部署值始终生效）。
 builder.Configuration.AddEnvironmentVariables();
+
+// 改动说明（本次）：Data Protection 密钥持久化。Admin 用 Cookie 认证，默认密钥落在容器临时目录，
+//   Pod 一重启就重新生成一套，所有管理员 cookie 立即无法解密、被强制踢回登录页。
+//   配置 DataProtection:KeysPath（挂载 hostPath/PVC）后密钥跨重启保留；
+//   应用名与 Identity 区分，避免两套服务共用同一密钥环。
+var dpKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrEmpty(dpKeysPath))
+{
+    Directory.CreateDirectory(dpKeysPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dpKeysPath))
+        .SetApplicationName("OpenFindBearings.Admin");
+}
 
 // MVC + JSON 配置：camelCase 命名，null 值不序列化
 builder.Services.AddControllersWithViews()

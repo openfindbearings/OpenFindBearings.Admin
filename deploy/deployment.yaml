@@ -16,6 +16,18 @@ spec:
     spec:
       imagePullSecrets:
       - name: ghcr-pull-secret
+      # 改动说明（本次）：dpkeys 供 Data Protection 密钥持久化。hostPath 由 kubelet 以 root:0755
+      #   DirectoryOrCreate 建出，而容器以非 root（uid 1654，基础镜像 APP_UID）运行，
+      #   直接写会 UnauthorizedAccessException；用 root 身份的 initContainer 每次调度纠正属主。
+      initContainers:
+      - name: dpkeys-init
+        image: docker.io/library/busybox:1.37.0
+        command: ["sh", "-c", "chown -R 1654:1654 /app/dpkeys && chmod 700 /app/dpkeys"]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: dpkeys
+          mountPath: /app/dpkeys
       containers:
       - name: openfindbearings-admin
         image: ghcr.io/openfindbearings/openfindbearings-admin:latest
@@ -41,6 +53,12 @@ spec:
             secretKeyRef:
               name: openfindbearings-admin-secrets
               key: Identity__ClientSecret
+        # 改动说明（本次）：Data Protection 密钥持久化目录，避免 Pod 重启后管理员 cookie 全部失效被踢下线
+        - name: DataProtection__KeysPath
+          value: "/app/dpkeys"
+        volumeMounts:
+        - name: dpkeys
+          mountPath: /app/dpkeys
         livenessProbe:
           httpGet:
             path: /health/live
@@ -60,6 +78,12 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "500m"
+      # 改动说明（本次）：Data Protection 密钥持久卷（hostPath，单副本；DirectoryOrCreate 自动建目录）
+      volumes:
+      - name: dpkeys
+        hostPath:
+          path: <your-data-dir>/admin/dpkeys
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service

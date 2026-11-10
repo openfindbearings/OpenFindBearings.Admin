@@ -239,6 +239,8 @@
                                     </form>
                                     }
                                 }
+                                    @* 阅读说明（v1.53.0）：行级扩展槽，闭源在此注入「导入库存」等按商家操作，开源无 Ext 分部则渲染为空 *@
+                                    @await Component.InvokeAsync("ProSlot", new { key = "merchants.row.actions", model = item.Id })
                             </td>
                         </tr>
                     }

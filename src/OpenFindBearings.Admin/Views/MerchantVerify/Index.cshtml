@@ -15,9 +15,12 @@
     static string ModeLabel(string? mode) => MerchantLabels.ModeLabel(mode);
 }
 
+@* 阅读说明：v1.52.0 统一列表页三段式，页头改为 div 包裹并补总数 *@
 <div class="page-header">
-    <h4><i class="fas fa-user-check"></i> 入驻申请</h4>
-    <p class="text-muted">入驻审核通过使商户生效可被检索；认证（提交营业执照）用于提升商户资质等级，二者相互独立。点击行可打开详情抽屉核对全部申请资料</p>
+    <div>
+        <h4><i class="fas fa-user-check"></i> 入驻申请</h4>
+        <p>共 @totalCount 条；入驻审核通过使商户生效可被检索，认证（提交营业执照）用于提升商户资质等级，二者相互独立。点击行可打开详情抽屉核对全部申请资料。</p>
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -38,14 +41,14 @@
 </ul>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-end align-items-center py-2">
-        <form class="d-flex gap-2" method="get">
-            <input type="hidden" name="status" value="@currentStatus" />
-            <input type="text" name="search" value="@search" class="form-control form-control-sm" placeholder="搜索商家名称..." />
-            <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
-        </form>
-    </div>
     <div class="card-body p-0">
+        @* 阅读说明：v1.52.0 原卡片头内搜索改到卡片内 filter-bar，与其它列表页统一 *@
+        <form class="filter-bar" method="get">
+            <input type="hidden" name="status" value="@currentStatus" />
+            <input type="text" name="search" value="@search" class="form-control filter-search" placeholder="搜索商家名称..." />
+            <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-status="@currentStatus" title="清除搜索"><i class="fas fa-xmark"></i> 重置</a>
+        </form>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>

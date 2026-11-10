@@ -34,9 +34,12 @@
     };
 }
 
+@* 阅读说明：v1.52.0 统一列表页三段式，页头改为 div 包裹并补总数 *@
 <div class="page-header">
-    <h4><i class="fas fa-comment-dots"></i> 意见反馈</h4>
-    <p class="text-muted">用户提交的建议、问题与举报；回复后状态置为已处理并通过站内信通知提交人</p>
+    <div>
+        <h4><i class="fas fa-comment-dots"></i> 意见反馈</h4>
+        <p>共 @totalCount 条；用户提交的建议、问题与举报，回复后状态置为已处理并通过站内信通知提交人。</p>
+    </div>
 </div>
 
 @if (ViewBag.Error != null)
@@ -54,27 +57,21 @@
     }
 </ul>
 
-<form method="get" class="row g-2 mb-3">
-    <input type="hidden" name="status" value="@currentStatus" />
-    <div class="col-auto">
-        <select class="form-select form-select-sm" name="category">
-            @foreach (var c in categories)
-            {
-                <option value="@c.Key" selected="@(currentCategory == c.Key)">@c.Label</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <input type="text" class="form-control form-control-sm" name="keyword" value="@keyword" placeholder="搜索反馈内容或联系方式" style="width:260px" />
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-primary">筛选</button>
-        <a class="btn btn-sm btn-outline-secondary" asp-action="Index">重置</a>
-    </div>
-</form>
-
+@* 阅读说明：v1.52.0 原卡外 row g-2 筛选移入卡片内 filter-bar，与其它列表页统一 *@
 <div class="card">
     <div class="card-body p-0">
+        <form class="filter-bar" method="get">
+            <input type="hidden" name="status" value="@currentStatus" />
+            <select class="form-select filter-select" name="category">
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Key" selected="@(currentCategory == c.Key)">@c.Label</option>
+                }
+            </select>
+            <input type="text" name="keyword" value="@keyword" class="form-control filter-search" placeholder="搜索反馈内容或联系方式" />
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+            <a class="btn btn-outline-secondary" asp-action="Index" title="清除筛选"><i class="fas fa-xmark"></i> 重置</a>
+        </form>
         @if (!items.Any())
         {
             <div class="text-center py-5 text-muted">

@@ -1,10 +1,15 @@
 @using OpenFindBearings.Admin.Controllers
 @{ ViewData["Title"] = "权限列表"; }
 
-<div class="card">
-    <div class="card-header">
-        <h6 class="mb-0">权限列表 <small class="text-muted">（只读展示，权限键由系统定义）</small></h6>
+@* 阅读说明：v1.52.0 统一页面头部（页头 + 卡片），原卡片头标题移入页头 *@
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-list-check"></i> 权限列表</h4>
+        <p>系统内置权限目录，只读展示；按业务域分组，角色授权在「角色管理 → 权限配置」中操作。</p>
     </div>
+</div>
+
+<div class="card">
     <div class="card-body">
         @{
             var groups = ViewBag.Groups as IEnumerable<IGrouping<string, PermissionDisplayViewModel>> ?? Enumerable.Empty<IGrouping<string, PermissionDisplayViewModel>>();

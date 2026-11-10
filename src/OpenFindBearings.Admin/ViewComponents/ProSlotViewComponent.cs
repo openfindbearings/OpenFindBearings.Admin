@@ -14,11 +14,19 @@ public class ProSlotViewComponent : ViewComponent
     /// 渲染指定 key 的扩展分部（不存在则输出空）。
     /// </summary>
     /// <param name="key">扩展槽键，约定对应分部路径 Views/Ext/{key}.cshtml</param>
-    public IViewComponentResult Invoke(string key)
+    /// <param name="model">
+    /// 可选数据模型：列表行级扩展槽需要当前行数据（如商家 Id）时由共享视图传入，
+    /// 扩展分部按自己的 @model 声明接收；不传时保持原行为（无模型）。
+    /// 改动说明（v1.53.0）：行级扩展槽（商家列表行内按钮）必须拿到当前行 Id，
+    /// 原 Invoke 只接受 key，故补可选 model 参数，向后兼容既有无模型调用。
+    /// </param>
+    public IViewComponentResult Invoke(string key, object? model = null)
     {
         var viewName = $"Ext/{key}";
         if (ViewEngine.FindView(ViewContext, viewName, isMainPage: false).Success)
-            return View($"~/Views/Ext/{key}.cshtml");
+            return model is null
+                ? View($"~/Views/Ext/{key}.cshtml")
+                : View($"~/Views/Ext/{key}.cshtml", model);
         return Content(string.Empty);
     }
 }

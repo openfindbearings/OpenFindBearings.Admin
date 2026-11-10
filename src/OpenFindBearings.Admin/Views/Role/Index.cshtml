@@ -4,14 +4,22 @@
     var roles = ViewBag.Items as IEnumerable<RoleViewModel> ?? Enumerable.Empty<RoleViewModel>();
 }
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">角色管理 <small class="text-muted">(@roles.Count() 个)</small></h6>
+@* 阅读说明：v1.52.0 统一列表页三段式（页头 + 表格卡片），原卡片头改为页头与 page-actions *@
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-user-shield"></i> 角色管理</h4>
+        <p>共 @roles.Count() 条；维护后台角色及其权限授予，Admin 为内置角色不可删除。</p>
+    </div>
+    <div class="page-actions">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createRoleModal">
-            <i class="fas fa-plus"></i> 新建角色
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建角色</span>
         </button>
     </div>
+</div>
+
+<div class="card">
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover">
             <thead>
                 <tr>
@@ -54,6 +62,7 @@
                 }
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

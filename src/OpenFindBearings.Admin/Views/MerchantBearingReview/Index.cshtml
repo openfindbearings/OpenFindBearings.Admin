@@ -23,9 +23,12 @@
     string Iso(DateTime dt) => dt.ToString("yyyy-MM-ddTHH:mm:ssZ");
 }
 
+@* 阅读说明：v1.52.0 统一列表页三段式，页头改为 div 包裹并补总数，原卡片头信息行并入页头 *@
 <div class="page-header">
-    <h4><i class="fas fa-box-open"></i> 商品上架</h4>
-    <p class="text-muted">商家提交上架的商品待平台审核，通过后即在售并对公域可见；驳回须填写原因，商家可见并可修改后重新提交</p>
+    <div>
+        <h4><i class="fas fa-box-open"></i> 商品上架</h4>
+        <p>共 @totalCount 条；商家提交上架的商品由平台审核，通过后才可对公域销售（驳回需填写原因，商家可见并在修改后重新提交）。</p>
+    </div>
 </div>
 
 @if (!string.IsNullOrEmpty(error))
@@ -34,10 +37,6 @@
 }
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>待审核商品（@totalCount 条）</span>
-        <span class="text-muted small">通过即转在售；驳回原因经站内信触达商家</span>
-    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">

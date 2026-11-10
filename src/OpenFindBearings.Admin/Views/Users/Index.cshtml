@@ -29,49 +29,57 @@
     string RoleBadgeText(string r) => roleDisplayNames.TryGetValue(r, out var dn) ? dn : (r == "Individual" ? "注册用户" : r);
 }
 
-<div class="card">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">用户管理 <small class="text-muted">(@totalCount 条)</small></h6>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-            @if (PanelPerms.Has(User, "user.manage"))
-            {
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal" title="新建后台用户">
-                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建用户</span>
-            </button>
-            }
-            <form class="d-flex gap-2 align-items-center flex-nowrap" method="get">
-                @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认页签；
-                   v1.31.1：本表单不加 status hidden——select 即 status 唯一来源，
-                   双 name 会让绑定取到 hidden 旧值导致筛选切换失效 *@
-                <input type="hidden" name="tab" value="@currentTab" />
-                <input type="text" name="search" value="@search" class="form-control" placeholder="搜索用户..." style="min-width:140px" />
-                @* 改动说明（v1.30.0）：状态下拉——黑名单（已禁用）与已删除各有独立视图，操作列照常给恢复/启用入口 *@
-                <select class="form-select form-select-sm" name="status" style="width:auto;white-space:nowrap" onchange="this.form.submit()">
-                    <option value="enabled" selected="@(status == "enabled")">正常</option>
-                    <option value="disabled" selected="@(status == "disabled")">已禁用（黑名单）</option>
-                    <option value="locked" selected="@(status == "locked")">已锁定</option>
-                    <option value="deleted" selected="@(status == "deleted")">已删除</option>
-                    <option value="all" selected="@(status == "all")">全部</option>
-                </select>
-                <button class="btn btn-primary"><i class="fas fa-search"></i></button>
-            </form>
-        </div>
+@* 阅读说明：v1.52.0 统一列表页三段式（页头 + 页签 + 筛选条 + 表格卡片），
+   原卡片头内的标题/计数/新建按钮/搜索框拆到页头、page-actions 与 filter-bar *@
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-users"></i> 用户管理</h4>
+        <p>共 @totalCount 条；后台账号与 App 用户统一在此管理，按状态可筛选正常/已禁用/已锁定/已删除账号。</p>
     </div>
-    @* 改动说明（v1.29.1）：本菜单语义=后台用户管理，默认页签从"全部"改为"后台用户"；
-       页签区分后台用户与 App 用户（当前页客户端过滤，分页仍走服务端）；
-       分类依据=API 平台角色：挂 Admin/Operator/Auditor 任一为后台用户，否则归 App 用户 *@
-    <ul class="nav ofb-tabs px-2" id="userTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link @(currentTab == "all" ? "active" : "")" data-utab="all" type="button">全部</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link @(currentTab == "panel" ? "active" : "")" data-utab="panel" type="button">后台用户</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link @(currentTab == "app" ? "active" : "")" data-utab="app" type="button">前端用户</button>
-        </li>
-    </ul>
+    <div class="page-actions">
+        @if (PanelPerms.Has(User, "user.manage"))
+        {
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createUserModal" title="新建后台用户">
+            <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">新建用户</span>
+        </button>
+        }
+    </div>
+</div>
+
+@* 改动说明（v1.29.1）：本菜单语义=后台用户管理，默认页签从"全部"改为"后台用户"；
+   页签区分后台用户与 App 用户（当前页客户端过滤，分页仍走服务端）；
+   分类依据=API 平台角色：挂 Admin/Operator/Auditor 任一为后台用户，否则归 App 用户 *@
+<ul class="nav nav-tabs mb-3" id="userTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(currentTab == "all" ? "active" : "")" data-utab="all" type="button">全部</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(currentTab == "panel" ? "active" : "")" data-utab="panel" type="button">后台用户</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(currentTab == "app" ? "active" : "")" data-utab="app" type="button">前端用户</button>
+    </li>
+</ul>
+
+<div class="card">
     <div class="card-body p-0">
+        <form class="filter-bar" method="get">
+            @* 改动说明（v1.29.2）：搜索 GET 表单带上当前页签，搜索后不跳回默认页签；
+               v1.31.1：本表单不加 status hidden——select 即 status 唯一来源，
+               双 name 会让绑定取到 hidden 旧值导致筛选切换失效 *@
+            <input type="hidden" name="tab" value="@currentTab" />
+            <input type="text" name="search" value="@search" class="form-control filter-search" placeholder="搜索用户..." />
+            @* 改动说明（v1.30.0）：状态下拉——黑名单（已禁用）与已删除各有独立视图，操作列照常给恢复/启用入口 *@
+            <select class="form-select filter-select" name="status">
+                <option value="enabled" selected="@(status == "enabled")">正常</option>
+                <option value="disabled" selected="@(status == "disabled")">已禁用（黑名单）</option>
+                <option value="locked" selected="@(status == "locked")">已锁定</option>
+                <option value="deleted" selected="@(status == "deleted")">已删除</option>
+                <option value="all" selected="@(status == "all")">全部</option>
+            </select>
+            <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
+            <a class="btn btn-outline-secondary" asp-action="Index" asp-route-tab="@currentTab" title="清除筛选"><i class="fas fa-xmark"></i> 重置</a>
+        </form>
         <div class="table-responsive"><table class="table table-hover">
             <thead>
                 <tr>

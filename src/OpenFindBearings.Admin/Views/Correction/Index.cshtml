@@ -23,9 +23,12 @@
     }
 }
 
+@* 阅读说明：v1.52.0 统一列表页三段式（页头 + 筛选条 + 表格卡片），页头改为 div 包裹并补总数 *@
 <div class="page-header">
-    <h4><i class="fas fa-pen"></i> 信息纠错</h4>
-    <p class="text-muted">用户对轴承信息的纠错建议，可查看并处理每条纠错记录</p>
+    <div>
+        <h4><i class="fas fa-pen"></i> 信息纠错</h4>
+        <p>共 @totalCount 条；用户提交的信息纠错建议，可查看详情并逐条处理。</p>
+    </div>
 </div>
 
 @if (ViewBag.Error != null)

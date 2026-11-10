@@ -32,6 +32,14 @@
         .ToList();
 }
 
+@* 阅读说明：v1.52.0 统一页面头部，补页头（原为裸页签，与其他页面风格不一致） *@
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-sliders"></i> 系统配置</h4>
+        <p>平台业务参数按域分组，保存后实时生效；勋章管理为最后一个页签。</p>
+    </div>
+</div>
+
 @if (TempData["Success"] != null)
 {
     <div class="alert alert-success alert-dismissible fade show" role="alert">

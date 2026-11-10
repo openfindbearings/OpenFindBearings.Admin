@@ -16,6 +16,14 @@
     var mediaBase = (Configuration["Media:PublicBaseUrl"] ?? "https://<your-bff-domain>/media").TrimEnd('/');
 }
 
+@* 阅读说明：v1.52.0 统一页面头部（页头 + 页签 + 表格卡片），原无页头 *@
+<div class="page-header">
+    <div>
+        <h4><i class="fas fa-store"></i> 商城管理</h4>
+        <p>平台权益目录、积分礼品审核与托管订单，均按平台统一规则实时生效。</p>
+    </div>
+</div>
+
 <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-items" type="button">平台权益（@items.Count）</button>
@@ -30,9 +38,10 @@
 <div class="tab-content">
     <div class="tab-pane fade show active" id="pane-items" role="tabpanel">
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+@* 阅读说明：v1.52.0 卡片头信息行改用 filter-bar，与其它列表页横条样式统一 *@
+    <div class="filter-bar justify-content-between">
         <span>平台权益目录（@items.Count 个）</span>
-        <span class="text-muted small">价格由平台统一定价；改价与闪购窗口保存后即时生效</span>
+        <span class="text-muted small">价格为平台统一售价，积分兑换比例在系统配置中生效</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -115,7 +124,7 @@
             <div class="alert alert-secondary">需要"商家审核"权限（merchant.verify）才能处理挂礼审核</div>
         }
         <div class="card">
-            <div class="card-header">商家挂礼待审（@Model.Gifts.Count 件）<span class="text-muted small ms-2">通过后由平台定积分价（封顶价防定向转移），商家不可自定价</span></div>
+            <div class="filter-bar justify-content-between">商家挂礼待审（@Model.Gifts.Count 件）<span class="text-muted small ms-2">通过后由平台定积分价（封顶价防定向转移），商家不可自定价</span></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
@@ -168,7 +177,7 @@
     </div>
     <div class="tab-pane" id="pane-orders" role="tabpanel">
         <div class="card">
-            <div class="card-header">托管中礼品单（@Model.Orders.Count 单）<span class="text-muted small ms-2">买家已托管扣分、尚未确认收货；争议时原路退分（已结算单不可退，需金库侧人工处理）</span></div>
+            <div class="filter-bar justify-content-between">托管中礼品单（@Model.Orders.Count 单）<span class="text-muted small ms-2">买家已托管扣分、尚未确认收货；争议时原路退分（已结算单不可退，需金库侧人工处理）</span></div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">

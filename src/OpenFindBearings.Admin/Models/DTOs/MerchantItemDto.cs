@@ -34,6 +34,9 @@ public record MerchantItemDto(
     // 改动说明（v1.24.1）：对齐 API v1.31.0 DataSource 字段——解除归属按钮可用性判定
     // （None+Manual=提名已有可解除，None+Internet=公海不可；与 DetachMerchant 守卫同口径）
     [property: JsonPropertyName("dataSource")] string? DataSource = null,
+    // 改动说明（四页签拆分）：对齐 API MerchantDto.IsInternetSource——互联网来源即"未入驻"
+    // （无账号、未认证），列表认证列据此显示「未入驻」而非「未认证」
+    [property: JsonPropertyName("isInternetSource")] bool IsInternetSource = false,
     // 改动说明（v2.20.0 商家卡级页）：对齐 API MerchantDto 的等级中文展示名，
     // 列表直接展示，避免前端再维护一份枚举到中文的映射
     [property: JsonPropertyName("gradeDisplay")] string? GradeDisplay = null,

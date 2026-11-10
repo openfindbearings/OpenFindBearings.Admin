@@ -21,9 +21,21 @@
         + (!string.IsNullOrWhiteSpace(Model.DateTo) ? $"&dateTo={Uri.EscapeDataString(Model.DateTo)}" : "")
         + (!string.IsNullOrWhiteSpace(Model.SourceFilter) ? $"&sourceFilter={Model.SourceFilter}" : "");
     string SortQuery() => !string.IsNullOrWhiteSpace(Model.SortBy) ? $"&sortBy={Model.SortBy}&sortOrder={Model.SortOrder}" : "";
+    // 改动说明（四页签拆分）：当前来源取值，页签活性按"认证 × 来源"二维判定
+    var src = string.IsNullOrWhiteSpace(Model.SourceFilter) ? "" : Model.SourceFilter;
+    // 未入驻页签 = 仅互联网来源；已认证/未认证页签都限定在已入驻范围内
+    var tabInternet = string.Equals(src, "internet", StringComparison.OrdinalIgnoreCase);
+    var tabVerified = !tabInternet && vo == "true";
+    var tabUnverified = !tabInternet && vo == "false";
     // 分页/页签统一保留搜索、认证、时间/来源筛选与排序
     string PageUrl(int p) => $"?page={p}&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={vo}&dateField={dateField}{DateQuery()}{SortQuery()}";
-    string TabUrl(string? v) => $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={v ?? "all"}&dateField={dateField}{DateQuery()}{SortQuery()}";
+    // 改动说明（四页签拆分）：页签链接同时给出认证与来源两个维度，来源为空表示不限来源（全部页签）
+    string TabUrl(string? v, string? source)
+        => $"?page=1&pageSize={Model.PageSize}&search={Uri.EscapeDataString(Model.Search ?? "")}&verifiedOnly={v ?? "all"}&dateField={dateField}"
+           + (!string.IsNullOrWhiteSpace(Model.DateFrom) ? $"&dateFrom={Uri.EscapeDataString(Model.DateFrom)}" : "")
+           + (!string.IsNullOrWhiteSpace(Model.DateTo) ? $"&dateTo={Uri.EscapeDataString(Model.DateTo)}" : "")
+           + (!string.IsNullOrWhiteSpace(source) ? $"&sourceFilter={source}" : "")
+           + SortQuery();
     // 列排序链接：已按该列排序时点击切换方向，否则默认最新在前
     string SortUrl(string field)
     {
@@ -58,16 +70,21 @@
     </div>
 </div>
 
-@* 改动说明（v2.21.0）：页签顺序改为 已认证 → 未认证 → 全部，打开页面默认落在已认证 *@
+@* 改动说明（四页签拆分）：页签由"认证三态"改为"入驻身份 × 认证状态"四态——
+   已认证/未认证限定在已入驻商家内，未入驻页签专指互联网来源数据（无账号、永远未认证），
+   全部为两者并集；default 仍落在已认证 *@
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
-        <a class="nav-link @(vo == "true" ? "active" : "")" href="@TabUrl("true")">已认证</a>
+        <a class="nav-link @(tabVerified ? "active" : "")" href="@TabUrl("true", "noninternet")" title="已入驻且已通过认证的商家">已认证</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(vo == "false" ? "active" : "")" href="@TabUrl("false")">未认证</a>
+        <a class="nav-link @(tabUnverified ? "active" : "")" href="@TabUrl("false", "noninternet")" title="已入驻但尚未认证的商家">未认证</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(vo == "all" ? "active" : "")" href="@TabUrl("all")">全部</a>
+        <a class="nav-link @(tabInternet ? "active" : "")" href="@TabUrl("all", "internet")" title="互联网来源数据，无账号、未认证">未入驻</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(!tabVerified && !tabUnverified && !tabInternet ? "active" : "")" href="@TabUrl("all", null)" title="包含已入驻与未入驻的全部商家">全部</a>
     </li>
 </ul>
 
@@ -104,7 +121,7 @@
                 <input type="hidden" name="sortOrder" value="@Model.SortOrder" />
             }
             <input type="text" name="search" value="@Model.Search" class="form-control filter-search" placeholder="搜索商家..." />
-            @* 改动说明（v1.40.0 时间/来源筛选）：时间字段可选"注册时间/入驻时间"，来源可选"全部/仅互联网/仅非互联网" *@
+            @* 改动说明（v1.40.0 时间筛选）：时间字段可选"注册时间/入驻时间" *@
             <select name="dateField" class="form-select filter-select" title="时间字段">
                 <option value="registered" selected="@(dateField == "registered" ? "selected" : null)">注册时间</option>
                 <option value="onboarded" selected="@(dateField == "onboarded" ? "selected" : null)">入驻时间</option>
@@ -112,15 +129,12 @@
             <input type="date" name="dateFrom" value="@Model.DateFrom" class="form-control filter-date" title="起始日期（含）" />
             <span class="text-muted small">~</span>
             <input type="date" name="dateTo" value="@Model.DateTo" class="form-control filter-date" title="截止日期（含）" />
-            <select name="sourceFilter" class="form-select filter-select" title="来源">
-                <option value="" selected="@(string.IsNullOrWhiteSpace(Model.SourceFilter) ? "selected" : null)">全部来源</option>
-                <option value="internet" selected="@(Model.SourceFilter == "internet" ? "selected" : null)">仅互联网</option>
-                <option value="noninternet" selected="@(Model.SourceFilter == "noninternet" ? "selected" : null)">仅非互联网</option>
-            </select>
+            @* 改动说明（四页签拆分）：来源维度已由页签承载，这里只保留隐藏域防止查询时丢失当前页签口径 *@
+            <input type="hidden" name="sourceFilter" value="@Model.SourceFilter" />
             <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
-            @if (!string.IsNullOrWhiteSpace(Model.DateFrom) || !string.IsNullOrWhiteSpace(Model.DateTo) || !string.IsNullOrWhiteSpace(Model.SourceFilter))
+            @if (!string.IsNullOrWhiteSpace(Model.DateFrom) || !string.IsNullOrWhiteSpace(Model.DateTo))
             {
-                <a class="btn btn-outline-secondary" href="@TabUrl(vo)" title="清除时间/来源筛选"><i class="fas fa-xmark"></i></a>
+                <a class="btn btn-outline-secondary" href="@TabUrl(vo, src)" title="清除时间筛选"><i class="fas fa-xmark"></i></a>
             }
         </form>
         <div class="table-responsive"><table class="table table-hover">
@@ -137,7 +151,17 @@
                             <td class="d-none d-md-table-cell">@MerchantTypeName(item.Type)</td>
                             <td>@(item.ContactPerson ?? "-")</td>
                             <td>@(item.Phone ?? "-")</td>
-                            <td>@(item.IsVerified ? "已认证" : "未认证")</td>
+                            @* 改动说明（四页签拆分）：互联网来源商家显示「未入驻」，与已入驻未认证区分 *@
+                            <td>
+                                @if (item.IsInternetSource)
+                                {
+                                    <span class="badge bg-secondary" title="互联网来源数据，无账号、未认证">未入驻</span>
+                                }
+                                else
+                                {
+                                    @(item.IsVerified ? "已认证" : "未认证")
+                                }
+                            </td>
                             @* 改动说明（v2.21.0 牌级整合）：未认证不显示牌级；认证商家显示牌级与保级/有效期提示 *@
                             <td class="d-none d-md-table-cell">
                                 @if (item.IsVerified)

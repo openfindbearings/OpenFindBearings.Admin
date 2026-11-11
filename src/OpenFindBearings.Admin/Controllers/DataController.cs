@@ -425,10 +425,13 @@ public class DataController : Controller
     /// 创建品牌，POST /api/admin/brands
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CreateBrand(string code, string name, string? country, string? logoUrl, string? level)
+    public async Task<IActionResult> CreateBrand(string code, string name, string? country, string? logoUrl, string? level,
+        string? description, int? foundedYear, string? parentCompany, string? website,
+        string? advantages, string? suffixNotes, string? mainApplications)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { code, name, country, logoUrl, level };
+        // 改动说明（品牌资料完善）：表单整表提交，新增档案字段一并透传给 API
+        var body = new { code, name, country, logoUrl, level, description, foundedYear, parentCompany, website, advantages, suffixNotes, mainApplications };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/brands", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "品牌已创建" : $"创建失败: {resp.StatusCode}";
@@ -439,10 +442,13 @@ public class DataController : Controller
     /// 编辑品牌，PUT /api/admin/brands/{id}
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> EditBrand(Guid id, string name, string? country, string? logoUrl, string? level)
+    public async Task<IActionResult> EditBrand(Guid id, string name, string? country, string? logoUrl, string? level,
+        string? description, int? foundedYear, string? parentCompany, string? website,
+        string? advantages, string? suffixNotes, string? mainApplications)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { name, country, logoUrl, level };
+        // 改动说明（品牌资料完善）：表单整表提交，新增档案字段一并透传给 API
+        var body = new { name, country, logoUrl, level, description, foundedYear, parentCompany, website, advantages, suffixNotes, mainApplications };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PutAsync($"{ApiBase()}/api/admin/brands/{id}", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "品牌已更新" : $"更新失败: {resp.StatusCode}";
@@ -520,10 +526,13 @@ public class DataController : Controller
     /// 创建类型，POST /api/admin/bearing-types
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CreateBearingType(string code, string name, string? description)
+    public async Task<IActionResult> CreateBearingType(string code, string name, string? description,
+        string? englishName, string? structureFeatures, string? loadCharacteristics,
+        string? typicalPrefixes, string? mainApplications, bool? isSeparable, string? imageUrl)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { code, name, description };
+        // 改动说明（类型资料完善）：表单整表提交，新增档案字段一并透传给 API
+        var body = new { code, name, description, englishName, structureFeatures, loadCharacteristics, typicalPrefixes, mainApplications, isSeparable, imageUrl };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PostAsync($"{ApiBase()}/api/admin/bearing-types", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "类型已创建" : $"创建失败: {resp.StatusCode}";
@@ -534,10 +543,13 @@ public class DataController : Controller
     /// 编辑类型，PUT /api/admin/bearing-types/{id}
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> EditBearingType(Guid id, string name, string? description)
+    public async Task<IActionResult> EditBearingType(Guid id, string name, string? description,
+        string? englishName, string? structureFeatures, string? loadCharacteristics,
+        string? typicalPrefixes, string? mainApplications, bool? isSeparable, string? imageUrl)
     {
         var client = _factory.CreateClient("ApiClient");
-        var body = new { name, description };
+        // 改动说明（类型资料完善）：表单整表提交，新增档案字段一并透传给 API
+        var body = new { name, description, englishName, structureFeatures, loadCharacteristics, typicalPrefixes, mainApplications, isSeparable, imageUrl };
         var content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
         var resp = await client.PutAsync($"{ApiBase()}/api/admin/bearing-types/{id}", content);
         TempData[resp.IsSuccessStatusCode ? "Success" : "Error"] = resp.IsSuccessStatusCode ? "类型已更新" : $"更新失败: {resp.StatusCode}";

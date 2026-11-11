@@ -12,5 +12,13 @@ public record BrandItemDto(
     [property: JsonPropertyName("country")] string? Country,
     [property: JsonPropertyName("logoUrl")] string? LogoUrl,
     [property: JsonPropertyName("level")] string Level,
-    [property: JsonPropertyName("bearingCount")] int BearingCount
+    [property: JsonPropertyName("bearingCount")] int BearingCount,
+    // 改动说明（品牌资料完善）：补品牌档案字段，供列表列与编辑弹窗回填
+    [property: JsonPropertyName("description")] string? Description = null,
+    [property: JsonPropertyName("foundedYear")] int? FoundedYear = null,
+    [property: JsonPropertyName("parentCompany")] string? ParentCompany = null,
+    [property: JsonPropertyName("website")] string? Website = null,
+    [property: JsonPropertyName("advantages")] string? Advantages = null,
+    [property: JsonPropertyName("suffixNotes")] string? SuffixNotes = null,
+    [property: JsonPropertyName("mainApplications")] string? MainApplications = null
 );

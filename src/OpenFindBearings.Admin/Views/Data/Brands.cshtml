@@ -30,7 +30,7 @@
             <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
         </form>
         <div class="table-responsive"><table class="table table-hover">
-            <thead><tr><th>编码</th><th>名称</th><th>产地</th><th>等级</th><th>轴承数</th><th>操作</th></tr></thead>
+            <thead><tr><th>编码</th><th>名称</th><th>产地</th><th>成立年</th><th>母公司</th><th>主要应用</th><th>等级</th><th>轴承数</th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -40,6 +40,9 @@
                             <td>@item.Code</td>
                             <td>@item.Name</td>
                             <td>@(item.Country ?? "-")</td>
+                            <td>@(item.FoundedYear?.ToString() ?? "-")</td>
+                            <td>@(item.ParentCompany ?? "-")</td>
+                            <td class="text-truncate" style="max-width:160px" title="@item.MainApplications">@(item.MainApplications ?? "-")</td>
                             <td>@(item.Level == "Premium" ? "高级" : item.Level == "Economy" ? "经济" : "标准")</td>
                             <td>@item.BearingCount</td>
                             <td>
@@ -77,7 +80,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="6" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table></div>
@@ -128,7 +131,7 @@
 
 <!-- 新建/编辑品牌弹窗 -->
 <div class="modal fade" id="brandModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="post" id="brandForm">
                 <div class="modal-header">
@@ -145,17 +148,51 @@
                         <label class="form-label">名称 <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="brandName" class="form-control" required />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">产地</label>
-                        <input type="text" name="country" id="brandCountry" class="form-control" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">等级</label>
-                        <select name="level" id="brandLevel" class="form-select">
-                            <option value="Standard">标准</option>
-                            <option value="Premium">高级</option>
-                            <option value="Economy">经济</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">产地</label>
+                            <input type="text" name="country" id="brandCountry" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">等级</label>
+                            <select name="level" id="brandLevel" class="form-select">
+                                <option value="Standard">标准</option>
+                                <option value="Premium">高级</option>
+                                <option value="Economy">经济</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">成立年份</label>
+                            <input type="number" name="foundedYear" id="brandFoundedYear" class="form-control" min="1800" max="2100" placeholder="如 1907" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">母公司 / 所属集团</label>
+                            <input type="text" name="parentCompany" id="brandParentCompany" class="form-control" maxlength="100" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">官网</label>
+                            <input type="text" name="website" id="brandWebsite" class="form-control" maxlength="200" placeholder="https://" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">Logo 图片地址</label>
+                            <input type="text" name="logoUrl" id="brandLogoUrl" class="form-control" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">主要应用领域</label>
+                            <input type="text" name="mainApplications" id="brandMainApplications" class="form-control" maxlength="200" placeholder="如 电机、汽车、风电" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">品牌简介 / 特点</label>
+                            <textarea name="description" id="brandDescription" class="form-control" rows="2" placeholder="一句话说明品牌定位与技术特点"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">优势产品线</label>
+                            <textarea name="advantages" id="brandAdvantages" class="form-control" rows="3" placeholder="如 主轴轴承、轮毂轴承、轴承单元"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">型号后缀体系</label>
+                            <textarea name="suffixNotes" id="brandSuffixNotes" class="form-control" rows="3" placeholder="如 2RS1=接触密封、ZZ=铁盖防尘"></textarea>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -178,6 +215,15 @@ function openCreateBrand() {
     document.getElementById('brandName').value = '';
     document.getElementById('brandCountry').value = '';
     document.getElementById('brandLevel').value = 'Standard';
+    // 改动说明（品牌资料完善）：新建时清空全部档案字段
+    document.getElementById('brandFoundedYear').value = '';
+    document.getElementById('brandParentCompany').value = '';
+    document.getElementById('brandWebsite').value = '';
+    document.getElementById('brandLogoUrl').value = '';
+    document.getElementById('brandMainApplications').value = '';
+    document.getElementById('brandDescription').value = '';
+    document.getElementById('brandAdvantages').value = '';
+    document.getElementById('brandSuffixNotes').value = '';
 }
 function openEditBrand(item) {
     document.getElementById('brandModalTitle').textContent = '编辑品牌';
@@ -188,6 +234,15 @@ function openEditBrand(item) {
     document.getElementById('brandName').value = item.name;
     document.getElementById('brandCountry').value = item.country || '';
     document.getElementById('brandLevel').value = item.level || 'Standard';
+    // 改动说明（品牌资料完善）：编辑时回填档案字段
+    document.getElementById('brandFoundedYear').value = item.foundedYear ?? '';
+    document.getElementById('brandParentCompany').value = item.parentCompany || '';
+    document.getElementById('brandWebsite').value = item.website || '';
+    document.getElementById('brandLogoUrl').value = item.logoUrl || '';
+    document.getElementById('brandMainApplications').value = item.mainApplications || '';
+    document.getElementById('brandDescription').value = item.description || '';
+    document.getElementById('brandAdvantages').value = item.advantages || '';
+    document.getElementById('brandSuffixNotes').value = item.suffixNotes || '';
     new bootstrap.Modal(document.getElementById('brandModal')).show();
 }
 </script>

@@ -138,7 +138,7 @@
             }
         </form>
         <div class="table-responsive"><table class="table table-hover">
-            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th class="d-none d-md-table-cell">牌级</th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("registeredat")" class="text-decoration-none" title="按注册时间排序">注册时间 <i class="fas fa-sort"></i></a></th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("onboardedat")" class="text-decoration-none" title="按入驻时间排序">入驻时间 <i class="fas fa-sort"></i></a></th><th>操作</th></tr></thead>
+            <thead><tr><th>名称</th><th class="d-none d-md-table-cell">英文名</th><th class="d-none d-md-table-cell">公司</th><th class="d-none d-md-table-cell">类型</th><th>联系人</th><th>电话</th><th>认证</th><th class="d-none d-md-table-cell">牌级</th><th class="d-none d-md-table-cell text-nowrap" title="店铺被用户关注的人数">粉丝</th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("registeredat")" class="text-decoration-none" title="按注册时间排序">注册时间 <i class="fas fa-sort"></i></a></th><th class="d-none d-md-table-cell text-nowrap"><a href="@SortUrl("onboardedat")" class="text-decoration-none" title="按入驻时间排序">入驻时间 <i class="fas fa-sort"></i></a></th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -181,6 +181,8 @@
                                     <span class="text-muted">-</span>
                                 }
                             </td>
+                            @* 改动说明（粉丝数列）：取 API MerchantDto.FollowerCount，与 Taro 店铺详情/商户概览同源 *@
+                            <td class="d-none d-md-table-cell text-nowrap">@item.FollowerCount</td>
                             @* 改动说明（v1.40.0 注册/入驻时间列）：UTC ISO 串由全局 data-utc 转换器渲染 *@
                             <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.SubmittedAt)">@TimeRaw(item.SubmittedAt)</td>
                             <td class="d-none d-md-table-cell text-nowrap text-muted small" data-utc="@TimeRaw(item.OnboardedAt)">@TimeRaw(item.OnboardedAt)</td>
@@ -247,7 +249,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="11" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="12" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table></div>

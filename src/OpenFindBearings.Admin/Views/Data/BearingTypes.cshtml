@@ -30,7 +30,7 @@
             <button class="btn btn-primary"><i class="fas fa-search"></i> 查询</button>
         </form>
         <div class="table-responsive"><table class="table table-hover">
-            <thead><tr><th>编码</th><th>名称</th><th>描述</th><th>轴承数</th><th>操作</th></tr></thead>
+            <thead><tr><th>编码</th><th>名称</th><th>英文名</th><th>典型前缀</th><th>结构</th><th>轴承数</th><th>操作</th></tr></thead>
             <tbody>
                 @if (Model.Items.Any())
                 {
@@ -39,7 +39,9 @@
                         <tr>
                             <td>@item.Code</td>
                             <td>@item.Name</td>
-                            <td>@(item.Description ?? "-")</td>
+                            <td>@(item.EnglishName ?? "-")</td>
+                            <td>@(item.TypicalPrefixes ?? "-")</td>
+                            <td>@(item.IsSeparable == true ? "可分离" : item.IsSeparable == false ? "不可分离" : "-")</td>
                             <td>@item.BearingCount</td>
                             <td>
                                 @if (PanelPerms.Has(User, "type.edit"))
@@ -76,7 +78,7 @@
                 }
                 else
                 {
-                    <tr><td colspan="5" class="text-center text-muted py-4">暂无数据</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">暂无数据</td></tr>
                 }
             </tbody>
         </table></div>
@@ -127,7 +129,7 @@
 
 <!-- 新建/编辑类型弹窗 -->
 <div class="modal fade" id="typeModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="post" id="typeForm">
                 <div class="modal-header">
@@ -144,9 +146,43 @@
                         <label class="form-label">名称 <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="typeName" class="form-control" required />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">描述</label>
-                        <textarea name="description" id="typeDescription" class="form-control" rows="3"></textarea>
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">英文名称</label>
+                            <input type="text" name="englishName" id="typeEnglishName" class="form-control" maxlength="100" placeholder="如 Deep Groove Ball Bearing" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">典型型号前缀</label>
+                            <input type="text" name="typicalPrefixes" id="typeTypicalPrefixes" class="form-control" maxlength="100" placeholder="如 60/62/63/68/69" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">描述</label>
+                            <textarea name="description" id="typeDescription" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">结构特点</label>
+                            <textarea name="structureFeatures" id="typeStructureFeatures" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">载荷特性</label>
+                            <textarea name="loadCharacteristics" id="typeLoadCharacteristics" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">主要应用领域</label>
+                            <input type="text" name="mainApplications" id="typeMainApplications" class="form-control" maxlength="200" placeholder="如 电机、家电、汽车" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">结构示意图地址</label>
+                            <input type="text" name="imageUrl" id="typeImageUrl" class="form-control" maxlength="300" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label class="form-label">结构是否可分离</label>
+                            <select name="isSeparable" id="typeIsSeparable" class="form-select">
+                                <option value="">未填写</option>
+                                <option value="true">可分离（如圆锥滚子轴承内外圈可分开安装）</option>
+                                <option value="false">不可分离</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -168,6 +204,14 @@ function openCreateType() {
     document.getElementById('typeCode').removeAttribute('readonly');
     document.getElementById('typeName').value = '';
     document.getElementById('typeDescription').value = '';
+    // 改动说明（类型资料完善）：新建时清空全部档案字段
+    document.getElementById('typeEnglishName').value = '';
+    document.getElementById('typeTypicalPrefixes').value = '';
+    document.getElementById('typeStructureFeatures').value = '';
+    document.getElementById('typeLoadCharacteristics').value = '';
+    document.getElementById('typeMainApplications').value = '';
+    document.getElementById('typeImageUrl').value = '';
+    document.getElementById('typeIsSeparable').value = '';
 }
 function openEditType(item) {
     document.getElementById('typeModalTitle').textContent = '编辑类型';
@@ -177,6 +221,14 @@ function openEditType(item) {
     document.getElementById('typeCode').setAttribute('readonly', true);
     document.getElementById('typeName').value = item.name;
     document.getElementById('typeDescription').value = item.description || '';
+    // 改动说明（类型资料完善）：编辑时回填档案字段
+    document.getElementById('typeEnglishName').value = item.englishName || '';
+    document.getElementById('typeTypicalPrefixes').value = item.typicalPrefixes || '';
+    document.getElementById('typeStructureFeatures').value = item.structureFeatures || '';
+    document.getElementById('typeLoadCharacteristics').value = item.loadCharacteristics || '';
+    document.getElementById('typeMainApplications').value = item.mainApplications || '';
+    document.getElementById('typeImageUrl').value = item.imageUrl || '';
+    document.getElementById('typeIsSeparable').value = item.isSeparable === true ? 'true' : item.isSeparable === false ? 'false' : '';
     new bootstrap.Modal(document.getElementById('typeModal')).show();
 }
 </script>

@@ -609,9 +609,11 @@ public class DataController : Controller
         var vo = string.Equals(verifiedOnly, "false", StringComparison.OrdinalIgnoreCase) ? "false"
             : string.Equals(verifiedOnly, "all", StringComparison.OrdinalIgnoreCase) ? "all"
             : "true";
-        // 改动说明（四页签拆分）：页签改为 已认证/未认证/未入驻/全部，"已认证""未认证"限定在已入驻范围内
+        // 改动说明（四页签拆分）：页签改为 已认证/待认证/互联网/全部，"已认证""待认证"限定在已入驻范围内
         //   （互联网来源=未入驻，永远未认证）。旧链接或牌级页跳转只带 verifiedOnly 时，按已入驻归一，
         //   保证与页签语义一致；"全部"页签才不限来源。
+        // 改动说明（v1.4.4 页签改名）：第二枚「未认证」改「待认证」（已入驻但尚未认证）、第三枚「未入驻」改「互联网」
+        //   （直接点明数据来源，避免用户把未入驻误解为其它状态）；参数与判定逻辑不变。
         if (vo != "all" && string.IsNullOrWhiteSpace(sourceFilter))
             sourceFilter = "noninternet";
         var client = _factory.CreateClient("ApiClient");

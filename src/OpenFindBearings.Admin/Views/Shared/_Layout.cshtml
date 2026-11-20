@@ -119,7 +119,7 @@
                         @* 改动说明（v2.20.0 成交回执）：寻货成交回执复核入口，与寻货管理同组，按 sourcing.view 显示 *@
                         <li><a asp-controller="Sourcing" asp-action="Feedbacks" class="nav-link" data-page="sourcing-feedbacks"><i class="fas fa-circle"></i><span>成交回执</span></a></li>
                         }
-                        @* 改动说明（v2.22.0 菜单次序）：意见反馈移到开源审核项末尾；闭源扩展模块项仍排在其后 *@
+                        @* 改动说明（v2.22.0 菜单次序）：意见反馈排在审核项末尾，扩展模块项随后渲染 *@
                         @if (HasPerm("feedback.view"))
                         {
                         <li><a asp-controller="Feedback" asp-action="Index" class="nav-link" data-page="feedback"><i class="fas fa-circle"></i><span>意见反馈</span></a></li>
